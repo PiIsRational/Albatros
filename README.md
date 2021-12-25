@@ -5,6 +5,10 @@ Albatros is an open source UCI-compatible chess engine. It is not a complete che
 The Albatros chess engine currently features 3 different evaluation functions for chess. The classical, which work with simple piece square tables (PSQT). And the two NNUE evaluation funtions, which are using the HalfKav2 and HalfKp architectures.Thes classical evaluation function is currently the only evaluation function that is implented efficiently.
 
 ## Files
+
+This Distribution of Albatros contains the following files:
+
+* [Readme.md](https://github.com/PiIsRational/Albatros/blob/master/README.md), the File you are currently reading.
 Trying to use NNUE with a PUCT Tree
 
 Supports NNUE HalfKav2 and HalfKp
