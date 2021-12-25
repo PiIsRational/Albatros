@@ -24,7 +24,7 @@ class Game
     public string NetName = "ValueNet.nnue";
     public int NodeCount = 50;
     public float Coefficient = 0.1f;
-    public float Momentum = 0.5f;
+    public float Momentum = 0.75f;
     public float NetDecay = 0.75f;
 
     //Other Parameters

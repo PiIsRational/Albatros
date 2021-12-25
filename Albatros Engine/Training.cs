@@ -165,9 +165,7 @@ class Training
                     //Log info
                     LogNumbers(cost, TrainingSteps);
                 }
-                //CurrentLearningRate = GetLearningRate(cost);
                 CurrentLearningRate = LearningRate;
-                //Console.WriteLine("The Learning Rate is : {0}", CurrentLearningRate);
                 WinWhite = 0;
                 WinBlack = 0;
                 AmountofGames = 0;
@@ -211,9 +209,9 @@ class Training
                 {
                     Console.WriteLine("Saving Current Net!");
                     if (TrainingSteps % 100 != 0)
-                        TrainNet.SaveNet(CurrentNetName, true);
+                        TrainNet.SaveNets(CurrentNetName, false);
                     else
-                        TrainNet.SaveNet(GenerateBackupNetName(), false);
+                        TrainNet.SaveNets(GenerateBackupNetName(), false);
                 }
                 //wait until every Net is finished
                 finished = false;

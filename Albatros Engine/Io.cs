@@ -570,12 +570,17 @@ class Io
         double Value = treesearch.ValueNet.UseNet(Position, color);
         if (color == 1)
             Value = -Value;
-        Console.WriteLine("NNUE evaluation          {0} (white side)",ReturnNumber((float)Value));
+        Console.WriteLine("NNUE HalfKav2 evaluation         {0} (white side)", ReturnNumber((float)Value));
+
+        Value = treesearch.ValueNet.UseHalfkpNet(Position, color);
+        if (color == 1)
+            Value = -Value;
+        Console.WriteLine("NNUE HalfKp evaluation           {0} (white side)", ReturnNumber((float)Value));
 
         Value = treesearch.eval.PestoEval(Position, color);
         if (color == 1)
             Value = -Value;
-        Console.WriteLine("Classical evaluation     {0} (white side)\n", ReturnNumber((float)Value));
+        Console.WriteLine("Classical evaluation             {0} (white side)\n", ReturnNumber((float)Value));
     }
     public int GetPlaceInArray(char[] Array, char character)
     {
