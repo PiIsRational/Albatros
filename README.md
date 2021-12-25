@@ -9,10 +9,25 @@ The Albatros chess engine currently features 3 different evaluation functions fo
 This Distribution of Albatros contains the following files:
 
 * [Readme.md](https://github.com/PiIsRational/Albatros/blob/master/README.md), the File you are currently reading.
-Trying to use NNUE with a PUCT Tree
+* [Albatros Engine](https://github.com/PiIsRational/Albatros/tree/master/Albatros%20Engine), a subdirectory that contains the whole sourcecode.
+* [Albatros Engine.sln](https://github.com/PiIsRational/Albatros/blob/master/Albatros%20Engine.sln), the solution file of the programm.
+* [License.txt](https://github.com/PiIsRational/Albatros/blob/master/LICENSE), a text file that contains the GNU general public license version 2.
+* There sould be a file with a .nnue extention, but there are currently no such files with a requiered strength.
 
-Supports NNUE HalfKav2 and HalfKp
-    
-the Predictor is a PSQT Evaluation function
+## The UCI protocol and available options
 
-If You Know anything about Chess Engine Programming or Neural Networks Please Help
+The Universal Chess Interface (UCI) is a standard protocol used to communicate with a chess engine, and is the recommended way to do so for typical graphical user interfaces (GUI) or chess tools. Albatros does currently not support the following options, as they are describerd in the [UCI protocoll](https://www.shredderchess.com/download/div/uci.zip):
+
+* go
+  * searchmoves
+  * ponder
+  * wtime / btime
+  * winc / binc
+  * mate
+  * movetime
+  * increment
+  * movestogo
+  * infinite
+* ponderhit
+* quit
+
