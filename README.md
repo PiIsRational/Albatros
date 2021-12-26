@@ -1,3 +1,7 @@
+## Disclaimer
+
+Currently only the classical evaluation function is working and usable. The NNUE functions have either bugs(which is probably the case for the HalfKav2 version) or no netfile with the requiered strength.
+
 ## Overview
 
 Albatros is an open source UCI-compatible chess engine. It is not a complete chess programm and would require a UCI-compatible graphical user interface (GUI) (ex : Scid, Arena or Shredder) to be used comfortably.
