@@ -49,8 +49,7 @@ class Io
                         "\n" +
                         "\noption name Ponder type check default false" +
                         "\noption name EvalFile type string default ValueNet.nnue" +
-                        "\noption name EvalFileType type string default HalfKav2" +
-                        "\noption name MakeEvalFile type string default ValueNet.nnue" +
+                        "\noption name EvalType type string default HalfKav2" +
                         "\noption name NNUE type check default true" +
                         "\noption name Threads type spin default 5 min 1" +
                         "\nuciok");
@@ -99,6 +98,9 @@ class Io
                             break;
                     }
                     break;
+                case "export_net":
+                    treesearch.ValueNet.SaveNets(command_syntax[2], game.HalfKav2 , false);
+                    break;
                 case "setoption":
                     if (command_syntax[1] == "name" && command_syntax[3] == "value")
                     {
@@ -121,7 +123,7 @@ class Io
                                     Console.WriteLine("No such File: " + command_syntax[4] + "\n");
                                 }
                                 break;
-                            case "EvalFileType":
+                            case "EvalType":
                                 switch(command_syntax[4])
                                     {
                                     case "HalfKav2":
@@ -137,9 +139,6 @@ class Io
                                         break;
                                 }
                                 break;
-                            case "MakeEvalFile":
-                                treesearch.ValueNet.SaveNets(command_syntax[4], game.HalfKav2);
-                                break;
                             case "Elo":
                                 try
                                 {
@@ -152,12 +151,15 @@ class Io
                                     Console.WriteLine("{0} is not a number \n" , command_syntax[4]);
                                 }
                                 break;
-                            case "NNUE":
-                                if (command_syntax[4] == "true")
-                                    game.NNUE = true;
-                                else if (command_syntax[4] == "false")
-                                    game.NNUE = false;
-                                break;
+                            case "Use":
+                                if (command_syntax[3] == "NNUE")
+                                {
+                                    if (command_syntax[4] == "true")
+                                        game.NNUE = true;
+                                    else if (command_syntax[4] == "false")
+                                        game.NNUE = false;
+                                }
+                                break;                      
                             case "Threads":
                                 try
                                 {

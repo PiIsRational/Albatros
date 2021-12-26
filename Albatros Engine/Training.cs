@@ -209,9 +209,9 @@ class Training
                 {
                     Console.WriteLine("Saving Current Net!");
                     if (TrainingSteps % 100 != 0)
-                        TrainNet.SaveNets(CurrentNetName, false);
+                        TrainNet.SaveNets(CurrentNetName, CurrentState , true);
                     else
-                        TrainNet.SaveNets(GenerateBackupNetName(), false);
+                        TrainNet.SaveNets(GenerateBackupNetName(), CurrentState , false);
                 }
                 //wait until every Net is finished
                 finished = false;
@@ -350,6 +350,10 @@ class Training
                 semaphoreTraining.Release();
             }
         }
+    }
+    public float LargeSigmoid(float Input, float Size)
+    {
+        return Input / (float)Math.Sqrt(1 + (Input / Size) * (Input / Size));
     }
     public void CreateTestNet(float Momentum)
     {
@@ -725,9 +729,9 @@ class Training
                     Position.Color = Example[1][0,0];
 
                     if (MateVal != 2)
-                        Position.Eval = (1 - Lambda) * Value + Lambda * Eval[counter];
+                        Position.Eval = (1 - Lambda) * Value / 5 + Lambda * LargeSigmoid(Eval[counter], 10);
                     else
-                        Position.Eval = Eval[counter];
+                        Position.Eval = LargeSigmoid(Eval[counter], 10);
 
                     if (Buffercounter < Buffer.Length)
                     {

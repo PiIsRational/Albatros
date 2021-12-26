@@ -498,12 +498,12 @@ class NNUE
         else
             OpenNet(FileName);
     }
-    public void SaveNets(string FileName , bool NetType)
+    public void SaveNets(string FileName , bool NetType , bool Backup)
     {
         if (NetType)
-            SaveNet(FileName, false);
+            SaveNet(FileName, Backup);
         else
-            SaveHalfkpNet(FileName, false);
+            SaveHalfkpNet(FileName, Backup);
     }
     public void SaveHalfkpNet(string FileName, bool UseBackup)
     {
@@ -682,11 +682,6 @@ class NNUE
             }
         }
         Console.WriteLine("Done !");
-    }
-    public float LargeSigmoid(float Input , float Size)
-    {
-        Size = 10;
-        return Input / (float)Math.Sqrt(1 + (Input / Size) * (Input / Size));
     }
     public List<int>[] BoardToHalfKav2(byte[,] InputBoard, byte color)
     {
@@ -1021,13 +1016,13 @@ class NNUE
         {
             double color = TrainingExample.Color;
             double Output = UseNet(TrainingExample.Board, (byte)color);
-            double Value = LargeSigmoid(TrainingExample.Eval, 16);
+            double Value = TrainingExample.Eval;
             double CurrentCost = (Value - Output);
             if (CurrentCost < 0)
                 CurrentCost = -CurrentCost;
 
             Cost += CurrentCost;
-            Output = LargeSigmoid(eval.PestoEval(TrainingExample.Board, (byte)color), 16);
+            Output = LargeSigmoid(eval.PestoEval(TrainingExample.Board, (byte)color), 10);
             CurrentCost = (Value - Output);
             if (CurrentCost < 0)
                 CurrentCost = -CurrentCost;
@@ -1037,6 +1032,10 @@ class NNUE
         }
         return new double[2] { Cost / Input.Length, StaticEvalCost / Input.Length };
     }
+    public float LargeSigmoid(float Input , int Size)
+    {
+        return Input / (float)Math.Sqrt((Input / Size) * (Input / Size) + 1);
+    }
     public double[] CostOfHalfkpNet(TrainingPosition[] Input)
     {
         Classic_Eval eval = new Classic_Eval();
@@ -1045,7 +1044,7 @@ class NNUE
         {
             double color = TrainingExample.Color;
             double Output = UseHalfkpNet(TrainingExample.Board, (byte)color);
-            double Value = LargeSigmoid(TrainingExample.Eval, 16);
+            double Value = TrainingExample.Eval;
             double CurrentCost = (Value - Output);
             if (CurrentCost < 0)
                 CurrentCost = -CurrentCost;
@@ -1053,7 +1052,7 @@ class NNUE
             Cost += CurrentCost;
 
             Cost += CurrentCost;
-            Output = LargeSigmoid(eval.PestoEval(TrainingExample.Board, (byte)color), 16);
+            Output = LargeSigmoid(eval.PestoEval(TrainingExample.Board, (byte)color), 10);
             CurrentCost = (Value - Output);
             if (CurrentCost < 0)
                 CurrentCost = -CurrentCost;
@@ -1088,7 +1087,7 @@ class NNUE
 
         for (int gen = 0; gen < TrainingInput.Length; gen++)
         {
-            float Value = LargeSigmoid(TrainingInput[gen].Eval, 16);
+            float Value = TrainingInput[gen].Eval;
             float color = TrainingInput[gen].Color;
             List<int>[] Input = BoardToHalfKav2(TrainingInput[gen].Board, (byte)color);
             
@@ -1179,7 +1178,7 @@ class NNUE
 
         for (int gen = 0; gen < TrainingInput.Length; gen++)
         {
-            float Value = LargeSigmoid(TrainingInput[gen].Eval, 16);
+            float Value = TrainingInput[gen].Eval;
             float color = TrainingInput[gen].Color;
             List<int>[] Input = BoardToHalfKav2(TrainingInput[gen].Board, (byte)color);
             Input[0] = ConvertVectorToHalfkp(Input[0]);

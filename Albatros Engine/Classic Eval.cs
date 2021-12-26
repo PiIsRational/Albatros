@@ -85,17 +85,11 @@ class Classic_Eval
         if (MiddelGamePhase > 24)
             MiddelGamePhase = 24;
         EndGamePhase = 24 - MiddelGamePhase;
-        return (-2 * Color + 1) * LargeClippedRelu((MiddelGamePhase * MiddleGameValue + EndGamePhase * EndGameValue) / 24);
+        return (-2 * Color + 1) * LargeSigmoid(((MiddelGamePhase * MiddleGameValue + EndGamePhase * EndGameValue) / 24), 50);
     }
-    public float LargeClippedRelu(float Input)
+    public float LargeSigmoid(float Input , int Size)
     {
-        if (Input > 49.9)
-            return 49.9f;
-        else
-            if (Input < -49.9)
-            return -49.9f;
-        else
-            return Input;
+        return Input / (float)Math.Sqrt((Input / Size) * (Input / Size) + 1);
     }
     public int Exchange(int Y ,int Color )
     {

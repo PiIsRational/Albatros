@@ -2246,7 +2246,6 @@ class Node
     }
     public double GetScore(double FatherDenominator)
     {
-        //return (Numerator / (Denominator + 0.0000000001)) + 1.41 * (Math.Sqrt(Math.Log(FatherDenominator, Math.E) / (Denominator + 0.00000000001)));
         if (FatherDenominator == 1)
             return Probability;
         return (Numerator / (Denominator + 0.0000000001)) + 1.41 * Probability * (Math.Sqrt(FatherDenominator) / (Denominator + 0.00000000001));
