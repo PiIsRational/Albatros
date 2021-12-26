@@ -12,7 +12,7 @@ This Distribution of Albatros contains the following files:
 * [Albatros Engine](https://github.com/PiIsRational/Albatros/tree/master/Albatros%20Engine), a subdirectory that contains the whole sourcecode.
 * [Albatros Engine.sln](https://github.com/PiIsRational/Albatros/blob/master/Albatros%20Engine.sln), the solution file of the programm.
 * [License.txt](https://github.com/PiIsRational/Albatros/blob/master/LICENSE), a text file that contains the GNU general public license version 2.
-* There sould be a file with a .nnue extention, but there are currently no such files with a requiered strength.
+* There sould be a file with a .nnue extention, but there are currently no such files with a required strength.
 
 ## The UCI protocol and available options
 
