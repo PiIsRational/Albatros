@@ -60,5 +60,13 @@ For developers the following non-standard commands might be of interest, they ar
   * #### export_net [filename]
     Exports the currently loaded network of the current network type to a file.
     
+  * #### Training
+    Starts to train the current NNUE net with the current training parameters.
     
+Specifics about certain commands:
 
+  * #### go depth 
+    Start to search for the best move using the current evaluation function and an alpha beta pruned min max search (like stockfish).
+    
+  * #### go nodes 
+    Start to search for the best move using the current evaluation function and a PUCT tree (like Leela chess zero), that uses the classical evaluation  function as a     predictor.  
