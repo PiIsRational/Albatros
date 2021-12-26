@@ -38,3 +38,27 @@ The Universal Chess Interface (UCI) is a standard protocol used to communicate w
    
  * #### Ponder 
    Let Albatros ponder its next move while the opponent is thinking (currently does not do anything).
+   
+ * #### EvalFile
+   The name of the file containing the NNUE evaluation parameters.
+   
+ * #### EvalType
+   The name of the neural network architecture you want to use. The two possibilities are Halfkp and HalfKav2.
+   
+ * #### Use NNUE
+   Toggle between the NNUE and classical evaluation functions. If set to "true",
+   the network parameters must be available to load from file (see also EvalFile).
+   
+For developers the following non-standard commands might be of interest, they are mainly useful for debugging and training:
+
+  * #### d
+    Display the current position, with ascii art and fen.
+    
+  * #### eval
+    Return the evaluation of the current position.
+    
+  * #### export_net [filename]
+    Exports the currently loaded network of the current network type to a file.
+    
+    
+
