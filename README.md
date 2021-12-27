@@ -1,6 +1,8 @@
 ## Disclaimer
 
-This chess engine is not finished
+This chess engine is not finished !
+
+
 Currently only the classical evaluation function is working and usable. The NNUE functions have either bugs (which is probably the case for the HalfKav2 version) or no netfile with the requiered strength.
 
 ## Overview
