@@ -34,7 +34,6 @@ The Universal Chess Interface (UCI) is a standard protocol used to communicate w
    * movetime
    * increment
    * movestogo
-   * infinite
  * ponderhit
  * quit
 
