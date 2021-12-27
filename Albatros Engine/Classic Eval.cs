@@ -85,9 +85,9 @@ class Classic_Eval
         if (MiddelGamePhase > 24)
             MiddelGamePhase = 24;
         EndGamePhase = 24 - MiddelGamePhase;
-        return (-2 * Color + 1) * LargeSigmoid(((MiddelGamePhase * MiddleGameValue + EndGamePhase * EndGameValue) / 24), 50);
+        return (-2 * Color + 1) * LargeSigmoid(((MiddelGamePhase * MiddleGameValue + EndGamePhase * EndGameValue) / 24), 4.2f);
     }
-    public float LargeSigmoid(float Input , int Size)
+    public float LargeSigmoid(float Input , float Size)
     {
         return Input / (float)Math.Sqrt((Input / Size) * (Input / Size) + 1);
     }

@@ -28,6 +28,7 @@ class Game
     public float NetDecay = 0.75f;
 
     //Other Parameters
+    public bool IsPlaying = false;
     public bool NNUE = false;
     public bool HalfKav2 = true;
     public bool HalfKp = false;
@@ -67,7 +68,6 @@ class Game
         {
             string Command = Console.ReadLine();
             string[] Input = io.SyntaxWithoutHoles(Command.Split(' '));
-
             if (Input.Length != 0 && Input[0] == "stop")
             {
                 io.Stop();

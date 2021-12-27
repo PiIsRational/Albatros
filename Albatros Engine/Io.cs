@@ -5,8 +5,10 @@ class Io
 {
     string CurrentCommand = "";
     Game game = new Game();
+    public int[][] Move = new int[2][];
     Treesearch treesearch = new Treesearch(1245845, true, 5);
     public string[] LastPositionCommand;
+    Stopwatch sw = new Stopwatch();
     int fd = 0;
     public Io()
     {
@@ -51,7 +53,7 @@ class Io
                         "\noption name EvalFile type string default ValueNet.nnue" +
                         "\noption name EvalType type string default HalfKav2" +
                         "\noption name NNUE type check default true" +
-                        "\noption name Threads type spin default 5 min 1" +
+                        "\noption name Threads type spin default 6 min 2" +
                         "\nuciok");
                     break;
                 case "ucinewgame":
@@ -63,6 +65,17 @@ class Io
                 case "go":
                     switch (command_syntax[1])
                     {
+                        case "ponder":
+                            if (!game.IsPlaying)
+                                Move = treesearch.MultithreadMcts(game.Board, (byte)game.Turn, Int32.MaxValue, game.NNUE, game.HalfKp, game.HalfKav2, game.TreadCount, true, false);
+                            if (Move != null)
+                                ReturnMoove(Move[0], Move[1]);
+                            break;
+                        case "infinite":
+                            Move = treesearch.MultithreadMcts(game.Board, (byte)game.Turn, Int32.MaxValue, game.NNUE, game.HalfKp, game.HalfKav2, game.TreadCount, true, false);
+                            if (Move != null)
+                                ReturnMoove(Move[0], Move[1]);
+                            break;
                         case "perft":
                             try
                             {
@@ -76,10 +89,8 @@ class Io
                         case "depth":
                             try
                             {
-                                Stopwatch stw = new Stopwatch();
-                                stw.Start();
-                                int[] Move = treesearch.MinMaxAlphaBeta(game.Board, (byte)game.Turn, Convert.ToInt32(command_syntax[2]), game.NNUE, game.HalfKp, game.HalfKav2);
-                                ReturnMoove(Move, new int[0]);
+                                Move[0] = treesearch.MinMaxAlphaBeta(game.Board, (byte)game.Turn, Convert.ToInt32(command_syntax[2]), game.NNUE, game.HalfKp, game.HalfKav2);
+                                ReturnMoove(Move[0], new int[0]);
                             }
                             catch
                             {
@@ -87,11 +98,9 @@ class Io
                             }
                             break;
                         case "nodes":
-                            Stopwatch sw = new Stopwatch();
-                            sw.Start();
-                            int[][] Moove = treesearch.MultithreadMcts(game.Board, (byte)game.Turn, Convert.ToInt32(command_syntax[2]), game.NNUE, game.HalfKp, game.HalfKav2, game.TreadCount);
-                            if (Moove != null)
-                                ReturnMoove(Moove[0], Moove[1]);
+                            Move = treesearch.MultithreadMcts(game.Board, (byte)game.Turn, Convert.ToInt32(command_syntax[2]), game.NNUE, game.HalfKp, game.HalfKav2, game.TreadCount, false , false);
+                            if (Move != null)
+                                ReturnMoove(Move[0], Move[1]);
                             break;
                         default:
                             Console.WriteLine("Unknown command: " + command + "\n");
@@ -99,7 +108,7 @@ class Io
                     }
                     break;
                 case "export_net":
-                    treesearch.ValueNet.SaveNets(command_syntax[2], game.HalfKav2 , false);
+                    treesearch.ValueNet.SaveNets(command_syntax[1], game.HalfKav2 , false);
                     break;
                 case "setoption":
                     if (command_syntax[1] == "name" && command_syntax[3] == "value")
@@ -163,7 +172,7 @@ class Io
                             case "Threads":
                                 try
                                 {
-                                    game.TreadCount = Convert.ToInt32(command_syntax[4]);
+                                    game.TreadCount = Convert.ToInt32(command_syntax[4]) - 1;
                                     if (game.TreadCount < 1)
                                         game.TreadCount = 1;
                                     treesearch.ChangeThreadCount(game.TreadCount);

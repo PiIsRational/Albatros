@@ -1022,7 +1022,7 @@ class NNUE
                 CurrentCost = -CurrentCost;
 
             Cost += CurrentCost;
-            Output = LargeSigmoid(eval.PestoEval(TrainingExample.Board, (byte)color), 10);
+            Output = LargeSigmoid(eval.PestoEval(TrainingExample.Board, (byte)color), 4);
             CurrentCost = (Value - Output);
             if (CurrentCost < 0)
                 CurrentCost = -CurrentCost;
@@ -1034,7 +1034,7 @@ class NNUE
     }
     public float LargeSigmoid(float Input , int Size)
     {
-        return Input / (float)Math.Sqrt((Input / Size) * (Input / Size) + 1);
+        return (Input/ Size) / (float)Math.Sqrt((Input / Size) * (Input / Size) + 1);
     }
     public double[] CostOfHalfkpNet(TrainingPosition[] Input)
     {
@@ -1052,7 +1052,7 @@ class NNUE
             Cost += CurrentCost;
 
             Cost += CurrentCost;
-            Output = LargeSigmoid(eval.PestoEval(TrainingExample.Board, (byte)color), 10);
+            Output = LargeSigmoid(eval.PestoEval(TrainingExample.Board, (byte)color), 4);
             CurrentCost = (Value - Output);
             if (CurrentCost < 0)
                 CurrentCost = -CurrentCost;

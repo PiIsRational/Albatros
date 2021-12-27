@@ -353,7 +353,7 @@ class Training
     }
     public float LargeSigmoid(float Input, float Size)
     {
-        return Input / (float)Math.Sqrt(1 + (Input / Size) * (Input / Size));
+        return (Input / Size) / (float)Math.Sqrt(1 + (Input / Size) * (Input / Size));
     }
     public void CreateTestNet(float Momentum)
     {
@@ -729,9 +729,9 @@ class Training
                     Position.Color = Example[1][0,0];
 
                     if (MateVal != 2)
-                        Position.Eval = (1 - Lambda) * Value / 5 + Lambda * LargeSigmoid(Eval[counter], 10);
+                        Position.Eval = (1 - Lambda) * Value + Lambda * LargeSigmoid(Eval[counter], 4.2f);
                     else
-                        Position.Eval = LargeSigmoid(Eval[counter], 10);
+                        Position.Eval = LargeSigmoid(Eval[counter], 4);
 
                     if (Buffercounter < Buffer.Length)
                     {
