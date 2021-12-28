@@ -34,7 +34,6 @@ The Universal Chess Interface (UCI) is a standard protocol used to communicate w
    * increment
    * movestogo
  * ponderhit
- * quit
 
 ### This is the list of all the available UCI options in Albatros:
 
@@ -53,6 +52,9 @@ The Universal Chess Interface (UCI) is a standard protocol used to communicate w
  * #### Use NNUE
    Toggle between the NNUE and classical evaluation functions. If set to "true",
    the network parameters must be available to load from file (see also EvalFile).
+   
+ * #### c_puct
+   Changes the exploration parameter of the puct tree.
    
 For developers the following non-standard commands might be of interest, they are mainly useful for debugging and training:
 
