@@ -7,9 +7,7 @@ class Io
     Game game = new Game();
     public int[][] Move = new int[2][];
     Treesearch treesearch = new Treesearch(1245845, true, 5);
-    public string[] LastPositionCommand;
     Stopwatch sw = new Stopwatch();
-    int fd = 0;
     public Io()
     {
         game.HalfKav2 = treesearch.NetType;
@@ -50,10 +48,11 @@ class Io
                         "\nid author D.Grévent" +
                         "\n" +
                         "\noption name Ponder type check default false" +
+                        "\noption name c_puct type string default 1" +
                         "\noption name EvalFile type string default ValueNet.nnue" +
                         "\noption name EvalType type string default HalfKav2" +
-                        "\noption name NNUE type check default true" +
-                        "\noption name Threads type spin default 6 min 2" +
+                        "\noption name Use NNUE type check default true" +
+                        "\noption name Threads type spin default 5 min 2" +
                         "\nuciok");
                     break;
                 case "ucinewgame":
@@ -65,14 +64,39 @@ class Io
                 case "go":
                     switch (command_syntax[1])
                     {
+                        case "winc":
+                            Move = PlanMoveTime(command_syntax, game.Board, (byte)game.Turn, game.NNUE, game.HalfKp, game.HalfKav2);
+                            if (Move != null)
+                                ReturnMoove(Move[0], Move[1]);
+                            break;
+                        case "binc":
+                            Move = PlanMoveTime(command_syntax, game.Board, (byte)game.Turn, game.NNUE, game.HalfKp, game.HalfKav2);
+                            if (Move != null)
+                                ReturnMoove(Move[0], Move[1]);
+                            break;
+                        case "btime":
+                            Move = PlanMoveTime(command_syntax, game.Board, (byte)game.Turn, game.NNUE, game.HalfKp, game.HalfKav2);
+                            if (Move != null)
+                                ReturnMoove(Move[0], Move[1]);
+                            break;
+                        case "wtime":
+                            Move = PlanMoveTime(command_syntax, game.Board, (byte)game.Turn, game.NNUE, game.HalfKp, game.HalfKav2);
+                            if (Move != null)
+                                ReturnMoove(Move[0], Move[1]);
+                            break;
                         case "ponder":
                             if (!game.IsPlaying)
-                                Move = treesearch.MultithreadMcts(game.Board, (byte)game.Turn, Int32.MaxValue, game.NNUE, game.HalfKp, game.HalfKav2, game.TreadCount, true, false);
+                                Move = treesearch.MultithreadMcts(game.Board, (byte)game.Turn, Int32.MaxValue, game.NNUE, game.HalfKp, game.HalfKav2, game.ThreadCount, true, false , 0 ,game.c_puct);
                             if (Move != null)
                                 ReturnMoove(Move[0], Move[1]);
                             break;
                         case "infinite":
-                            Move = treesearch.MultithreadMcts(game.Board, (byte)game.Turn, Int32.MaxValue, game.NNUE, game.HalfKp, game.HalfKav2, game.TreadCount, true, false);
+                            Move = treesearch.MultithreadMcts(game.Board, (byte)game.Turn, Int32.MaxValue, game.NNUE, game.HalfKp, game.HalfKav2, game.ThreadCount, true, false, 0 ,game.c_puct);
+                            if (Move != null)
+                                ReturnMoove(Move[0], Move[1]);
+                            break;
+                        case "movetime":
+                            Move = treesearch.MultithreadMcts(game.Board, (byte)game.Turn, Int32.MaxValue, game.NNUE, game.HalfKp, game.HalfKav2, game.ThreadCount, true, true, Convert.ToInt64(command_syntax[2]), game.c_puct);
                             if (Move != null)
                                 ReturnMoove(Move[0], Move[1]);
                             break;
@@ -98,12 +122,14 @@ class Io
                             }
                             break;
                         case "nodes":
-                            Move = treesearch.MultithreadMcts(game.Board, (byte)game.Turn, Convert.ToInt32(command_syntax[2]), game.NNUE, game.HalfKp, game.HalfKav2, game.TreadCount, false , false);
+                            Move = treesearch.MultithreadMcts(game.Board, (byte)game.Turn, Convert.ToInt32(command_syntax[2]), game.NNUE, game.HalfKp, game.HalfKav2, game.ThreadCount, false , false , 0 , game.c_puct);
                             if (Move != null)
                                 ReturnMoove(Move[0], Move[1]);
                             break;
                         default:
-                            Console.WriteLine("Unknown command: " + command + "\n");
+                            Move = treesearch.MultithreadMcts(game.Board, (byte)game.Turn, Int32.MaxValue, game.NNUE, game.HalfKp, game.HalfKav2, game.ThreadCount, true, false, 0 , game.c_puct);
+                            if (Move != null)
+                                ReturnMoove(Move[0], Move[1]);
                             break;
                     }
                     break;
@@ -111,15 +137,11 @@ class Io
                     treesearch.ValueNet.SaveNets(command_syntax[1], game.HalfKav2 , false);
                     break;
                 case "setoption":
-                    if (command_syntax[1] == "name" && command_syntax[3] == "value")
+                    if (command_syntax[1] == "name")
                     {
                         switch (command_syntax[2])
                         {
                             case "Ponder":
-                                if (command_syntax[4] == "true")
-                                    fd = 0;
-                                else if (command_syntax[4] == "false")
-                                    fd = 1;
                                 break;
                             case "EvalFile":
                                 try
@@ -148,6 +170,18 @@ class Io
                                         break;
                                 }
                                 break;
+                            case "c_puct":
+                                try
+                                {
+                                    game.c_puct = Convert.ToSingle(command_syntax[4]);
+                                    if (game.c_puct < 0)
+                                        game.c_puct = 0;
+                                }
+                                catch
+                                {
+                                    Console.WriteLine("{0} is not a number \n", command_syntax[4]);
+                                }
+                                break;
                             case "Elo":
                                 try
                                 {
@@ -163,19 +197,19 @@ class Io
                             case "Use":
                                 if (command_syntax[3] == "NNUE")
                                 {
-                                    if (command_syntax[4] == "true")
+                                    if (command_syntax[5] == "true")
                                         game.NNUE = true;
-                                    else if (command_syntax[4] == "false")
+                                    else if (command_syntax[5] == "false")
                                         game.NNUE = false;
                                 }
                                 break;                      
                             case "Threads":
                                 try
                                 {
-                                    game.TreadCount = Convert.ToInt32(command_syntax[4]) - 1;
-                                    if (game.TreadCount < 1)
-                                        game.TreadCount = 1;
-                                    treesearch.ChangeThreadCount(game.TreadCount);
+                                    game.ThreadCount = Convert.ToInt32(command_syntax[4]) - 1;
+                                    if (game.ThreadCount < 1)
+                                        game.ThreadCount = 1;
+                                    treesearch.ChangeThreadCount(game.ThreadCount);
                                 }
                                 catch { }
                                 break;
@@ -287,6 +321,56 @@ class Io
             }
         }
         return output;
+    }
+    public int[][] PlanMoveTime(string[] Command, byte[,] InputBoard, byte color , bool NNUE , bool Halfkp , bool HalfKav2)
+    {
+        int wtime = 0, btime = 0, winc = 0, binc = 0;
+        int timeMe = 0, TimeEnemy = 0, Meinc = 0, Enemyinc = 0;
+        long timeToUse = 0;
+        for (int i = 0; i < Command.Length - 1; i++)
+        {
+            switch(Command[i])
+            {
+                case "wtime":
+                    wtime = Convert.ToInt32(Command[i + 1]);
+                    break;
+                case "btime":
+                    btime = Convert.ToInt32(Command[i + 1]);
+                    break;
+                case "winc":
+                    winc = Convert.ToInt32(Command[i + 1]);
+                    break;
+                case "binc":
+                    binc = Convert.ToInt32(Command[i + 1]);
+                    break;
+            }
+        }
+        if(color == 0)
+        {
+            timeMe = btime;
+            TimeEnemy = wtime;
+            Meinc = binc;
+            Enemyinc = winc;
+        }
+        else
+        {
+            timeMe = wtime;
+            TimeEnemy = btime;
+            Meinc = winc;
+            Enemyinc = binc;
+        }
+        timeToUse = (9 * Meinc) / 10;
+        timeToUse += timeMe / 100;
+        if (timeToUse > 300000)
+            timeToUse = 300000;
+        if(timeToUse < 3000)
+        {
+            return new int[][] { treesearch.MinMaxAlphaBeta(InputBoard, color, 1, NNUE, Halfkp, HalfKav2), new int[0] };
+        }
+        else
+        {
+            return treesearch.MultithreadMcts(game.Board, (byte)game.Turn, Int32.MaxValue, game.NNUE, game.HalfKp, game.HalfKav2, game.ThreadCount, true, true, timeToUse - 500, game.c_puct);
+        }
     }
     public void LoadPositionBoard()
     {
@@ -606,6 +690,6 @@ class Io
     }
     public void TrainingStart()
     {
-        game.training = new Training(game.Board, game.NetName, game.BufferSize, game.GameLength, game.NodeCount, game.Coefficient, game.TreadCount, game.Momentum, game.TrainingSampleSize, game.NetDecay, game.Elo, game.Lambda);
+        game.training = new Training(game.Board, game.NetName, game.BufferSize, game.GameLength, game.NodeCount, game.Coefficient, game.ThreadCount, game.Momentum, game.TrainingSampleSize, game.NetDecay, game.Elo, game.Lambda);
     }
 }

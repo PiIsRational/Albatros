@@ -7,6 +7,7 @@ class Game
 {
     public string StartPosition = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     public byte[,] Board;
+    public static bool quit = false;
     public bool Playing = false;
     public Training training;
     public string CurrentFen;
@@ -19,25 +20,26 @@ class Game
     public int Elo = 100;
     public float Lambda = 1;
     public int BufferSize = 20000;
-    public int TrainingSampleSize = 20000;
-    public int GameLength = 400;
+    public int TrainingSampleSize = 1000;
+    public int GameLength = 350;
     public string NetName = "ValueNet.nnue";
     public int NodeCount = 50;
-    public float Coefficient = 0.1f;
-    public float Momentum = 0.75f;
+    public float Coefficient = 1;
+    public float Momentum = 0.9f;
     public float NetDecay = 0.75f;
 
     //Other Parameters
+    public float c_puct = 10;
     public bool IsPlaying = false;
     public bool NNUE = false;
     public bool HalfKav2 = true;
     public bool HalfKp = false;
-    public int TreadCount = 5;
+    public int ThreadCount = 5;
     static void Main(string[] args)
     {
         Console.WriteLine("Albatros");
         Init();
-        while (true)
+        while (!quit)
         { 
             Update();
         }
@@ -71,6 +73,11 @@ class Game
             if (Input.Length != 0 && Input[0] == "stop")
             {
                 io.Stop();
+            }
+            else if (Input.Length != 0 && Input[0] == "quit")
+            {
+                io.Stop();
+                quit = true;
             }
             else if (Input.Length != 0 && Input[0] == "Training")
             {

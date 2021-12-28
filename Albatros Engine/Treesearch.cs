@@ -78,11 +78,43 @@ class Treesearch
     }
     public void ChangeThreadCount(int Count)
     {
+        MainBranch = new BranchThread();
+        float[,] StartMatrix = new float[45056, 520];
+        Array.Copy(ValueNet.StartMatrix, StartMatrix, StartMatrix.Length);
+        float[][][,] Weigths = new float[8][][,];
+        Array.Copy(ValueNet.Weigths, Weigths, Weigths.Length);
+        float[][][] Biases = new float[8][][];
+        Array.Copy(ValueNet.Biases, Biases, Biases.Length);
+        float[,] HalfkpMatrix = new float[40960, 256];
+        Array.Copy(ValueNet.HalfkpMatrix, HalfkpMatrix, HalfkpMatrix.Length);
+        float[] HalfkpMatrixBias = new float[512];
+        Array.Copy(ValueNet.HalfkpMatrixBias, HalfkpMatrixBias, HalfkpMatrixBias.Length);
+        float[][,] HalfkpWeigths = new float[3][,];
+        Array.Copy(ValueNet.HalfkpWeigths, HalfkpWeigths, HalfkpWeigths.Length);
+        float[][] HalfkpBiases = new float[3][];
+        Array.Copy(ValueNet.HalfkpBiases, HalfkpBiases, HalfkpBiases.Length);
+        Array.Copy(StartMatrix, MainBranch.treesearch.ValueNet.StartMatrix, StartMatrix.Length);
+        Array.Copy(Weigths, MainBranch.treesearch.ValueNet.Weigths, Weigths.Length);
+        Array.Copy(HalfkpMatrix, MainBranch.treesearch.ValueNet.HalfkpMatrix, HalfkpMatrix.Length);
+        Array.Copy(Biases, MainBranch.treesearch.ValueNet.Biases, Biases.Length);
+        Array.Copy(HalfkpMatrixBias, MainBranch.treesearch.ValueNet.HalfkpMatrixBias, HalfkpMatrixBias.Length);
+        Array.Copy(HalfkpWeigths, MainBranch.treesearch.ValueNet.HalfkpWeigths, HalfkpWeigths.Length);
+        Array.Copy(HalfkpBiases, MainBranch.treesearch.ValueNet.HalfkpBiases, HalfkpBiases.Length);
         if (Count > 1)
         {
             ThreadTreesearches = new BranchThread[Count - 1];
             for (int i = 0; i < Count - 1; i++)
+            {
                 ThreadTreesearches[i] = new BranchThread();
+                Array.Copy(StartMatrix, ThreadTreesearches[i].treesearch.ValueNet.StartMatrix, StartMatrix.Length);
+                Array.Copy(Weigths, ThreadTreesearches[i].treesearch.ValueNet.Weigths, Weigths.Length);
+                Array.Copy(HalfkpMatrix, ThreadTreesearches[i].treesearch.ValueNet.HalfkpMatrix, HalfkpMatrix.Length);
+                Array.Copy(Biases, ThreadTreesearches[i].treesearch.ValueNet.Biases, Biases.Length);
+                Array.Copy(HalfkpMatrixBias, ThreadTreesearches[i].treesearch.ValueNet.HalfkpMatrixBias, HalfkpMatrixBias.Length);
+                Array.Copy(HalfkpWeigths, ThreadTreesearches[i].treesearch.ValueNet.HalfkpWeigths, HalfkpWeigths.Length);
+                Array.Copy(HalfkpBiases, ThreadTreesearches[i].treesearch.ValueNet.HalfkpBiases, HalfkpBiases.Length);
+            }
+
         }
         else
             ThreadTreesearches = null;
@@ -111,14 +143,14 @@ class Treesearch
     {
         ValueNet.LoadNet(File , true);
     }
-    public MCTSimOutput MonteCarloTreeSim(byte[,] InputBoard, byte color, int NodeCount, bool NewTree, bool Random, bool NNUE , bool Halfkp , bool HalfKav2)
+    public MCTSimOutput MonteCarloTreeSim(byte[,] InputBoard, byte color, int NodeCount, bool NewTree, bool Random, bool NNUE , bool Halfkp , bool HalfKav2, float c_puct)
     {
         MCTSimOutput Output = new MCTSimOutput();
 
         if (NewTree)
-            CurrentTree = GetTree(NodeCount, false, NNUE, Halfkp, HalfKav2, new Node(InputBoard, color, null, 0) , false).Tree;
+            CurrentTree = GetTree(NodeCount, false, NNUE, Halfkp, HalfKav2, new Node(InputBoard, color, null, 0), false, c_puct).Tree;
         else
-            CurrentTree = GetTree(NodeCount, false, NNUE, Halfkp, HalfKav2, CurrentTree , false).Tree;
+            CurrentTree = GetTree(NodeCount, false, NNUE, Halfkp, HalfKav2, CurrentTree, false, c_puct).Tree;
         int BestscorePlace = 0;
 
         List<double> Values = new List<double>();
@@ -143,28 +175,7 @@ class Treesearch
         Array.Copy(Output.Position, CurrentTree.Board, Output.Position.Length);
         return Output;
     }
-    public int[]SortArray(int[] Input)
-    {
-        bool Sorted = false;
-        int placea = 0;
-        while(! Sorted)
-        {
-            Sorted = true;
-            //Sorting Pass
-            for(int i = 0; i < Input.Length - 1; i++)
-            {
-                if(Input[i] > Input[i+1])
-                {
-                    placea = Input[i];
-                    Input[i] = Input[i + 1];
-                    Input[i + 1] = placea;
-                    Sorted = false;
-                }
-            }
-        }
-        return Input;
-    }
-    public int[][] MultithreadMcts(byte[,] InputBoard, byte color, int NodeCount, bool NNUE, bool Halfkp , bool HalfKav2 , int ThreadCount , bool Infinite , bool Ponder)
+    public int[][] MultithreadMcts(byte[,] InputBoard, byte color, int NodeCount, bool NNUE, bool Halfkp , bool HalfKav2 , int ThreadCount , bool Infinite , bool UseTime , long Time , float c_puct)
     {
         int[][] Output = new int[2][];
         if (ThreadTreesearches == null && ThreadCount - 1 != 0 || ThreadTreesearches != null && ThreadTreesearches.Length + 1 != ThreadCount)
@@ -173,14 +184,20 @@ class Treesearch
             ThreadCount = 1;
         int NodeAmount = NodeCount;
         float AverageDepth = 0, Seldepth = 0;
+        if (UseTime)
+            ThreadCount--;
         int[] BranchesPerThread = new int[ThreadCount];
+        if (UseTime)
+            ThreadCount++;
         Thread[] ThreadPool = new Thread[ThreadCount - 1];
+        if (UseTime)
+            ThreadCount--;
         Stopwatch sw = new Stopwatch();
         bool NotFinished = true;
+        bool TimeIsUp = false;
         sw.Start();
         Node Tree;
         TreesearchOutput[] OutputArray;
-        MainBranch = new BranchThread();
         TreesearchOutput TreeGenOut = new TreesearchOutput();
         if (Mate(InputBoard, color) != 2)
         {
@@ -204,7 +221,7 @@ class Treesearch
             if (stop)
                 stop = false;
             //Generate the first Layer
-            TreeGenOut = GetTree(1, false, NNUE, Halfkp, HalfKav2, new Node(InputBoard, color, null, -2) , false);
+            TreeGenOut = GetTree(1, false, NNUE, Halfkp, HalfKav2, new Node(InputBoard, color, null, -2) , false , c_puct);
 
             Seldepth = TreeGenOut.Seldepth;
             Tree = TreeGenOut.Tree;
@@ -230,13 +247,15 @@ class Treesearch
             //init
             for (int i = 0; i < TreeAmount; i++)
                 Branches[i] = new BranchThreadInput(Tree.ChildNodes[i], 0, NNUE);
-
+            if (UseTime)
+                ThreadCount++;
             //Leveling
             int Counter = 0;
             for (int i = 0; i < ThreadCount; i++)
             {
-                if (i == ThreadCount - 1)
+                if (i == ThreadCount - 1 && !UseTime)
                 {
+                    MainBranch.c_puct = c_puct;
                     MainBranch.Infinite = Infinite;
                     MainBranch.NNUE = NNUE;
                     MainBranch.HalfKav2 = HalfKav2;
@@ -257,8 +276,19 @@ class Treesearch
                     MainBranch.UpdateInfinite(InputBoard, color);
                     MainBranch.StartThread();
                 }
+                else if (i == ThreadCount - 1 && UseTime)
+                {
+                    sw = new Stopwatch();
+                    sw.Start();
+                    while(sw.ElapsedMilliseconds < Time && !stop)
+                    {
+                        //Do nothing
+                        TimeIsUp = true;
+                    }
+                }
                 else
                 {
+                    ThreadTreesearches[i].c_puct = c_puct;
                     ThreadTreesearches[i].Infinite = Infinite;
                     ThreadTreesearches[i].NNUE = NNUE;
                     ThreadTreesearches[i].HalfKp = Halfkp;
@@ -281,7 +311,7 @@ class Treesearch
                     ThreadPool[i].Start();
                 }
             }
-            if (MainBranch.treesearch.wasStopped)
+            if (MainBranch.treesearch.wasStopped || TimeIsUp)
             {
                 for (int i = 0; i < ThreadCount - 1; i++)
                     ThreadTreesearches[i].Stop();
@@ -302,11 +332,10 @@ class Treesearch
                 for (int j = 0; j < ThreadTreesearches[i].BranchNumber.Length; j++)
                     OutputArray[ThreadTreesearches[i].BranchNumber[j]] = ThreadTreesearches[i].Outputs[j];
 
-            for (int i = 0; i < MainBranch.BranchNumber.Length; i++)
-                OutputArray[MainBranch.BranchNumber[i]] = MainBranch.Outputs[i];
+            if (!UseTime)
+                for (int i = 0; i < MainBranch.BranchNumber.Length; i++)
+                    OutputArray[MainBranch.BranchNumber[i]] = MainBranch.Outputs[i];
 
-            if (!Ponder)
-            {
                 //analyze the Branches
                 for (int i = 0; i < TreeAmount; i++)
                 {
@@ -319,8 +348,6 @@ class Treesearch
                 }
                 //Output first Info
                 Console.WriteLine("info depth {0} seldepth {1} time {4} nodes {5} score cp {2} nps {3}", (int)(AverageDepth / (Tree.Denominator + 0.000000001)) + 1, Seldepth + 1, Math.Round(CentipawnLoss(Tree.Numerator / Tree.Denominator)), (int)(((float)Tree.Denominator / (sw.ElapsedMilliseconds + 1)) * 1000), sw.ElapsedMilliseconds, Tree.Denominator);
-            }
-
         }
         //Get the Output(the next node with the Biggest Average score) from the tree
         for (int i = 0; i < 2; i++)
@@ -561,7 +588,7 @@ class Treesearch
         }
         return InputBoard;
     }
-    public TreesearchOutput GetTree(long NodeCount, bool Output, bool NNUE, bool Halfkp, bool HalfKav2, Node startNode, bool Infinite)
+    public TreesearchOutput GetTree(long NodeCount, bool Output, bool NNUE, bool Halfkp, bool HalfKav2, Node startNode, bool Infinite , float c_puct)
     {
         Node Tree = startNode;
         NodeCount -= (long)startNode.Denominator;
@@ -605,7 +632,7 @@ class Treesearch
                 Counter = 0;
                 foreach (Node node in CurrentNode.ChildNodes)
                 {
-                    CurrentScore = node.GetScore(CurrentNode.Denominator);
+                    CurrentScore = node.GetScore(CurrentNode.Denominator , c_puct);
                     if (CurrentScore > BestScore)
                     {
                         BestScore = CurrentScore;
@@ -648,9 +675,9 @@ class Treesearch
                         End = false;
                         Predictor = (eval.PestoEval(CurrentBoard, OtherColor) + 1) / 2;
                         CurrentNode.ChildNodes.Add(new Node(null, OtherColor, Move , Predictor));
-                        if (CurrentNode.ChildNodes[Counter].GetScore(CurrentNode.Denominator) > BestScore)
+                        if (CurrentNode.ChildNodes[Counter].Probability > BestScore)
                         {
-                            BestScore = CurrentNode.ChildNodes[Counter].GetScore(CurrentNode.Denominator);
+                            BestScore = CurrentNode.ChildNodes[Counter].Probability;
                             BestscorePlace = Counter;
                         }
                         Counter++;
@@ -2240,11 +2267,9 @@ class Node
         Color = color;
         Board = InputBoard;
     }
-    public double GetScore(double FatherDenominator)
+    public double GetScore(double FatherDenominator , float c_puct)
     {
-        if (FatherDenominator == 1)
-            return Probability;
-        return (Numerator / (Denominator + 0.0000000001)) + 1.41 * Probability * (Math.Sqrt(FatherDenominator) / (Denominator + 0.00000000001));
+        return (Numerator / (Denominator + 0.0000000001)) + c_puct * Probability * (Math.Sqrt(FatherDenominator) / (Denominator + 0.00000000001));
     }
 }
 class TreesearchOutput
@@ -2273,7 +2298,7 @@ class BranchThread
 {
     public Treesearch treesearch = new Treesearch(1, false, 1);
     public int[] BranchNumber;
-
+    public float c_puct = 1;
     public int Nodecount = 0;
     public bool NNUE = false;
     public bool HalfKp = false;
@@ -2305,7 +2330,7 @@ class BranchThread
         treesearch.wasStopped = false;
         int counter = 0;
         treesearch.StopSemaphore = new Semaphore(1, 1);
-        Startoutput = treesearch.GetTree(Nodecount, false, NNUE, HalfKp, HalfKav2, ReplacementRoot, Infinite);
+        Startoutput = treesearch.GetTree(Nodecount, false, NNUE, HalfKp, HalfKav2, ReplacementRoot, Infinite, c_puct);
         foreach (Node ChildNode in Startoutput.Tree.ChildNodes)
         {
             Outputs[counter] = new TreesearchOutput();

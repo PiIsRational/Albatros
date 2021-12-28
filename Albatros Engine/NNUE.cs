@@ -409,7 +409,7 @@ class NNUE
         StreamWriter swBackup = new StreamWriter("Nothing");
         if (UseBackup)
             swBackup = new StreamWriter("Backup.nnue", false, System.Text.Encoding.UTF8);
-
+        bool start = true;
         string FileContent = "1 ";
         //Weights
         for (int i = 0; i < Weigths.Length; i++)
@@ -424,6 +424,11 @@ class NNUE
                             FileContent += Weigths[i][j][k, l] + " ";
                         swBackup.Write(FileContent);
                         FileContent = "";
+                        if (start)
+                        {
+                            FileContent = "1 ";
+                            start = false;
+                        }
                     }
                     for (int l = 0; l < Weigths[i][j].GetLength(1); l++)
                         FileContent += BitConverter.SingleToInt32Bits(Weigths[i][j][k, l]) + " ";
@@ -511,7 +516,7 @@ class NNUE
         StreamWriter swBackup = new StreamWriter("Nothing");
         if (UseBackup)
             swBackup = new StreamWriter("Backup.nnue", false, System.Text.Encoding.UTF8);
-
+        bool start = true;
         string FileContent = "0 ";
         //Weights
         for (int j = 0; j < HalfkpWeigths.Length; j++)
@@ -524,6 +529,11 @@ class NNUE
                         FileContent += HalfkpWeigths[j][k, l] + " ";
                     swBackup.Write(FileContent);
                     FileContent = "";
+                    if(start)
+                    {
+                        FileContent = "0 ";
+                        start = false;
+                    }
                 }
                 for (int l = 0; l < HalfkpWeigths[j].GetLength(1); l++)
                     FileContent += BitConverter.SingleToInt32Bits(HalfkpWeigths[j][k, l]) + " ";
@@ -1022,7 +1032,7 @@ class NNUE
                 CurrentCost = -CurrentCost;
 
             Cost += CurrentCost;
-            Output = LargeSigmoid(eval.PestoEval(TrainingExample.Board, (byte)color), 4);
+            Output = LargeSigmoid(eval.PestoEval(TrainingExample.Board, (byte)color), 4.2f);
             CurrentCost = (Value - Output);
             if (CurrentCost < 0)
                 CurrentCost = -CurrentCost;
@@ -1032,7 +1042,7 @@ class NNUE
         }
         return new double[2] { Cost / Input.Length, StaticEvalCost / Input.Length };
     }
-    public float LargeSigmoid(float Input , int Size)
+    public float LargeSigmoid(float Input , float Size)
     {
         return (Input/ Size) / (float)Math.Sqrt((Input / Size) * (Input / Size) + 1);
     }
@@ -1052,7 +1062,7 @@ class NNUE
             Cost += CurrentCost;
 
             Cost += CurrentCost;
-            Output = LargeSigmoid(eval.PestoEval(TrainingExample.Board, (byte)color), 4);
+            Output = LargeSigmoid(eval.PestoEval(TrainingExample.Board, (byte)color), 4.2f);
             CurrentCost = (Value - Output);
             if (CurrentCost < 0)
                 CurrentCost = -CurrentCost;

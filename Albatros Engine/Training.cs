@@ -33,7 +33,9 @@ class Training
     int TournamentValues = 0;
     int TournamentGameAmount = 0;
     int gamecounter = 0;
+    int bufferSize = 0;
     float Decay = 0;
+    public int Currentphase = 0;
     float TrainingMomentum = 0;
     bool Tournament = false;
     int LastNumber = 0;
@@ -93,8 +95,9 @@ class Training
         nodeCount = NodeCount;
         LearningRate = LearningCoefficient;
         TrainingMomentum = Momentum;
-        PlayingLength = SampleCreateSize;
+        PlayingLength = BufferSize / SampleCreateSize;
         Decay = NetDecay;
+        bufferSize = BufferSize;
         //Set the trainnet
         CurrentState = TrainNet.DetectNetType(EvalFileName);
         TrainNet.LoadNet(CurrentNetName , true);
@@ -194,83 +197,90 @@ class Training
 
                 //Setup the Training set
                 currentSetCounter = CurrentTrainingSet.Length;
-                //Create the new Learning threads
-                ThreadFinished = Playing.Length;
-                for (int i = 0; i < Playing.Length; i++)
+                for (int i = 0; i < PlayingLength; i++)
                 {
-                    semaphoreEveryone.WaitOne();
-                    Playing[i] = new Thread(TrainingNet);
-                    Playing[i].Start();
-                    semaphoreEveryone.Release();
-                }
-                
-                //Saving the Net from the current Neurons and Weights every 50 steps
-                if (TrainingSteps % 50 == 0)
-                {
-                    Console.WriteLine("Saving Current Net!");
-                    if (TrainingSteps % 100 != 0)
-                        TrainNet.SaveNets(CurrentNetName, CurrentState , true);
-                    else
-                        TrainNet.SaveNets(GenerateBackupNetName(), CurrentState , false);
-                }
-                //wait until every Net is finished
-                finished = false;
-                while (!finished)
-                {
+                    currentSetCounter = CurrentTrainingSet.Length;
+                    Currentphase = i;
+                    //Create the new Learning threads
                     ThreadFinished = Playing.Length;
-                    foreach (Thread thread in Playing)
-                        if (!thread.IsAlive)
-                            ThreadFinished--;
+                    for (int j = 0; j < Playing.Length; j++)
+                    {
+                        semaphoreEveryone.WaitOne();
+                        Playing[j] = new Thread(TrainingNet);
+                        Playing[j].Start();
+                        semaphoreEveryone.Release();
+                    }
+                    if (i == 0)
+                    {
+                        //Saving the Net from the current Neurons and Weights every 50 steps
+                        if (TrainingSteps % 50 == 0)
+                        {
+                            Console.WriteLine("Saving Current Net!");
+                            if (TrainingSteps % 100 != 0)
+                                TrainNet.SaveNets(CurrentNetName, CurrentState, true);
+                            else
+                                TrainNet.SaveNets(GenerateBackupNetName(), CurrentState, false);
+                        }
+                    }
+                    //wait until every Net is finished
+                    finished = false;
+                    while (!finished)
+                    {
+                        ThreadFinished = Playing.Length;
+                        foreach (Thread thread in Playing)
+                            if (!thread.IsAlive)
+                                ThreadFinished--;
 
-                    if (ThreadFinished == 0)
-                        finished = true;  
-                }
+                        if (ThreadFinished == 0)
+                            finished = true;
+                    }
 
-                if (CurrentState == IsHalfKav2)
-                {
-                    //Create the copys
-                    WeightChangeCopy = new float[WeightChanges.Count][][][,];
-                    Array.Copy(WeightChanges.ToArray(), WeightChangeCopy, WeightChangeCopy.Length);
-                    BiasChangeCopy = new float[BiasChanges.Count][][][];
-                    Array.Copy(BiasChanges.ToArray(), BiasChangeCopy, BiasChangeCopy.Length);
-                    MatrixChangeCopy = new float[InputMatrixChanges.Count][,];
-                    Array.Copy(InputMatrixChanges.ToArray(), MatrixChangeCopy, MatrixChangeCopy.Length);
+                    if (CurrentState == IsHalfKav2)
+                    {
+                        //Create the copys
+                        WeightChangeCopy = new float[WeightChanges.Count][][][,];
+                        Array.Copy(WeightChanges.ToArray(), WeightChangeCopy, WeightChangeCopy.Length);
+                        BiasChangeCopy = new float[BiasChanges.Count][][][];
+                        Array.Copy(BiasChanges.ToArray(), BiasChangeCopy, BiasChangeCopy.Length);
+                        MatrixChangeCopy = new float[InputMatrixChanges.Count][,];
+                        Array.Copy(InputMatrixChanges.ToArray(), MatrixChangeCopy, MatrixChangeCopy.Length);
 
-                    //Reset the originals
-                    WeightChanges = new List<float[][][,]>();
-                    BiasChanges = new List<float[][][]>();
-                    InputMatrixChanges = new List<float[,]>();
+                        //Reset the originals
+                        WeightChanges = new List<float[][][,]>();
+                        BiasChanges = new List<float[][][]>();
+                        InputMatrixChanges = new List<float[,]>();
 
-                    //Train the Net
-                    TrainNet.setNet(WeightChangeCopy, BiasChangeCopy, MatrixChangeCopy, TrainingMomentum);
+                        //Train the Net
+                        TrainNet.setNet(WeightChangeCopy, BiasChangeCopy, MatrixChangeCopy, TrainingMomentum);
 
-                    //update the current Weights and Biases
-                    Array.Copy(TrainNet.Weigths, CurrentWeights, CurrentWeights.Length);
-                    Array.Copy(TrainNet.Biases, CurrentBiases, CurrentBiases.Length);
-                    Array.Copy(TrainNet.StartMatrix, CurrentMatrix, CurrentMatrix.Length);
-                }
-                else if(CurrentState == IsHalfKp)
-                {
-                    HalfkpWeightChangeCopy = new float[HalfkpWeightCopy.Count][][,];
-                    Array.Copy(HalfkpWeightCopy.ToArray(), HalfkpWeightChangeCopy, HalfkpWeightChangeCopy.Length);
-                    HalfkpMatrixChangeCopy = new float[HalfkpMatrixCopy.Count][,];
-                    Array.Copy(HalfkpMatrixCopy.ToArray(), HalfkpMatrixChangeCopy, HalfkpMatrixChangeCopy.Length);
-                    HalfkpBiaseChangeCopy = new float[HalfkpBiasCopy.Count][][];
-                    Array.Copy(HalfkpBiasCopy.ToArray(), HalfkpBiaseChangeCopy, HalfkpBiaseChangeCopy.Length);
-                    HalfkpMatrixBiaseChangeCopy = new float[HalfkpMatrixBiasCopy.Count][];
-                    Array.Copy(HalfkpMatrixBiasCopy.ToArray(), HalfkpMatrixBiaseChangeCopy, HalfkpMatrixBiaseChangeCopy.Length);
+                        //update the current Weights and Biases
+                        Array.Copy(TrainNet.Weigths, CurrentWeights, CurrentWeights.Length);
+                        Array.Copy(TrainNet.Biases, CurrentBiases, CurrentBiases.Length);
+                        Array.Copy(TrainNet.StartMatrix, CurrentMatrix, CurrentMatrix.Length);
+                    }
+                    else if (CurrentState == IsHalfKp)
+                    {
+                        HalfkpWeightChangeCopy = new float[HalfkpWeightCopy.Count][][,];
+                        Array.Copy(HalfkpWeightCopy.ToArray(), HalfkpWeightChangeCopy, HalfkpWeightChangeCopy.Length);
+                        HalfkpMatrixChangeCopy = new float[HalfkpMatrixCopy.Count][,];
+                        Array.Copy(HalfkpMatrixCopy.ToArray(), HalfkpMatrixChangeCopy, HalfkpMatrixChangeCopy.Length);
+                        HalfkpBiaseChangeCopy = new float[HalfkpBiasCopy.Count][][];
+                        Array.Copy(HalfkpBiasCopy.ToArray(), HalfkpBiaseChangeCopy, HalfkpBiaseChangeCopy.Length);
+                        HalfkpMatrixBiaseChangeCopy = new float[HalfkpMatrixBiasCopy.Count][];
+                        Array.Copy(HalfkpMatrixBiasCopy.ToArray(), HalfkpMatrixBiaseChangeCopy, HalfkpMatrixBiaseChangeCopy.Length);
 
-                    HalfkpWeightCopy = new List<float[][,]>();
-                    HalfkpMatrixCopy = new List<float[,]>();
-                    HalfkpBiasCopy = new List<float[][]>();
-                    HalfkpMatrixBiasCopy = new List<float[]>();
+                        HalfkpWeightCopy = new List<float[][,]>();
+                        HalfkpMatrixCopy = new List<float[,]>();
+                        HalfkpBiasCopy = new List<float[][]>();
+                        HalfkpMatrixBiasCopy = new List<float[]>();
 
-                    TrainNet.setHalfkpNet(HalfkpWeightChangeCopy, HalfkpBiaseChangeCopy, HalfkpMatrixChangeCopy, HalfkpMatrixBiaseChangeCopy, TrainingMomentum);
+                        TrainNet.setHalfkpNet(HalfkpWeightChangeCopy, HalfkpBiaseChangeCopy, HalfkpMatrixChangeCopy, HalfkpMatrixBiaseChangeCopy, TrainingMomentum);
 
-                    Array.Copy(TrainNet.HalfkpWeigths, CurrentHalfkpWeights, TrainNet.HalfkpWeigths.Length);
-                    Array.Copy(TrainNet.HalfkpBiases, CurrentHalfkpBiases, TrainNet.HalfkpBiases.Length);
-                    Array.Copy(TrainNet.HalfkpMatrix, CurrentHalfkpMatrix, TrainNet.HalfkpMatrix.Length);
-                    Array.Copy(TrainNet.HalfkpMatrixBias, CurrentHalfkpMatrixBiases, TrainNet.HalfkpMatrixBias.Length);
+                        Array.Copy(TrainNet.HalfkpWeigths, CurrentHalfkpWeights, TrainNet.HalfkpWeigths.Length);
+                        Array.Copy(TrainNet.HalfkpBiases, CurrentHalfkpBiases, TrainNet.HalfkpBiases.Length);
+                        Array.Copy(TrainNet.HalfkpMatrix, CurrentHalfkpMatrix, TrainNet.HalfkpMatrix.Length);
+                        Array.Copy(TrainNet.HalfkpMatrixBias, CurrentHalfkpMatrixBiases, TrainNet.HalfkpMatrixBias.Length);
+                    }
                 }
                 semaphoreEveryone.WaitOne();
                 Continuing = true;
@@ -537,13 +547,13 @@ class Training
                 {
                     ToPlay = false;
                     //Play the Moove
-                    Array.Copy(treesearchOfficial.MonteCarloTreeSim(Board, Color, 300, true, start, true , false , true).Position, Board, Board.Length);
+                    Array.Copy(treesearchOfficial.MonteCarloTreeSim(Board, Color, 300, true, start, true , false , true , 1).Position, Board, Board.Length);
                 }
                 else
                 {
                     ToPlay = true;
                     //Play the Moove
-                    Array.Copy(treesearchTesting.MonteCarloTreeSim(Board, Color, 300, true, start, true , false , true).Position, Board, Board.Length);
+                    Array.Copy(treesearchTesting.MonteCarloTreeSim(Board, Color, 300, true, start, true , false , true , 1).Position, Board, Board.Length);
                 }
 
                 if (Color == 0)
@@ -676,7 +686,7 @@ class Training
                 //Play the Move
                 //Not random
                 //use the static Eval function
-                simOutput = treesearchV1.MonteCarloTreeSim(Board, Color, NodeCount, NewStart, start, false , false , false);
+                simOutput = treesearchV1.MonteCarloTreeSim(Board, Color, NodeCount, NewStart, start, false , false , false , 2);
                 Array.Copy(simOutput.Position, Board, Board.Length);
                 NewStart = false;
                 //random
@@ -707,7 +717,7 @@ class Training
             }
             //Input the Last Value
             if (Value == MateVal && Value != 2 && Eval.Count >= 1)
-                Eval.Add(Value);
+                Eval.Add(Value * 100);
             else
                 Eval.Add(treesearchV1.eval.PestoEval(Board, Color));
 
@@ -731,7 +741,7 @@ class Training
                     if (MateVal != 2)
                         Position.Eval = (1 - Lambda) * Value + Lambda * LargeSigmoid(Eval[counter], 4.2f);
                     else
-                        Position.Eval = LargeSigmoid(Eval[counter], 4);
+                        Position.Eval = LargeSigmoid(Eval[counter], 4.2f);
 
                     if (Buffercounter < Buffer.Length)
                     {
@@ -759,7 +769,7 @@ class Training
                 }
 
                 //Externalize The Game stats
-                Console.WriteLine("New Game ( Number : {2} / Score : {0} / Length : {1})", MateVal / 50, Length, GameIteration);
+                Console.WriteLine("New Game ( Number : {2} / Score : {0} / Length : {1})", MateVal, Length, GameIteration);
 
                 semaphoreEveryone.WaitOne();
                 gamecounter++;
@@ -780,8 +790,8 @@ class Training
         semaphoreEveryone.WaitOne();
         currentSetCounter--;
         TrainingPosition[] TrainingArray;
-        TrainingArray = new TrainingPosition[CurrentTrainingSet[currentSetCounter].Length];
-        Array.Copy(CurrentTrainingSet[currentSetCounter], TrainingArray, TrainingArray.Length);
+        TrainingArray = new TrainingPosition[CurrentTrainingSet[0].Length / PlayingLength];
+        Array.Copy(CurrentTrainingSet[currentSetCounter], Currentphase * TrainingArray.Length, TrainingArray, 0, TrainingArray.Length);
         float LearningRate = CurrentLearningRate;
         //Create the current Neural Net
         NNUE Net = new NNUE();
