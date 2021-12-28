@@ -28,8 +28,6 @@ The Universal Chess Interface (UCI) is a standard protocol used to communicate w
  * go
    * searchmoves
    * ponder
-   * wtime / btime
-   * winc / binc
    * mate
    * movestogo
  * ponderhit
