@@ -84,6 +84,11 @@ class Io
                             if (Move != null)
                                 ReturnMoove(Move[0], Move[1]);
                             break;
+                        case "movestogo":
+                            Move = PlanMoveTime(command_syntax, game.Board, (byte)game.Turn, game.NNUE, game.HalfKp, game.HalfKav2);
+                            if (Move != null)
+                                ReturnMoove(Move[0], Move[1]);
+                            break;
                         case "ponder":
                             if (!game.IsPlaying)
                                 Move = treesearch.MultithreadMcts(game.Board, (byte)game.Turn, Int32.MaxValue, game.NNUE, game.HalfKp, game.HalfKav2, game.ThreadCount, true, false , 0 ,game.c_puct);
@@ -324,7 +329,7 @@ class Io
     }
     public int[][] PlanMoveTime(string[] Command, byte[,] InputBoard, byte color , bool NNUE , bool Halfkp , bool HalfKav2)
     {
-        int wtime = 0, btime = 0, winc = 0, binc = 0;
+        int wtime = 0, btime = 0, winc = 0, binc = 0 , movestogo = 50;
         int timeMe = 0, TimeEnemy = 0, Meinc = 0, Enemyinc = 0;
         long timeToUse = 0;
         for (int i = 0; i < Command.Length - 1; i++)
@@ -343,6 +348,9 @@ class Io
                 case "binc":
                     binc = Convert.ToInt32(Command[i + 1]);
                     break;
+                case "movestogo":
+                    movestogo = Convert.ToInt32(Command[i + 1]);
+                    break;
             }
         }
         if(color == 0)
@@ -360,7 +368,7 @@ class Io
             Enemyinc = binc;
         }
         timeToUse = (9 * Meinc) / 10;
-        timeToUse += timeMe / 100;
+        timeToUse += timeMe / movestogo;
         if (timeToUse > 300000)
             timeToUse = 300000;
         if(timeToUse < 3000)
