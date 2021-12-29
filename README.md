@@ -29,7 +29,6 @@ The Universal Chess Interface (UCI) is a standard protocol used to communicate w
    * searchmoves
    * ponder
    * mate
-   * movestogo
  * ponderhit
 
 ### This is the list of all the available UCI options in Albatros:
