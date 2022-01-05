@@ -213,10 +213,10 @@ class Training
                     if (i == 0)
                     {
                         //Saving the Net from the current Neurons and Weights every 50 steps
-                        if (TrainingSteps % 50 == 0)
+                        if (TrainingSteps % 10 == 0)
                         {
                             Console.WriteLine("Saving Current Net!");
-                            if (TrainingSteps % 100 != 0)
+                            if (TrainingSteps % 20 == 0)
                                 TrainNet.SaveNets(CurrentNetName, CurrentState, true);
                             else
                                 TrainNet.SaveNets(GenerateBackupNetName(), CurrentState, false);
@@ -571,7 +571,7 @@ class Training
                 semaphoreEveryone.Release();
 
                 //Check for Mate
-                MateVal = treesearchOfficial.Mate(Board, Color);
+                MateVal = treesearchOfficial.MoveGenerator.Mate(Board, Color);
 
                 if (MateVal != 2)
                 {
@@ -697,7 +697,7 @@ class Training
                 else
                     Color = 0;
                 //Check for Mate
-                MateVal = treesearchV1.Mate(Board, Color);
+                MateVal = treesearchV1.MoveGenerator.Mate(Board, Color);
 
                 if (MateVal != 2 && MateVal !=-2)
                 {
@@ -717,7 +717,7 @@ class Training
             }
             //Input the Last Value
             if (Value == MateVal && Value != 2 && Eval.Count >= 1)
-                Eval.Add(Value * 100);
+                Eval.Add(Value);
             else
                 Eval.Add(treesearchV1.eval.PestoEval(Board, Color));
 
@@ -739,9 +739,9 @@ class Training
                     Position.Color = Example[1][0,0];
 
                     if (MateVal != 2)
-                        Position.Eval = (1 - Lambda) * Value + Lambda * LargeSigmoid(Eval[counter], 4.2f);
+                        Position.Eval = (1 - Lambda) * Value + Lambda * Eval[counter];
                     else
-                        Position.Eval = LargeSigmoid(Eval[counter], 4.2f);
+                        Position.Eval = Eval[counter];
 
                     if (Buffercounter < Buffer.Length)
                     {

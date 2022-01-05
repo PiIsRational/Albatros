@@ -89,7 +89,7 @@ class Classic_Eval
     }
     public float LargeSigmoid(float Input , float Size)
     {
-        return Input / (float)Math.Sqrt((Input / Size) * (Input / Size) + 1);
+        return (Input / Size) / (float)Math.Sqrt((Input / Size) * (Input / Size) + 1);
     }
     public int Exchange(int Y ,int Color )
     {

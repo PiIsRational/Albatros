@@ -8,10 +8,12 @@ class Io
     public int[][] Move = new int[2][];
     Treesearch treesearch = new Treesearch(1245845, true, 5);
     Stopwatch sw = new Stopwatch();
+    public AlphaBeta AlphaBetaSearch;
     public Io()
     {
         game.HalfKav2 = treesearch.NetType;
         game.HalfKp = !treesearch.NetType;
+        AlphaBetaSearch = new AlphaBeta(game.LoadPositionFromFen(game.StartPosition), new int[] { 5, 8, 5, 1 });
     }
     public void SetCurrentCommand(string Input)
     {
@@ -37,7 +39,6 @@ class Io
                 case "":
                     break;
                 case "test":
-                    //treesearch.Test(Convert.ToInt32(command_syntax[1]) , game.Board , game.Board2);
                     break;
                 case "d":
                     DisplayCurrentBoard(game.Board);
@@ -118,7 +119,7 @@ class Io
                         case "depth":
                             try
                             {
-                                Move[0] = treesearch.MinMaxAlphaBeta(game.Board, (byte)game.Turn, Convert.ToInt32(command_syntax[2]), game.NNUE, game.HalfKp, game.HalfKav2);
+                                Move[0] = AlphaBetaSearch.IterativeDeepening(game.Board, (byte)game.Turn, Convert.ToInt32(command_syntax[2]), game.NNUE);
                                 ReturnMoove(Move[0], new int[0]);
                             }
                             catch
@@ -294,14 +295,20 @@ class Io
                                 {
                                     try
                                     {
-                                        string[] MoovesComands = new string[2];
+                                        for (int i = 5; i < command_syntax.Length; i++)
+                                        {
+                                            if (command_syntax[i] == "moves")
+                                            {
+                                                string[] MoovesComands = new string[command_syntax.Length - (i + 1)];
 
-                                        for (int i = command_syntax.Length - 2; i < command_syntax.Length; i++)
-                                            MoovesComands[i + 2 - command_syntax.Length] = command_syntax[i];
+                                                for (int j = i + 1; j < command_syntax.Length; j++)
+                                                    MoovesComands[j - (i + 1)] = command_syntax[j];
 
-                                        byte[][,] array = PlayGameFromCommand(MoovesComands , true);
-                                        game.Turn = array[1][0, 0];
-                                        Array.Copy(array[0], game.Board, game.Board.Length);
+                                                byte[][,] array = PlayGameFromCommand(MoovesComands, false);
+                                                game.Turn = array[1][0, 0];
+                                                Array.Copy(array[0], game.Board, game.Board.Length);
+                                            }
+                                        }
                                     }
                                     catch
                                     { }
@@ -393,7 +400,7 @@ class Io
             othercolor = 1;
         int completCount = 0;
         int currentNumber = 0;
-        List<int[]> Mooves = treesearch.ReturnPossibleMoves(InputBoard, color);
+        List<int[]> Moves = treesearch.MoveGenerator.ReturnPossibleMoves(InputBoard, color);
         string[] ConvertNumToLetter = new string[] { "0", "a", "b", "c", "d", "e", "f", "g", "h" };
         string[] Promotion = new string[] { "", "n", "b", "q", "r" };
         Stopwatch watch = new Stopwatch();
@@ -401,15 +408,15 @@ class Io
         //if not Checkmate
         if (treesearch.PossiblePositionCounter(InputBoard, 1, color) != 0)
         {
-            foreach (int[] Move in Mooves)
+            foreach (int[] Move in Moves)
             {
-                if (Move.Length != 5 || !treesearch.CastlingCheck(InputBoard, Move))
+                if (Move.Length != 5 || !treesearch.MoveGenerator.CastlingCheck(InputBoard, Move))
                 {
-                    InputBoard = treesearch.PlayMove(InputBoard, color, Move);
-                    int[] MoveUndo = new int[treesearch.UnmakeMove.Length];
-                    Array.Copy(treesearch.UnmakeMove, MoveUndo, treesearch.UnmakeMove.Length);
+                    InputBoard = treesearch.MoveGenerator.PlayMove(InputBoard, color, Move);
+                    int[] MoveUndo = new int[treesearch.MoveGenerator.UnmakeMove.Length];
+                    Array.Copy(treesearch.MoveGenerator.UnmakeMove, MoveUndo, treesearch.MoveGenerator.UnmakeMove.Length);
                     currentNumber = treesearch.PossiblePositionCounter(InputBoard, depthPly - 1, othercolor);
-                    InputBoard = treesearch.UndoMove(InputBoard, MoveUndo);
+                    InputBoard = treesearch.MoveGenerator.UndoMove(InputBoard, MoveUndo);
                     if (currentNumber != 0 || depthPly - 1 > 0)
                     {
                         //Promoting Pawn
@@ -679,6 +686,13 @@ class Io
         if (color == 1)
             Value = -Value;
         Console.WriteLine("NNUE HalfKp evaluation           {0} (white side)", ReturnNumber((float)Value));
+
+        int[] KingSquares = treesearch.MoveGenerator.FindKings(Position);
+        AlphaBetaSearch.halfkp.set_acc_from_position(Position, KingSquares);
+        Value = AlphaBetaSearch.halfkp.AccToOutput(AlphaBetaSearch.halfkp.acc, color);
+        if (color == 1)
+            Value = -Value;
+        Console.WriteLine("NNUE HalfKp Avx2 evaluation      {0} (white side)", ReturnNumber((float)Value));
 
         Value = treesearch.eval.PestoEval(Position, color);
         if (color == 1)

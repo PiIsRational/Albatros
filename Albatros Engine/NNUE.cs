@@ -157,7 +157,7 @@ class NNUE
             if (Place > -1 && (Place < 20480 || Place > 24575))
             {
                 if (Place > 24575)
-                    Place -= 4095;
+                    Place -= 4096;
             }
             else
                 Place = -1;
@@ -168,12 +168,28 @@ class NNUE
     public float[] HalfKpMatrixMultiply(List<int>InputVector)
     {
         float[] Output = new float[256];
+        for (int i = 0; i < 256; i++)
+            Output[i] = HalfkpMatrixBias[i];
+        
         InputVector = ConvertVectorToHalfkp(InputVector);
         foreach (int Place in InputVector)
             if (Place > -1)
                 for (int j = 0; j < 256; j++)
                     Output[j] += HalfkpMatrix[Place, j];
         return Output;
+    }
+    public void printLayerOutput(float[] input_vector)
+    {
+        string Output = "";
+        int counter = 0;
+        foreach (float Value in input_vector)
+        {
+            Output += Math.Round(Value, 2) + " ";
+            counter++;
+            if (counter == 256)
+                Output += "\n256: \n";
+        }
+        Console.WriteLine("\nThe vector values are:\n {0}", Output);
     }
     public float HalfkpEval(float[] Input)
     {
@@ -208,6 +224,7 @@ class NNUE
     public float UseHalfkpNet(byte[,] InputBoard, byte color)
     {
         List<int>[] Input = BoardToHalfKav2(InputBoard, color);
+
         float[] EvalVector = new float[512], ConverterOur = new float[256], ConverterTheir = new float[256];
         ConverterOur = HalfKpMatrixMultiply(Input[0]);
         ConverterTheir = HalfKpMatrixMultiply(Input[1]);
@@ -217,9 +234,8 @@ class NNUE
             EvalVector[i + 256] = ConverterTheir[i];
         }
         for (int i = 0; i < 512; i++)
-            EvalVector[i] = ClippedReLU(EvalVector[i] + HalfkpMatrixBias[i]);
+            EvalVector[i] = ClippedReLU(EvalVector[i]);
         Array.Copy(EvalVector, HalfkpMatrixOut, 512);
-
         HalfkpOutNet = HalfkpEval(EvalVector);
         // Return the Output as a Relu
         return HalfkpOutNet;
