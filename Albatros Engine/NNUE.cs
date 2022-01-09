@@ -1048,7 +1048,7 @@ class NNUE
                 CurrentCost = -CurrentCost;
 
             Cost += CurrentCost;
-            Output = LargeSigmoid(eval.PestoEval(TrainingExample.Board, (byte)color), 4.2f);
+            Output = eval.PestoEval(TrainingExample.Board, (byte)color);
             CurrentCost = (Value - Output);
             if (CurrentCost < 0)
                 CurrentCost = -CurrentCost;
@@ -1078,7 +1078,7 @@ class NNUE
             Cost += CurrentCost;
 
             Cost += CurrentCost;
-            Output = LargeSigmoid(eval.PestoEval(TrainingExample.Board, (byte)color), 4.2f);
+            Output = eval.PestoEval(TrainingExample.Board, (byte)color);
             CurrentCost = (Value - Output);
             if (CurrentCost < 0)
                 CurrentCost = -CurrentCost;

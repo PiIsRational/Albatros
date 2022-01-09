@@ -119,7 +119,7 @@ class Io
                         case "depth":
                             try
                             {
-                                Move[0] = AlphaBetaSearch.IterativeDeepening(game.Board, (byte)game.Turn, Convert.ToInt32(command_syntax[2]), game.NNUE);
+                                Move[0] = AlphaBetaSearch.iterative_deepening(game.Board, (byte)game.Turn, Convert.ToInt32(command_syntax[2]), game.NNUE);
                                 ReturnMoove(Move[0], new int[0]);
                             }
                             catch

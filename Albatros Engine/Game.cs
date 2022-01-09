@@ -19,7 +19,7 @@ class Game
     //Training Parameters
     public int Elo = 100;
     public float Lambda = 1;
-    public int BufferSize = 1000000;
+    public int BufferSize = 500000;
     public int TrainingSampleSize = 10000;
     public int GameLength = 350;
     public string NetName = "ValueNet.nnue";

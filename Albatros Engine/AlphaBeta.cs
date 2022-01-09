@@ -7,15 +7,12 @@ class AlphaBeta
     Stopwatch sw = new Stopwatch();
     public Halfkp_avx2 halfkp;
     public MoveGen MoveGenerator = new MoveGen();
-    public Classic_Eval eval = new Classic_Eval();
-    public NNUE ValueNet = new NNUE();
-    Hashtable hashtable = new Hashtable();
-    
+    public Classic_Eval eval = new Classic_Eval();   
     Random random = new Random(59675943);
-    int Nodecount = 0;
-    int MaxDepth = 0;
+    int Nodecount = 0, MaxDepth = 0;
     long[][,] PieceHashes = new long[27][,];
     long BlackToMove;
+
     public AlphaBeta(byte[,] board, int[] king_pos)
     {
         HashFunctionInit();
@@ -50,370 +47,6 @@ class AlphaBeta
 
         return Output;
     }
-
-    public int[] IterativeDeepening(byte[,] InputBoard, byte color, int depthPly, bool NNUE_avx2)
-    {
-        sw.Start();
-        halfkp.set_acc_from_position(InputBoard, MoveGenerator.FindKings(InputBoard));
-        //copy the accumulator for the current position
-        Accumulator currentacc = new Accumulator(512);
-        Array.Copy(halfkp.acc.Acc, currentacc.Acc, currentacc.Acc.Length);
-        //if the current position is in the Hash Table
-        long CurrentKey = ZobristHash(InputBoard, color);
-        List<int[]> ProbablytheBestMoves = new List<int[]>();
-        bool FoundEntry = false;
-        HTableEntry entry = new HTableEntry(new int[0], 0, 0, false);
-        if (hashtable.ContainsKey(CurrentKey))
-        {
-            FoundEntry = true;
-            entry = (HTableEntry)hashtable[CurrentKey];
-            if (depthPly <= entry.depth)
-            {
-                return entry.BestMoves[entry.BestMoves.Count - 1];
-            }
-            else
-                ProbablytheBestMoves = entry.BestMoves;
-        }
-        int[] Output = new int[0];
-        int[] MoveUndo;
-        List<int[]> Moves = MoveGenerator.ReturnPossibleMoves(InputBoard, color);
-        List<int[]> CleanedMoves = new List<int[]>();
-        if (FoundEntry)
-        {
-            foreach (int[] Move in Moves)
-                if (Move.Length != 5 || !MoveGenerator.CastlingCheck(InputBoard, Move))
-                    CleanedMoves.Add(Move);
-
-            CleanedMoves = MVVLVA(InputBoard, CleanedMoves);
-
-            foreach (int[] Move in ProbablytheBestMoves)
-                CleanedMoves.Insert(0, Move);
-        }
-        else
-        {
-            foreach (int[] Move in Moves)
-                if (Move.Length != 5 || !MoveGenerator.CastlingCheck(InputBoard, Move))
-                    CleanedMoves.Add(Move);
-
-            CleanedMoves = MVVLVA(InputBoard, CleanedMoves);
-        }
-        float BestScore = -2, CurrentScore = -2;
-        byte Othercolor = 0;
-        int counter = 0;
-
-        if (color == 0)
-            Othercolor = 1;
-        for (int i = 1; i <= depthPly; i++)
-        {
-            if (hashtable.ContainsKey(CurrentKey))
-            {
-                FoundEntry = true;
-                entry = (HTableEntry)hashtable[CurrentKey];
-                foreach (int[] Move in ProbablytheBestMoves)
-                    CleanedMoves.Remove(Move);
-                ProbablytheBestMoves = entry.BestMoves;
-                foreach (int[] Move in ProbablytheBestMoves)
-                    CleanedMoves.Insert(0, Move);
-            }
-
-            foreach (int[] Move in CleanedMoves)
-            {
-                //play the move
-                InputBoard = MoveGenerator.PlayMove(InputBoard, color, Move);
-                //play the move in the accumulator
-                halfkp.update_acc_from_move(MoveGenerator.UnmakeMove, color);
-                //ad the move to the nnue accumulator
-
-                MoveUndo = new int[MoveGenerator.UnmakeMove.Length];
-                Array.Copy(MoveGenerator.UnmakeMove, MoveUndo, MoveUndo.Length);
-                if (!MoveGenerator.CompleteCheck(InputBoard, Othercolor))
-                {
-                    int MatingValue = MoveGenerator.Mate(InputBoard, Othercolor);
-
-                    if (MatingValue != 2)
-                    {
-                        CurrentScore = MatingValue;
-                        if (BestScore < CurrentScore)
-                        {
-                            Output = CleanedMoves.ToArray()[counter];
-                            BestScore = CurrentScore;
-                            return Output;
-                        }
-                    }
-
-                    if (i == 1)
-                    {
-                        CurrentScore = -QuiescenceSearch(InputBoard, BestScore, Othercolor, NNUE_avx2, 0);
-                        Nodecount++;
-                    }
-                    else
-                        CurrentScore = -NegaMaxAlphaBetaScore(InputBoard, Othercolor, i - 1, BestScore, NNUE_avx2);
-
-                    if (BestScore < CurrentScore)
-                    {
-                        Output = CleanedMoves.ToArray()[counter];
-                        BestScore = CurrentScore;
-                    }
-                }
-                InputBoard = MoveGenerator.UndoMove(InputBoard, MoveUndo);
-                //copy the old acc back inthe real accumulator
-                Array.Copy(currentacc.Acc, halfkp.acc.Acc, currentacc.Acc.Length);
-                counter++;
-            }
-            Console.WriteLine("info depth {2} seldepth {3} nodes {1} nps {4} score cp {0}", Math.Round(BestScore * 100), Nodecount, i, i + MaxDepth, (int)(Nodecount / sw.ElapsedMilliseconds * 1000));
-            if (!FoundEntry || entry.depth < i)
-            {
-                if (entry.depth < i)
-                    hashtable.Remove(CurrentKey);
-                if (entry.BestMoves[0].Length == 0)
-                    entry = new HTableEntry(Output, BestScore, i, false);
-                else if (Output.Length != 0)
-                {
-                    int[] ToRemove = new int[0];
-                    foreach (int[] GoodMove in entry.BestMoves)
-                        if (Array.Equals(GoodMove, Output))
-                            ToRemove = GoodMove;
-                    if (ToRemove.Length != 0)
-                        entry.BestMoves.Remove(ToRemove);
-                    entry.BestMoves.Add(Output);
-                }
-                hashtable.Add(CurrentKey, entry);
-            }
-            FoundEntry = false;
-            BestScore = -2;
-            MaxDepth = 0;
-            CurrentScore = -2;
-            Nodecount = 0;
-            counter = 0;
-        }
-        sw.Stop();
-
-        return Output;
-    }
-    public float NegaMaxAlphaBetaScore(byte[,] InputBoard, byte color, int depthPly, double LastBest, bool NNUE_avx2)
-    {
-        //copy the accumulator for the current position
-        Accumulator currentacc = new Accumulator(512);
-        Array.Copy(halfkp.acc.Acc, currentacc.Acc, currentacc.Acc.Length);
-        //if the current position is in the Hash Table
-        long CurrentKey = ZobristHash(InputBoard, color);
-        List<int[]> ProbablyTheBestMoves = new List<int[]>();
-        bool FoundEntry = false;
-        HTableEntry entry = new HTableEntry(new int[0], 0, 0, false);
-        if (hashtable.ContainsKey(CurrentKey))
-        {
-            FoundEntry = true;
-            entry = (HTableEntry)hashtable[CurrentKey];
-            if (depthPly == entry.depth)
-            {
-                return entry.Score;
-            }
-            else
-            {
-                if (entry.Score == -2)
-                    return -2;
-                ProbablyTheBestMoves = entry.BestMoves;
-            }
-        }
-        List<int[]> Moves = MoveGenerator.ReturnPossibleMoves(InputBoard, color);
-        List<int[]> CleanedMoves = new List<int[]>();
-        int[] BestMove = new int[0];
-        if (Moves != null)
-        {
-            if (FoundEntry)
-            {
-                foreach (int[] Move in Moves)
-                    if (Move.Length != 5 || !MoveGenerator.CastlingCheck(InputBoard, Move))
-                        CleanedMoves.Add(Move);
-
-                CleanedMoves = MVVLVA(InputBoard, CleanedMoves);
-
-                foreach (int[] Move in ProbablyTheBestMoves)
-                    CleanedMoves.Insert(0, Move);
-            }
-            else
-            {
-                foreach (int[] Move in Moves)
-                {
-                    if (Move.Length != 5 || !MoveGenerator.CastlingCheck(InputBoard, Move))
-                        CleanedMoves.Add(Move);
-                }
-                CleanedMoves = MVVLVA(InputBoard, CleanedMoves);
-            }
-        }
-        else
-        {
-            return -2;
-        }
-        float BestScore = -2, CurrentScore = 0;
-        byte Othercolor = 0;
-        int[] MoveUndo;
-
-        if (color == 0)
-            Othercolor = 1;
-
-        foreach (int[] Move in CleanedMoves)
-        {
-            //play the current move on the board
-            InputBoard = MoveGenerator.PlayMove(InputBoard, color, Move);
-            MoveUndo = new int[MoveGenerator.UnmakeMove.Length];
-            Array.Copy(MoveGenerator.UnmakeMove, MoveUndo, MoveUndo.Length);
-            if (!MoveGenerator.CompleteCheck(InputBoard, Othercolor))
-            {
-                //play the move in the accumulator
-                halfkp.update_acc_from_move(MoveGenerator.UnmakeMove, color);
-                if (depthPly <= 1)
-                {
-                    CurrentScore = -QuiescenceSearch(InputBoard, BestScore, Othercolor, NNUE_avx2, 0);
-                    Nodecount++;
-                }
-                else
-                    CurrentScore = -NegaMaxAlphaBetaScore(InputBoard, Othercolor, depthPly - 1, BestScore, NNUE_avx2);
-
-                if (CurrentScore == 2)
-                {
-                    float Mate = MoveGenerator.Mate(InputBoard, Othercolor);
-                    InputBoard = MoveGenerator.UndoMove(InputBoard, MoveUndo);
-                    return Mate;
-                }
-                if (CurrentScore > BestScore)
-                {
-                    BestScore = CurrentScore;
-                    BestMove = Move;
-                }
-
-                InputBoard = MoveGenerator.UndoMove(InputBoard, MoveUndo);
-
-                if (-BestScore < LastBest)
-                {
-                    if (!FoundEntry || entry.depth < depthPly)
-                    {
-                        if (entry.depth < depthPly)
-                            hashtable.Remove(CurrentKey);
-                        if (entry.BestMoves[0].Length == 0)
-                            entry = new HTableEntry(BestMove, BestScore, depthPly, false);
-                        else
-                        {
-                            int[] ToRemove = new int[0];
-
-                            foreach (int[] GoodMove in entry.BestMoves)
-                                if (Array.Equals(GoodMove, BestMove))
-                                    ToRemove = GoodMove;
-
-                            if (ToRemove.Length != 0)
-                                entry.BestMoves.Remove(ToRemove);
-
-                            entry.BestMoves.Add(BestMove);
-                        }
-                        hashtable.Add(CurrentKey, entry);
-                    }
-                    return BestScore;
-                }
-                //copy the old acc back inthe real accumulator
-                Array.Copy(currentacc.Acc, halfkp.acc.Acc, currentacc.Acc.Length);
-            }
-            else
-                InputBoard = MoveGenerator.UndoMove(InputBoard, MoveUndo);
-        }
-        if (!FoundEntry || entry.depth < depthPly)
-        {
-            if (entry.depth < depthPly)
-                hashtable.Remove(CurrentKey);
-            if (entry.BestMoves[0].Length == 0)
-                entry = new HTableEntry(BestMove, BestScore, depthPly, true);
-            else if (BestMove.Length != 0)
-            {
-                int[] ToRemove = new int[0];
-
-                foreach (int[] GoodMove in entry.BestMoves)
-                    if (Array.Equals(GoodMove, BestMove))
-                        ToRemove = GoodMove;
-
-                if (ToRemove.Length != 0)
-                    entry.BestMoves.Remove(ToRemove);
-
-                entry.BestMoves.Add(BestMove);
-            }
-            hashtable.Add(CurrentKey, entry);
-        }
-        return BestScore;
-    }
-    public float QuiescenceSearch(byte[,] InputBoard, float LastBest, byte color, bool NNUE_avx2, int depthPly)
-    {
-        //copy the accumulator for the current position
-        Accumulator currentacc = new Accumulator(512);
-        Array.Copy(halfkp.acc.Acc, currentacc.Acc, currentacc.Acc.Length);
-        List<int[]> Moves = MoveGenerator.ReturnPossibleCaptures(InputBoard, color);
-        List<int[]> CleanedMoves = new List<int[]>();
-        float BestScore = -2, CurrentScore = 0;
-        byte Othercolor = 0;
-        if (color == 0)
-            Othercolor = 1;
-        int[] MoveUndo;
-        if (Moves != null)
-        {
-            if (!MoveGenerator.CompleteCheck(InputBoard, Othercolor))
-            {
-                if (NNUE_avx2)            
-                    CurrentScore = halfkp.AccToOutput(halfkp.acc, color);
-                else
-                    CurrentScore = eval.PestoEval(InputBoard, Othercolor);
-            }
-            else
-            {
-                return 2;
-            }
-            if (-CurrentScore <= LastBest)
-            {
-                MaxDepth = Math.Max(depthPly, MaxDepth);
-                return CurrentScore;
-            }
-            if (Moves.Count == 0)
-            {
-                MaxDepth = Math.Max(depthPly, MaxDepth);
-                return CurrentScore;
-            }
-            foreach (int[] Move in Moves)
-            {
-                if (Move.Length != 5 || !MoveGenerator.CastlingCheck(InputBoard, Move))
-                    CleanedMoves.Add(Move);
-            }
-            CleanedMoves = MVVLVA(InputBoard, CleanedMoves);
-        }
-        else
-        {
-            return -2;
-        }
-
-        foreach (int[] Move in CleanedMoves)
-        {
-            //play the current move on the board
-            InputBoard = MoveGenerator.PlayMove(InputBoard, color, Move);
-            //play the move in the accumulator
-            halfkp.update_acc_from_move(MoveGenerator.UnmakeMove, color);
-            MoveUndo = new int[MoveGenerator.UnmakeMove.Length];
-            Array.Copy(MoveGenerator.UnmakeMove, MoveUndo, MoveUndo.Length);
-
-            CurrentScore = -QuiescenceSearch(InputBoard, BestScore, Othercolor, NNUE_avx2, depthPly + 1);
-
-            if (CurrentScore == 2)
-            {
-                float Mate = MoveGenerator.Mate(InputBoard, Othercolor);
-                InputBoard = MoveGenerator.UndoMove(InputBoard, MoveUndo);
-                return Mate;
-            }
-
-            BestScore = Math.Max(CurrentScore, BestScore);
-
-            InputBoard = MoveGenerator.UndoMove(InputBoard, MoveUndo);
-
-            if (-BestScore <= LastBest)
-                return BestScore;
-            //copy the old acc back inthe real accumulator
-            Array.Copy(currentacc.Acc, halfkp.acc.Acc, currentacc.Acc.Length);
-        }
-        return BestScore;
-    }
     public List<int[]> MVVLVA(byte[,] InputBoard, List<int[]> Moves)
     {
         float AttackerValue = 0;
@@ -428,25 +61,28 @@ class AlphaBeta
                 switch (InputBoard[Move[2 * i], Move[2 * i + 1]] - (InputBoard[Move[2 * i], Move[2 * i + 1]] >> 4) * 0b10000)
                 {
                     case 0b00000001:
-                        currentPieceValue += 1;
+                        currentPieceValue = 1;
                         break;
                     case 0b00000011:
-                        currentPieceValue += 1;
+                        currentPieceValue = 1;
                         break;
                     case 0b00000100:
-                        currentPieceValue += 3;
+                        currentPieceValue = 3;
                         break;
                     case 0b00000101:
-                        currentPieceValue += 3;
+                        currentPieceValue = 3;
                         break;
                     case 0b00001000:
-                        currentPieceValue += 9;
+                        currentPieceValue = 9;
                         break;
                     case 0b00001001:
-                        currentPieceValue += 5;
+                        currentPieceValue = 5;
                         break;
                     case 0b00001010:
-                        currentPieceValue += 5;
+                        currentPieceValue = 5;
+                        break;
+                    default:
+                        currentPieceValue = 0;
                         break;
                 }
                 if (i == 0)
@@ -466,6 +102,12 @@ class AlphaBeta
                         SortedMoves.Insert(i, Move);
                         break;
                     }
+                    else
+                    {
+                        Values.Add(currentPieceValue);
+                        SortedMoves.Add(Move);
+                        break;
+                    }
                 }
             }
             else
@@ -475,6 +117,284 @@ class AlphaBeta
             }
         }
         return SortedMoves;
+    }
+    public int[] iterative_deepening(byte[,] InputBoard, byte color, int depthPly, bool NNUE_avx2)
+    {
+        //initialize the variables
+        int[] Output = new int[0], MoveUndo, kingsquares = new int[4], kingpositions = new int[2];
+        List<int[]> Moves = MoveGenerator.ReturnPossibleMoves(InputBoard, color), CleanedMoves = new List<int[]>();
+        float alpha = -2, currentScore = -2;
+        byte othercolor = (byte)(1 - color);
+        Accumulator currentacc = new Accumulator(256);
+        //start the stopwatch
+        sw.Start();
+        //the the accumulator position to the starting position
+        halfkp.set_acc_from_position(InputBoard, MoveGenerator.FindKings(InputBoard));
+        //copy the accumulator for the current position
+        Array.Copy(halfkp.acc.Acc[0], currentacc.Acc[0], currentacc.Acc[0].Length);
+        Array.Copy(halfkp.acc.Acc[1], currentacc.Acc[1], currentacc.Acc[1].Length);
+        //copy the kingpositions in both forms
+        Array.Copy(halfkp.kingsquares, kingsquares, 4);
+        Array.Copy(halfkp.kingpositions, kingpositions, 2);
+        //get only the legal moves
+        foreach (int[] Move in Moves)
+            if (Move.Length != 5 || !MoveGenerator.CastlingCheck(InputBoard, Move))
+                CleanedMoves.Add(Move);
+
+        //sort the moves for most valuable victim vs least valuable attacker
+        CleanedMoves = MVVLVA(InputBoard, CleanedMoves);
+
+        //perform i searches, i being the depth 
+        for (int i = 1; i <= depthPly; i++)
+        {
+            foreach(int[] move in CleanedMoves)
+            {
+                //play the move
+                InputBoard = MoveGenerator.PlayMove(InputBoard, color, move);
+                //play the move in the accumulator
+                halfkp.update_acc_from_move(MoveGenerator.UnmakeMove, color);
+
+                //copy the unmake move into move undo
+                MoveUndo = new int[MoveGenerator.UnmakeMove.Length];
+                Array.Copy(MoveGenerator.UnmakeMove, MoveUndo, MoveUndo.Length);
+
+                //find if the current position is a terminal position
+                //determining the mate value 2 => not a terminal position , 0 => draw , 1 => mate for white , -1 => mate for black
+                int matingValue = MoveGenerator.Mate(InputBoard, othercolor);
+                //checking if the position is not a terminal node
+                if (matingValue != 2)
+                {
+                    //if the position is a terminal node the value for the node is set to the mating value from the perspective of the current color
+                    currentScore = (color - 1) * matingValue;
+                    //if the value is better than the currently best value return it because no value can be better or worse
+                    if (alpha < currentScore)
+                    {
+                        //undo the current move
+                        InputBoard = MoveGenerator.UndoMove(InputBoard, MoveUndo);
+                        //copy the old accumulator back inthe real accumulator
+                        Array.Copy(currentacc.Acc[1], halfkp.acc.Acc[1], currentacc.Acc[1].Length);
+                        Array.Copy(currentacc.Acc[0], halfkp.acc.Acc[0], currentacc.Acc[0].Length);
+                        //copy the kingpositions back into the neural network
+                        Array.Copy(kingsquares, halfkp.kingsquares, 4);
+                        Array.Copy(kingpositions, halfkp.kingpositions, 2);
+                        Output = move;
+                        alpha = currentScore;
+                        return Output;
+                    }
+                }
+                else
+                {
+                    //if the current depth is 1 perform a quiescent search
+                    if (i == 1)
+                    {
+                        currentScore = -quiescent_search(InputBoard, -20, -alpha, othercolor, NNUE_avx2, 0);
+                        Nodecount++;
+                    }
+                    //else call the negamax function at the current depth minus 1
+                    else
+                        currentScore = -negamax(InputBoard, othercolor, i - 1, -20, -alpha, NNUE_avx2);
+
+                    //determine if the current move is better than the currently best move
+                    if (alpha <= currentScore)
+                    {
+                        Output = move;
+                        alpha = currentScore;
+                    }
+                }
+                //undo the current move
+                InputBoard = MoveGenerator.UndoMove(InputBoard, MoveUndo);
+                //copy the old accumulator back inthe real accumulator
+                Array.Copy(currentacc.Acc[1], halfkp.acc.Acc[1], currentacc.Acc[1].Length);
+                Array.Copy(currentacc.Acc[0], halfkp.acc.Acc[0], currentacc.Acc[0].Length);
+                //copy the kingpositions back into the neural network
+                Array.Copy(kingsquares, halfkp.kingsquares, 4);
+                Array.Copy(kingpositions, halfkp.kingpositions, 2);
+            }
+            //after a finished search return the main informations 
+            Console.WriteLine("info depth {2} seldepth {3} nodes {1} nps {4} score cp {0}", Math.Round(alpha * 100), Nodecount, i, i + MaxDepth, (int)((Nodecount * 1000) / ((float)sw.ElapsedMilliseconds + 0.001)));
+            //stop and restart the stopwatch
+            sw.Stop();
+            sw.Restart();
+            alpha = -2;
+            currentScore = -2;
+            Nodecount = 0;
+            MaxDepth = 0;
+        }
+        //return the best move
+        return Output;
+    }
+    public float negamax(byte[,] InputBoard, byte color, int depthPly, float alpha, float beta, bool NNUE_avx2)
+    {
+        //define the variables
+        bool found_legal_position = false;
+        float current_score = 0;
+        byte othercolor = (byte)(1 - color);
+        int[] MoveUndo, kingsquares = new int[4], kingpositions = new int[2], BestMove = new int[0];
+        List<int[]> Moves = MoveGenerator.ReturnPossibleMoves(InputBoard, color), CleanedMoves = new List<int[]>();
+        Accumulator currentacc = new Accumulator(256);
+
+        //the the accumulator position to the starting position
+        halfkp.set_acc_from_position(InputBoard, MoveGenerator.FindKings(InputBoard));
+        //copy the accumulator for the current position
+        Array.Copy(halfkp.acc.Acc[0], currentacc.Acc[0], currentacc.Acc[0].Length);
+        Array.Copy(halfkp.acc.Acc[1], currentacc.Acc[1], currentacc.Acc[1].Length);
+        //copy the kingpositions in both forms
+        Array.Copy(halfkp.kingsquares, kingsquares, 4);
+        Array.Copy(halfkp.kingpositions, kingpositions, 2);
+        //if the position is legal
+        if (Moves != null)
+        {
+            //get only the legal moves
+            foreach (int[] Move in Moves)
+                if (Move.Length != 5 || !MoveGenerator.CastlingCheck(InputBoard, Move))
+                    CleanedMoves.Add(Move);
+
+            //sort the moves for most valuable victim vs least valuable attacker
+            CleanedMoves = MVVLVA(InputBoard, CleanedMoves);
+        }
+        //the position is illegal
+        else
+            return -2;
+
+        foreach (int[] Move in CleanedMoves)
+        {
+            //play the current move on the board
+            InputBoard = MoveGenerator.PlayMove(InputBoard, color, Move);
+            MoveUndo = new int[MoveGenerator.UnmakeMove.Length];
+            Array.Copy(MoveGenerator.UnmakeMove, MoveUndo, MoveUndo.Length);
+            //play the move in the accumulator
+            halfkp.update_acc_from_move(MoveGenerator.UnmakeMove, color);
+            //if the current depth is 1 do a quiescent search
+            if (depthPly <= 1)
+            {
+                current_score = -quiescent_search(InputBoard, -beta, -alpha, othercolor, NNUE_avx2, 0);
+                Nodecount++;
+            }
+            //else just call the function recursively
+            else
+                current_score = -negamax(InputBoard, othercolor, depthPly - 1, -beta, -alpha, NNUE_avx2);
+
+            //if the current score is not 2 the position is legal and therefore we have found a legal move
+            if (current_score > alpha && current_score != 2)
+            {
+                found_legal_position = true;
+                alpha = current_score;
+                BestMove = Move;
+            }
+
+            //undo the current move
+            InputBoard = MoveGenerator.UndoMove(InputBoard, MoveUndo);
+            //copy the old accumulator back inthe real accumulator
+            Array.Copy(currentacc.Acc[1], halfkp.acc.Acc[1], currentacc.Acc[1].Length);
+            Array.Copy(currentacc.Acc[0], halfkp.acc.Acc[0], currentacc.Acc[0].Length);
+            //copy the kingpositions back into the neural network
+            Array.Copy(kingsquares, halfkp.kingsquares, 4);
+            Array.Copy(kingpositions, halfkp.kingpositions, 2);
+
+            //if the branch is not better then the currently best branch we can prune the other positions
+            if (current_score >= beta)
+            {
+                return current_score;
+            }
+        }
+        //if no move was legal return the score for mate
+        if (!found_legal_position)
+        {
+            //mate
+            if (MoveGenerator.CompleteCheck(InputBoard, othercolor))
+                return -1;
+            //stalemate
+            else
+                return 0;
+        }
+        else
+        {
+            //return the best score
+            return alpha;
+        }
+    }
+    public float quiescent_search(byte[,] InputBoard, float alpha, float beta, byte color, bool NNUE_avx2, int depthPly)
+    {
+        //define the variables
+        float current_score = 0;
+        byte othercolor = (byte)(1 - color);
+        int[] MoveUndo, kingsquares = new int[4], kingpositions = new int[2], BestMove = new int[0];
+        List<int[]> Moves = MoveGenerator.ReturnPossibleCaptures(InputBoard, color), CleanedMoves = new List<int[]>();
+        Accumulator currentacc = new Accumulator(256);
+
+        //the the accumulator position to the starting position
+        halfkp.set_acc_from_position(InputBoard, MoveGenerator.FindKings(InputBoard));
+        //copy the accumulator for the current position
+        Array.Copy(halfkp.acc.Acc[0], currentacc.Acc[0], currentacc.Acc[0].Length);
+        Array.Copy(halfkp.acc.Acc[1], currentacc.Acc[1], currentacc.Acc[1].Length);
+        //copy the kingpositions in both forms
+        Array.Copy(halfkp.kingsquares, kingsquares, 4);
+        Array.Copy(halfkp.kingpositions, kingpositions, 2);
+        //if the position is legal
+        if (Moves != null)
+        {
+            //evaluate the position
+            if (NNUE_avx2)
+                current_score = halfkp.AccToOutput(halfkp.acc, color);
+            else
+                current_score = eval.PestoEval(InputBoard, othercolor);
+
+            //if the position is quiet return the evaluation
+            if (Moves.Count == 0)
+            {
+                MaxDepth = Math.Max(depthPly, MaxDepth);
+                return current_score;
+            }
+
+            //get only the legal moves
+            foreach (int[] Move in Moves)
+                if (Move.Length != 5 || !MoveGenerator.CastlingCheck(InputBoard, Move))
+                    CleanedMoves.Add(Move);
+
+            //sort the moves for most valuable victim vs least valuable attacker
+            CleanedMoves = MVVLVA(InputBoard, CleanedMoves);
+        }
+        //the position is illegal
+        else
+            return -2;
+
+        foreach (int[] Move in CleanedMoves)
+        {
+            //play the current move on the board
+            InputBoard = MoveGenerator.PlayMove(InputBoard, color, Move);
+            MoveUndo = new int[MoveGenerator.UnmakeMove.Length];
+            Array.Copy(MoveGenerator.UnmakeMove, MoveUndo, MoveUndo.Length);
+            //play the move in the accumulator
+            halfkp.update_acc_from_move(MoveGenerator.UnmakeMove, color);
+
+            //calls itself recursively
+            current_score = -quiescent_search(InputBoard, -beta, -alpha, othercolor, NNUE_avx2, depthPly + 1);
+
+            //if the current score is not 2 the position is not illegal and therefore we have found a legal move
+            if (current_score > alpha && current_score != 2)
+            {
+                alpha = current_score;
+                BestMove = Move;
+            }
+
+            //undo the current move
+            InputBoard = MoveGenerator.UndoMove(InputBoard, MoveUndo);
+            //copy the old accumulator back inthe real accumulator
+            Array.Copy(currentacc.Acc[1], halfkp.acc.Acc[1], currentacc.Acc[1].Length);
+            Array.Copy(currentacc.Acc[0], halfkp.acc.Acc[0], currentacc.Acc[0].Length);
+            //copy the kingpositions back into the neural network
+            Array.Copy(kingsquares, halfkp.kingsquares, 4);
+            Array.Copy(kingpositions, halfkp.kingpositions, 2);
+
+            //if the branch is not better then the currently best branch we can prune the other positions
+            if (current_score >= beta)
+            {
+                return current_score;
+            }
+        }
+
+        //return the best score
+        return alpha;       
     }
 }
 class HTableEntry

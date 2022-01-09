@@ -6,8 +6,7 @@ using System.IO;
 class Halfkp_avx2
 {
     //kingsquares
-    public int[] kingsquares = new int[4];
-    int[] kingpositions = new int[2];
+    public int[] kingsquares = new int[4], kingpositions = new int[2];
     //input into the feature transformer
     public List<int>[] Features = new List<int>[2];
     //output of the Feature transformers
@@ -178,6 +177,18 @@ class Halfkp_avx2
                     case 0b00011010:
                         PieceType[i][j] = ChangeType(4, i);
                         break;
+                    case 0b00000110:
+                        PieceType[i][j] = -2;
+                        break;
+                    case 0b00000111:
+                        PieceType[i][j] = -2;
+                        break;
+                    case 0b00010111:
+                        PieceType[i][j] = -2;
+                        break;
+                    case 0b00010110:
+                        PieceType[i][j] = -2;
+                        break;
                     default:
                         PieceType[i][j] = -1;
                         break;
@@ -329,8 +340,32 @@ class Halfkp_avx2
         return Convert.ToSingle(NetOutput) / (weight_scaling * activation_scaling);
     }
     //calculate the feature vector for a color fom an InputBoard
+    public void test_function_a(byte[,] InputBoard, byte color, int[] Kingplace, int[] move)
+    {
+        Accumulator test_a = new Accumulator(256), test_b = new Accumulator(256) , backup = new Accumulator(256);
+        Array.Copy(acc.Acc, backup.Acc, test_a.Acc.Length);
+        set_acc_from_position(InputBoard, Kingplace);
+        Array.Copy(acc.Acc, test_a.Acc, test_a.Acc.Length);
+        Array.Copy(backup.Acc, acc.Acc, test_a.Acc.Length);
+        update_acc_from_move(move, color);
+        Array.Copy(acc.Acc, test_b.Acc, test_a.Acc.Length);
+        Array.Copy(backup.Acc, acc.Acc, test_a.Acc.Length);
+        for (int i = 0; i < 2; i++) 
+        {
+            for (int j = 0; j < 256; j++)
+            {
+                if (test_a.Acc[i][j] != test_b.Acc[i][j])
+                    Console.WriteLine("it does not work !");
+                else
+                    Console.WriteLine("it does work");
+            }
+        }
+    }
     public void GetFeaturesFromPos(byte[,] InputBoard , byte color , int KingX , int KingY)
     {
+        kingsquares[2 * color + 0] = KingX;
+        kingsquares[2 * color + 1] = KingY;
+        update_king_squares(kingsquares);
         Features[color] = new List<int>();
         for (int i = 1; i < 9; i++)
         {
@@ -340,7 +375,6 @@ class Halfkp_avx2
                 {
                     Features[color].Add(PieceType[color][InputBoard[i, j]] + kingpositions[color] + (7 * (1 - color) + (2 * color - 1) * (j - 1)) * 8 + i - 1);
                 }
-
             }
         }
     }
@@ -355,11 +389,11 @@ class Halfkp_avx2
             for (int i = 0; i < Move.Length / 3; i++)
             {     
                 //normal piece
-                if (PieceType[color][Move[i * 3 + 2]] > -1)
+                if (PieceType[j][Move[i * 3 + 2]] > -1)
                 {
-                    if (Move.Length == (i + 2) * 3)
-                        FeaturesToAdd[j].Add(PieceType[color][Move[i * 3 + 2]] + kingpositions[j] + (7 * (1 - j) + (2 * j - 1) * (Move[i * 3 + 4] - 1)) * 8 + Move[i * 3 + 3] - 1);
-                    FeaturestoRemove[j].Add(PieceType[color][Move[i * 3 + 2]] + kingpositions[j] + (7 * (1 - j) + (2 * j - 1) * (Move[i * 3 + 1] - 1)) * 8 + Move[i * 3 + 0] - 1);
+                    if (Move.Length >= (i + 2) * 3)
+                        FeaturesToAdd[j].Add(PieceType[j][Move[i * 3 + 2]] + kingpositions[j] + (7 * (1 - j) + (2 * j - 1) * (Move[i * 3 + 4] - 1)) * 8 + Move[i * 3 + 3] - 1);
+                    FeaturestoRemove[j].Add(PieceType[j][Move[i * 3 + 2]] + kingpositions[j] + (7 * (1 - j) + (2 * j - 1) * (Move[i * 3 + 1] - 1)) * 8 + Move[i * 3 + 0] - 1);
                 }
                 //king of type color
                 else if (PieceType[color][Move[i * 3 + 2]] == -2)
@@ -559,12 +593,14 @@ class Halfkp_avx2
         {
             In = Avx2.LoadVector256(currentAddress);
         }
+
         fixed(sbyte* currentAddress = &layer.weight[0])
         {
             layer_matrix = Avx2.LoadVector256(currentAddress);
         }
 
         Vector256<short> out_vector = Avx2.MultiplyAddAdjacent(In, layer_matrix);
+
         fixed(short* currentAddress = &intermediate_array[0])
         {
             Avx2.Store(currentAddress, out_vector);
