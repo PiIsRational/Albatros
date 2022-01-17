@@ -151,12 +151,10 @@ class Training
             if (currentSetCounter == 0)
             {
                 //Test
-                /*
-                treesearch.Test(1000, CurrentTrainingSet[0] , true , false);
+                /*treesearch.Test(1000, CurrentTrainingSet[0] , true , false);
                 treesearch.ValueNet.SaveHalfkpNet("HalfkpMaybeGood.nnue", true);
-                */
-                TrainingSteps++;
-                //Give the info about the current Trainiing cycle to the user
+                TrainingSteps++;*/
+                //Give the info about the current Training cycle to the user
                 Console.WriteLine("Wins for White : {0}", WinWhite);
                 Console.WriteLine("Wins for Black : {0}", WinBlack);
                 Console.WriteLine("The Finishing Rate is : {0}% ", FinishedGames * 100 / AmountofGames);
@@ -274,7 +272,8 @@ class Training
                         HalfkpBiasCopy = new List<float[][]>();
                         HalfkpMatrixBiasCopy = new List<float[]>();
 
-                        TrainNet.setHalfkpNet(HalfkpWeightChangeCopy, HalfkpBiaseChangeCopy, HalfkpMatrixChangeCopy, HalfkpMatrixBiaseChangeCopy, TrainingMomentum);
+                        //TrainNet.Ranger21(HalfkpWeightChangeCopy, HalfkpBiaseChangeCopy, HalfkpMatrixChangeCopy, HalfkpMatrixBiaseChangeCopy, TrainingMomentum, 0.999f, 1, 220, 1000, 280, 0.0001f, 5, 0.5f);
+                        TrainNet.AdamW(HalfkpWeightChangeCopy, HalfkpBiaseChangeCopy, HalfkpMatrixChangeCopy, HalfkpMatrixBiaseChangeCopy, TrainingMomentum, 0.9f, 0.1f, 220, 1000, 280, 0.0001f);
 
                         Array.Copy(TrainNet.HalfkpWeigths, CurrentHalfkpWeights, TrainNet.HalfkpWeigths.Length);
                         Array.Copy(TrainNet.HalfkpBiases, CurrentHalfkpBiases, TrainNet.HalfkpBiases.Length);
@@ -815,7 +814,7 @@ class Training
         if (State)
             Net.BackPropagation2(TrainingArray, LearningRate);
         else
-            Net.BackPropagationHalfkp(TrainingArray, LearningRate);
+            Net.BackPropagationHalfkp(TrainingArray);
 
         //Save the Results
         semaphoreTraining.WaitOne();

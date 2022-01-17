@@ -126,9 +126,9 @@ class Treesearch
             if (Halfkp)
             {
                 //Backpropagate the network
-                ValueNet.BackPropagationHalfkp(Positions, 1);
-                ValueNet.setHalfkpNet(new float[][][,] { ValueNet.HalfkpWeigthChanges }, new float[][][] { ValueNet.HalfkpBiasChange }, new float[][,] { ValueNet.HalfkpMatrixChange }, new float[][] { ValueNet.HalfkpMatrixBiasChange }, 0.5f);
-                Console.WriteLine("The Error is {0}", ValueNet.CostOfHalfkpNet(Positions));
+                ValueNet.BackPropagationHalfkp(Positions);
+                ValueNet.AdamW(new float[][][,] { ValueNet.HalfkpWeigthChanges }, new float[][][] { ValueNet.HalfkpBiasChange }, new float[][,] { ValueNet.HalfkpMatrixChange }, new float[][] { ValueNet.HalfkpMatrixBiasChange }, 0.9f , 0.9f , 0.1f , 0.22f * Iterations , Iterations , 0.28f * Iterations , 0.0001f);
+                Console.WriteLine("The Error is {0}", ValueNet.CostOfHalfkpNet(Positions)[0]);
             }
             else if (HalfKav2)
             {

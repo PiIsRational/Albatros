@@ -347,7 +347,7 @@ class Halfkp_avx2
         set_acc_from_position(InputBoard, Kingplace);
         Array.Copy(acc.Acc, test_a.Acc, test_a.Acc.Length);
         Array.Copy(backup.Acc, acc.Acc, test_a.Acc.Length);
-        update_acc_from_move(move, color);
+        update_acc_from_move(InputBoard, move, color);
         Array.Copy(acc.Acc, test_b.Acc, test_a.Acc.Length);
         Array.Copy(backup.Acc, acc.Acc, test_a.Acc.Length);
         for (int i = 0; i < 2; i++) 
@@ -378,7 +378,7 @@ class Halfkp_avx2
             }
         }
     }
-    public void update_acc_from_move(int[] Move , byte color)
+    public void update_acc_from_move(byte[,] InputBoard, int[] Move, byte color)
     {
         List<int>[] FeaturesToAdd = new List<int>[2];
         List<int>[] FeaturestoRemove = new List<int>[2];
@@ -400,6 +400,8 @@ class Halfkp_avx2
                 {
                     kingsquares[2 * color + 0] = Move[i * 3 + 3];
                     kingsquares[2 * color + 1] = Move[i * 3 + 4];
+                    GetFeaturesFromPos(InputBoard, color, Move[i * 3 + 3], Move[i * 3 + 4]);
+
                 }
             }
             acc = UpdateAcc(Transformer, acc, FeaturesToAdd, FeaturestoRemove, (byte)j);
@@ -763,19 +765,19 @@ class Halfkp_avx2
         //L1
         for (int i = 0; i < L1.bias.Length; i++)
         {
-            L1.bias[i] = Convert.ToInt16(BitConverter.Int32BitsToSingle(Convert.ToInt32(Values[counter])) * weight_scaling * activation_scaling);
+            L1.bias[i] = Convert.ToInt16(MaxMin(BitConverter.Int32BitsToSingle(Convert.ToInt32(Values[counter])) * weight_scaling * activation_scaling));
             counter++;
         }
         //L2
         for (int i = 0; i < L2.bias.Length; i++)
         {
-            L2.bias[i] = Convert.ToInt16(BitConverter.Int32BitsToSingle(Convert.ToInt32(Values[counter])) * weight_scaling * activation_scaling);
+            L2.bias[i] = Convert.ToInt16(MaxMin(BitConverter.Int32BitsToSingle(Convert.ToInt32(Values[counter])) * weight_scaling * activation_scaling));
             counter++;
         }
         //Output
         for (int i = 0; i < Output.bias.Length; i++)
         {
-            Output.bias[i] = Convert.ToInt16(BitConverter.Int32BitsToSingle(Convert.ToInt32(Values[counter])) * weight_scaling * activation_scaling);
+            Output.bias[i] = Convert.ToInt16(MaxMin(BitConverter.Int32BitsToSingle(Convert.ToInt32(Values[counter])) * weight_scaling * activation_scaling));
             counter++;
         }
 
@@ -784,7 +786,7 @@ class Halfkp_avx2
         {
             for (int j = 0; j < Transformer.weight.GetLength(1); j++)
             {
-                Transformer.weight[i, j] = Convert.ToInt16(BitConverter.Int32BitsToSingle(Convert.ToInt32(Values[counter])) * weight_scaling * activation_scaling);
+                Transformer.weight[i, j] = Convert.ToInt16(MaxMin(BitConverter.Int32BitsToSingle(Convert.ToInt32(Values[counter])) * weight_scaling * activation_scaling));
                 counter++;
             }
         }
@@ -792,11 +794,15 @@ class Halfkp_avx2
         //StartMatrixBias
         for (int i = 0; i < Transformer.bias.Length; i++)
         {
-            Transformer.bias[i] = Convert.ToInt16(BitConverter.Int32BitsToSingle(Convert.ToInt32(Values[counter])) * weight_scaling * activation_scaling);
+            Transformer.bias[i] = Convert.ToInt16(MaxMin(BitConverter.Int32BitsToSingle(Convert.ToInt32(Values[counter])) * weight_scaling * activation_scaling));
             counter++;
         }
 
         Console.WriteLine("Done !");
+    }
+    public float MaxMin(float Input)
+    {
+        return (float)Math.Min(short.MinValue , Math.Max(short.MaxValue, Math.Round(Input, 0)));
     }
 }
 class Accumulator
