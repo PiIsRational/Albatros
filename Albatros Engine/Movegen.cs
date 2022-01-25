@@ -225,7 +225,7 @@ public class MoveGen
     {
         byte Copy = (byte)(InputBoard[X, Y] + 1);
 
-        if (Move.Length == 2)
+        if (Move.Length == 2 && Move[0] != X + 2 && Move[0] != X - 2)
         {
             UnmakeMove = new int[] { X, Y, Copy - 1, Move[0], Move[1], InputBoard[Move[0], Move[1]] };
             InputBoard[X, Y] = 0;
