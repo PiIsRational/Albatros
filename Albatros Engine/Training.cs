@@ -126,6 +126,11 @@ class Training
             Array.Copy(TrainNet.HalfkpMatrix, CurrentHalfkpMatrix, TrainNet.HalfkpMatrix.Length);
             Array.Copy(TrainNet.HalfkpMatrixBias, CurrentHalfkpMatrixBiases, TrainNet.HalfkpMatrixBias.Length);
         }
+        //init the change Arrays
+        HalfkpWeightChangeCopy = new float[ThreadAmount][][,];
+        HalfkpMatrixChangeCopy = new float[ThreadAmount][,];
+        HalfkpBiaseChangeCopy = new float[ThreadAmount][][];
+        HalfkpMatrixBiaseChangeCopy = new float[ThreadAmount][];
         //start Playing Threads
         Playing = new Thread[ThreadAmount];
         Console.WriteLine("Starting to Play...");
@@ -152,8 +157,12 @@ class Training
             {
                 //Test
                 /*treesearch.Test(1000, CurrentTrainingSet[0] , true , false);
-                treesearch.ValueNet.SaveHalfkpNet("HalfkpMaybeGood.nnue", true);
-                TrainingSteps++;*/
+                treesearch.ValueNet.SaveHalfkpNet("HalfkpMaybeGood.nnue", true);*/
+                //try to find good Hyperparameters
+                //treesearch.findHyperparameters(CurrentTrainingSet[0], true, false);
+                //graph the values from the different Hyperparameters
+                treesearch.graphHyperparameters(CurrentTrainingSet[0], true, false);
+                TrainingSteps++;
                 //Give the info about the current Training cycle to the user
                 Console.WriteLine("Wins for White : {0}", WinWhite);
                 Console.WriteLine("Wins for Black : {0}", WinBlack);
@@ -258,13 +267,9 @@ class Training
                     }
                     else if (CurrentState == IsHalfKp)
                     {
-                        HalfkpWeightChangeCopy = new float[HalfkpWeightCopy.Count][][,];
                         Array.Copy(HalfkpWeightCopy.ToArray(), HalfkpWeightChangeCopy, HalfkpWeightChangeCopy.Length);
-                        HalfkpMatrixChangeCopy = new float[HalfkpMatrixCopy.Count][,];
                         Array.Copy(HalfkpMatrixCopy.ToArray(), HalfkpMatrixChangeCopy, HalfkpMatrixChangeCopy.Length);
-                        HalfkpBiaseChangeCopy = new float[HalfkpBiasCopy.Count][][];
                         Array.Copy(HalfkpBiasCopy.ToArray(), HalfkpBiaseChangeCopy, HalfkpBiaseChangeCopy.Length);
-                        HalfkpMatrixBiaseChangeCopy = new float[HalfkpMatrixBiasCopy.Count][];
                         Array.Copy(HalfkpMatrixBiasCopy.ToArray(), HalfkpMatrixBiaseChangeCopy, HalfkpMatrixBiaseChangeCopy.Length);
 
                         HalfkpWeightCopy = new List<float[][,]>();
@@ -273,12 +278,17 @@ class Training
                         HalfkpMatrixBiasCopy = new List<float[]>();
 
                         //TrainNet.Ranger21(HalfkpWeightChangeCopy, HalfkpBiaseChangeCopy, HalfkpMatrixChangeCopy, HalfkpMatrixBiaseChangeCopy, TrainingMomentum, 0.999f, 1, 220, 1000, 280, 0.0001f, 5, 0.5f);
-                        TrainNet.AdamW(HalfkpWeightChangeCopy, HalfkpBiaseChangeCopy, HalfkpMatrixChangeCopy, HalfkpMatrixBiaseChangeCopy, TrainingMomentum, 0.9f, 0.1f, 220, 1000, 280, 0.0001f);
+                        TrainNet.AdamW(HalfkpWeightChangeCopy, HalfkpBiaseChangeCopy, HalfkpMatrixChangeCopy, HalfkpMatrixBiaseChangeCopy, TrainingMomentum, 0.9f, 0.1f, 22, 100, 28, 0.0001f);
 
-                        Array.Copy(TrainNet.HalfkpWeigths, CurrentHalfkpWeights, TrainNet.HalfkpWeigths.Length);
+                        /*Array.Copy(TrainNet.HalfkpWeigths, CurrentHalfkpWeights, TrainNet.HalfkpWeigths.Length);
                         Array.Copy(TrainNet.HalfkpBiases, CurrentHalfkpBiases, TrainNet.HalfkpBiases.Length);
                         Array.Copy(TrainNet.HalfkpMatrix, CurrentHalfkpMatrix, TrainNet.HalfkpMatrix.Length);
-                        Array.Copy(TrainNet.HalfkpMatrixBias, CurrentHalfkpMatrixBiases, TrainNet.HalfkpMatrixBias.Length);
+                        Array.Copy(TrainNet.HalfkpMatrixBias, CurrentHalfkpMatrixBiases, TrainNet.HalfkpMatrixBias.Length);*/
+
+                        CurrentHalfkpWeights = TrainNet.HalfkpWeigths;
+                        CurrentHalfkpBiases = TrainNet.HalfkpBiases;
+                        CurrentHalfkpMatrix = TrainNet.HalfkpMatrix;
+                        CurrentHalfkpMatrixBiases = TrainNet.HalfkpMatrixBias;
                     }
                 }
                 semaphoreEveryone.WaitOne();
@@ -803,10 +813,14 @@ class Training
         }
         else
         {
-            Array.Copy(CurrentHalfkpWeights, Net.HalfkpWeigths, CurrentHalfkpWeights.Length);
+            /*Array.Copy(CurrentHalfkpWeights, Net.HalfkpWeigths, CurrentHalfkpWeights.Length);
             Array.Copy(CurrentHalfkpBiases, Net.HalfkpBiases, CurrentHalfkpBiases.Length);
             Array.Copy(CurrentHalfkpMatrix, Net.HalfkpMatrix, CurrentHalfkpMatrix.Length);
-            Array.Copy(CurrentHalfkpMatrixBiases, Net.HalfkpMatrixBias, CurrentHalfkpMatrixBiases.Length);
+            Array.Copy(CurrentHalfkpMatrixBiases, Net.HalfkpMatrixBias, CurrentHalfkpMatrixBiases.Length);*/
+            Net.HalfkpWeigths = CurrentHalfkpWeights;
+            Net.HalfkpBiases = CurrentHalfkpBiases;
+            Net.HalfkpMatrix = CurrentHalfkpMatrix;
+            Net.HalfkpMatrixBias = CurrentHalfkpMatrixBiases;
         }
         semaphoreEveryone.Release();
 

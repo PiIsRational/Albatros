@@ -62,7 +62,7 @@ public class MoveGen
         //Look for blocking of Position
         List<int[]> Moves = ReturnPossibleMoves(InputBoard, Color);
         if (Moves == null)
-            return -2;
+            return 2;
         byte[,] MoveUndo = new byte[9, 9];
         byte NewColor = 0;
         if (Color == 0)

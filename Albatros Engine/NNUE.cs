@@ -519,7 +519,7 @@ class NNUE
                 Console.WriteLine("HalfKav2 Net Detected !"); 
         }
         if (!DetectNetType(FileName))
-            OpenHalfkpNet(FileName);
+            OpenHalfkpNet(FileName, WriteType);
         else
             OpenNet(FileName);
     }
@@ -612,7 +612,7 @@ class NNUE
         swBackup.Close();
         Console.WriteLine("Done !");
     }
-    public void OpenHalfkpNet(string FileName)
+    public void OpenHalfkpNet(string FileName , bool showDialog)
     {
         int counter = 1;
         StreamReader sr = new StreamReader(FileName);
@@ -665,8 +665,8 @@ class NNUE
             HalfkpMatrixBias_lookahead[j] = HalfkpMatrixBias[j];
             counter++;
         }
-
-        Console.WriteLine("Done !");
+        if (showDialog)
+            Console.WriteLine("Done !");
     }
     public void OpenNet(string FileName)
     {
@@ -1494,7 +1494,7 @@ class NNUE
     {
         float CurrentChange = 0, corrected_momentum = 0, corrected_velocity = 0, update = 0, decay = 0;
         //caculate the current learningrate
-        float currentLearningRate = (float)Math.Min(1, Math.Min(Math.Max(((1 - velocity) * iterationcount) / 2, iterationcount / t_warmup), (t_max - iterationcount) / t_warmdown)) * learningRate;
+        float currentLearningRate = (float)Math.Min(1, Math.Min(Math.Max(((1 - velocity) * iterationcount % t_max) / 2, iterationcount % t_max / t_warmup), (t_max - iterationcount % t_max) / t_warmdown)) * learningRate;
         //Change Weigths
         for (int i = 0; i < HalfkpWeigths.Length; i++)
         {
@@ -1602,8 +1602,6 @@ class NNUE
         }
         //augmant the iteration count by 1
         iterationcount++;
-        if (iterationcount == t_max)
-            iterationcount = 0;
     }
 }
 class PSQTValue

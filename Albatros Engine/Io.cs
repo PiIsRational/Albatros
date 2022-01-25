@@ -226,43 +226,24 @@ class Io
                     switch (command_syntax[1])
                     {
                         case "startpos":
-                            if (!game.Playing)
+                            game.Playing = true;
+                            game.Board = game.LoadPositionFromFen(game.StartPosition);
+                            try
                             {
-                                game.Playing = true;
-                                game.Board = game.LoadPositionFromFen(game.StartPosition);
-                                try
+                                if (command_syntax[2] == "moves")
                                 {
-                                    if (command_syntax[2] == "moves")
-                                    {
-                                        string[] MoovesComands = new string[command_syntax.Length - 3];
+                                    string[] MoovesComands = new string[command_syntax.Length - 3];
 
-                                        for (int i = 3; i < command_syntax.Length; i++)
-                                            MoovesComands[i - 3] = command_syntax[i];
+                                    for (int i = 3; i < command_syntax.Length; i++)
+                                        MoovesComands[i - 3] = command_syntax[i];
 
-                                        byte[][,] array = PlayGameFromCommand(MoovesComands , false);
-                                        game.Turn = array[1][0, 0];
-                                        Array.Copy(array[0], game.Board, game.Board.Length);
-                                    }
-                                }
-                                catch
-                                { }
-                            }
-                            else
-                            {
-                                try
-                                {
-                                    string[] MoovesComands = new string[2];
-
-                                    for (int i = command_syntax.Length - 2; i < command_syntax.Length; i++)
-                                        MoovesComands[i + 2 - command_syntax.Length] = command_syntax[i];
-
-                                    byte[][,] array = PlayGameFromCommand(MoovesComands , true);
+                                    byte[][,] array = PlayGameFromCommand(MoovesComands, false);
                                     game.Turn = array[1][0, 0];
                                     Array.Copy(array[0], game.Board, game.Board.Length);
                                 }
-                                catch
-                                { }
                             }
+                            catch
+                            { }
                             break;
                         case "fen":
                             try

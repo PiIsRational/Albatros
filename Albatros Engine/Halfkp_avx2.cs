@@ -38,7 +38,11 @@ class Halfkp_avx2
         initL1();
         initL2();
         initOutput();
-        LoadOldNetFile("ValueNet.nnue");
+        try
+        {
+            LoadOldNetFile("ValueNet.nnue");
+        }
+        catch { }
         initkOnes256();
         initPtype();
         //initialize the feature vectors

@@ -152,7 +152,7 @@ class AlphaBeta
                 //play the move
                 InputBoard = MoveGenerator.PlayMove(InputBoard, color, move);
                 //play the move in the accumulator
-                halfkp.update_acc_from_move(MoveGenerator.UnmakeMove, color);
+                halfkp.update_acc_from_move(InputBoard, MoveGenerator.UnmakeMove, color);
 
                 //copy the unmake move into move undo
                 MoveUndo = new int[MoveGenerator.UnmakeMove.Length];
@@ -187,15 +187,15 @@ class AlphaBeta
                     //if the current depth is 1 perform a quiescent search
                     if (i == 1)
                     {
-                        currentScore = -quiescent_search(InputBoard, -20, -alpha, othercolor, NNUE_avx2, 0);
+                        currentScore = -quiescent_search(InputBoard, -2, -alpha, othercolor, NNUE_avx2, 0);
                         Nodecount++;
                     }
                     //else call the negamax function at the current depth minus 1
                     else
-                        currentScore = -negamax(InputBoard, othercolor, i - 1, -20, -alpha, NNUE_avx2);
+                        currentScore = -negamax(InputBoard, othercolor, i - 1, -2, -alpha, NNUE_avx2);
 
-                    //determine if the current move is better than the currently best move
-                    if (alpha <= currentScore)
+                    //determine if the current move is better than the currently best move only if it is legal
+                    if (alpha <= currentScore && currentScore != 2) 
                     {
                         Output = move;
                         alpha = currentScore;
@@ -263,7 +263,7 @@ class AlphaBeta
             MoveUndo = new int[MoveGenerator.UnmakeMove.Length];
             Array.Copy(MoveGenerator.UnmakeMove, MoveUndo, MoveUndo.Length);
             //play the move in the accumulator
-            halfkp.update_acc_from_move(MoveGenerator.UnmakeMove, color);
+            halfkp.update_acc_from_move(InputBoard,MoveGenerator.UnmakeMove, color);
             //if the current depth is 1 do a quiescent search
             if (depthPly <= 1)
             {
@@ -292,7 +292,7 @@ class AlphaBeta
             Array.Copy(kingpositions, halfkp.kingpositions, 2);
 
             //if the branch is not better then the currently best branch we can prune the other positions
-            if (current_score >= beta)
+            if (current_score >= beta && current_score != 2)
             {
                 return current_score;
             }
@@ -333,11 +333,22 @@ class AlphaBeta
         //if the position is legal
         if (Moves != null)
         {
-            //evaluate the position
             if (NNUE_avx2)
                 current_score = halfkp.AccToOutput(halfkp.acc, color);
             else
                 current_score = eval.PestoEval(InputBoard, othercolor);
+
+            //if the branch is not better then the currently best branch we can prune the other positions
+            if (current_score >= beta)
+            {
+                return current_score;
+            }
+
+            //if the current score is not 2 the position is not illegal and therefore we have found a legal move
+            if (current_score > alpha && current_score != 2)
+            {
+                alpha = current_score;
+            }
 
             //if the position is quiet return the evaluation
             if (Moves.Count == 0)
@@ -365,7 +376,7 @@ class AlphaBeta
             MoveUndo = new int[MoveGenerator.UnmakeMove.Length];
             Array.Copy(MoveGenerator.UnmakeMove, MoveUndo, MoveUndo.Length);
             //play the move in the accumulator
-            halfkp.update_acc_from_move(MoveGenerator.UnmakeMove, color);
+            halfkp.update_acc_from_move(InputBoard, MoveGenerator.UnmakeMove, color);
 
             //calls itself recursively
             current_score = -quiescent_search(InputBoard, -beta, -alpha, othercolor, NNUE_avx2, depthPly + 1);
@@ -387,26 +398,24 @@ class AlphaBeta
             Array.Copy(kingpositions, halfkp.kingpositions, 2);
 
             //if the branch is not better then the currently best branch we can prune the other positions
-            if (current_score >= beta)
+            if (current_score >= beta && current_score != 2)
             {
                 return current_score;
             }
         }
-
         //return the best score
         return alpha;       
     }
 }
 class HTableEntry
 {
-    public List<int[]> BestMoves = new List<int[]>();
+    public int[] BestMoves;
     public float Score;
-    public int depth;
+    public byte depth;
     public bool NodeScoreIsExact = true;
-    public HTableEntry(int[] Bestmove, float CurrentScore, int Currentdepth, bool ScoreIsExact)
+    public HTableEntry(int[] Bestmove, float CurrentScore, byte Currentdepth, bool ScoreIsExact)
     {
-        BestMoves = new List<int[]>();
-        BestMoves.Add(Bestmove);
+        BestMoves = Bestmove;
         Score = CurrentScore;
         depth = Currentdepth;
         NodeScoreIsExact = ScoreIsExact;
