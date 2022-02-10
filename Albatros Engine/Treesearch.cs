@@ -129,7 +129,6 @@ class Treesearch
             {
                 //Backpropagate the network
                 ValueNet.BackPropagationHalfkp(Positions);
-                ValueNet.AdamW(new float[][][,] { ValueNet.HalfkpWeigthChanges }, new float[][][] { ValueNet.HalfkpBiasChange }, new float[][,] { ValueNet.HalfkpMatrixChange }, new float[][] { ValueNet.HalfkpMatrixBiasChange }, 0.9f , 0.9f , 0.1f , 0.22f * Iterations , Iterations , 0.28f * Iterations , 0.0001f);
                 Console.WriteLine("The Error is {0}", ValueNet.CostOfHalfkpNet(Positions)[0]);
             }
             else if (HalfKav2)
@@ -140,172 +139,6 @@ class Treesearch
                 Console.WriteLine("The Error is {0}", ValueNet.CostOfNet(Positions));
             }
         }
-    }
-    public void findHyperparameters(TrainingPosition[] Positions, bool Halfkp, bool HalfKav2)
-    {
-        float[] change = new float[3];
-        for (int i = 0; i < 3; i++)
-            change[i] = 0.5f;
-        float current_step_size = 0.25f;
-        float bestscore = 1, currentscore = 0;
-        int currentchange = 0;
-        bool didchange = false , update = false;
-        while (true)
-        {
-            //do a test run
-            for (int i = 0; i < 100; i++)
-            {
-                if (Halfkp)
-                {
-                    //Backpropagate the network
-                    ValueNet.BackPropagationHalfkp(Positions);
-                    ValueNet.AdamW(new float[][][,] { ValueNet.HalfkpWeigthChanges }, new float[][][] { ValueNet.HalfkpBiasChange }, new float[][,] { ValueNet.HalfkpMatrixChange }, new float[][] { ValueNet.HalfkpMatrixBiasChange }, change[0], change[1], change[2], 0.22f * 100, 100, 0.28f * 100, 0.0001f);
-                    currentscore = (float)ValueNet.CostOfHalfkpNet(Positions)[0];
-                }
-            }
-            //reset the neural net
-            ValueNet = new NNUE();
-            ValueNet.LoadNet("ValueNet.nnue", false);
-
-            //update the best score
-            if (currentscore < bestscore)
-            {
-                bestscore = currentscore;
-                currentchange++;
-                update = false;
-                didchange = false;
-                if(currentchange == 3)
-                {
-                    currentchange = 0;
-                    current_step_size /= 2;
-                }
-            }
-            else if(update)
-            {
-                change[currentchange] += 2 * current_step_size;
-                currentchange++;
-                if (currentchange == 3)
-                {
-                    currentchange = 0;
-                    current_step_size /= 2;
-                }
-            }
-            //write the dialog
-            Console.WriteLine("The current parameters are:");
-            Console.WriteLine("Learning Rate {0}", change[2]);
-            Console.WriteLine("Momentum {0}", change[0]);
-            Console.WriteLine("Momentum 2 {0}", change[1]);
-            Console.WriteLine("the current score is {0}", currentscore);
-            Console.WriteLine("the best score is {0}", bestscore);
-            //make the change on the current parameter
-            if (didchange)
-            {
-                update = true;
-                change[currentchange] -= 2 * current_step_size;
-            }
-            else
-            {
-                didchange = true;
-                change[currentchange] += current_step_size;
-            }
-        }
-    }
-    public void graphHyperparameters(TrainingPosition[] Positions, bool Halfkp, bool HalfKav2)
-    {
-        float currentBest = 0 , bestValue = 1 , currentValue = 0;
-        string Output = "";
-        for (int i = 200; i < 400; i++)
-        {
-            for (int j = 0; j < 10; j++)
-            {
-                //Backpropagate the network
-                ValueNet.BackPropagationHalfkp(Positions);
-                ValueNet.AdamW(new float[][][,] { ValueNet.HalfkpWeigthChanges }, new float[][][] { ValueNet.HalfkpBiasChange }, new float[][,] { ValueNet.HalfkpMatrixChange }, new float[][] { ValueNet.HalfkpMatrixBiasChange }, ((float)i) / 400, 0.9f, 0.1f, 22, 100, 28, 0.0001f);
-            }
-            currentValue = (float)ValueNet.CostOfHalfkpNet(Positions)[0];
-            Output += (int)currentValue + "." + currentValue.ToString().Split(',')[1] + "\n";
-            if(currentValue < bestValue)
-            {
-                bestValue = currentValue;
-                currentBest = ((float)i) / 200;
-            }
-            //reset the neural net
-            ValueNet = new NNUE();
-            ValueNet.LoadNet("ValueNet.nnue", false);
-        }
-        Console.WriteLine("The best value {0} used the momentum parameter {1}", bestValue, currentBest);
-        bestValue = 1;
-        Output += "\n\n";
-        for (int i = 200; i < 400; i++)
-        {
-            for (int j = 0; j < 10; j++)
-            {
-                //Backpropagate the network
-                ValueNet.BackPropagationHalfkp(Positions);
-                ValueNet.AdamW(new float[][][,] { ValueNet.HalfkpWeigthChanges }, new float[][][] { ValueNet.HalfkpBiasChange }, new float[][,] { ValueNet.HalfkpMatrixChange }, new float[][] { ValueNet.HalfkpMatrixBiasChange }, 0.9f, ((float)i) / 400, 0.1f, 22, 100, 28, 0.0001f);
-            }
-            currentValue = (float)ValueNet.CostOfHalfkpNet(Positions)[0];
-            Output += (int)currentValue + "." + currentValue.ToString().Split(',')[1] + "\n";
-            if (currentValue < bestValue)
-            {
-                bestValue = currentValue;
-                currentBest = ((float)i) / 200;
-            }
-            //reset the neural net
-            ValueNet = new NNUE();
-            ValueNet.LoadNet("ValueNet.nnue", false);
-        }
-        Console.WriteLine("The best value {0} used the velocity parameter {1}", bestValue, currentBest);
-        bestValue = 1;
-        Output += "\n\n";
-        for (int i = 1; i < 201; i++)
-        {
-            for (int j = 0; j < 10; j++)
-            {
-                //Backpropagate the network
-                ValueNet.BackPropagationHalfkp(Positions);
-                ValueNet.AdamW(new float[][][,] { ValueNet.HalfkpWeigthChanges }, new float[][][] { ValueNet.HalfkpBiasChange }, new float[][,] { ValueNet.HalfkpMatrixChange }, new float[][] { ValueNet.HalfkpMatrixBiasChange }, 0.9f, 0.9f, ((float)i) / 4020, 22, 100, 28, 0.0001f);
-            }
-            currentValue = (float)ValueNet.CostOfHalfkpNet(Positions)[0];
-            Output += (int)currentValue + "." + currentValue.ToString().Split(',')[1] + "\n";
-            if (currentValue < bestValue)
-            {
-                bestValue = currentValue;
-                currentBest = ((float)i) / 200;
-            }
-            //reset the neural net
-            ValueNet = new NNUE();
-            ValueNet.LoadNet("ValueNet.nnue", false);
-        }
-        Console.WriteLine("The best value {0} used the learning rate parameter {1}", bestValue, currentBest);
-        bestValue = 1;
-        Output += "\n\n";
-        for (int i = 1; i < 201; i++)
-        {
-            for (int j = 0; j < 10; j++)
-            {
-                //Backpropagate the network
-                ValueNet.BackPropagationHalfkp(Positions);
-                ValueNet.AdamW(new float[][][,] { ValueNet.HalfkpWeigthChanges }, new float[][][] { ValueNet.HalfkpBiasChange }, new float[][,] { ValueNet.HalfkpMatrixChange }, new float[][] { ValueNet.HalfkpMatrixBiasChange }, 0.9f, 0.9f, 0.1f, 22, 100, 28, ((float)i) / 20100);
-            }
-            currentValue = (float)ValueNet.CostOfHalfkpNet(Positions)[0];
-            Output += (int)currentValue + "." + currentValue.ToString().Split(',')[1] + "\n";
-            if (currentValue < bestValue)
-            {
-                bestValue = currentValue;
-                currentBest = ((float)i) / 20000;
-            }
-            //reset the neural net
-            ValueNet = new NNUE();
-            ValueNet.LoadNet("ValueNet.nnue", false);
-        }
-        Console.WriteLine("The best value {0} used the weight decay parameter {1}", bestValue, currentBest);
-        Console.WriteLine("Done !");
-        StreamWriter sw = new StreamWriter("Errors.txt");
-        sw.WriteLine(Output);
-        sw.Flush();
-        sw.Close();
-        while (true) { }
     }
     public void SetNet(string File)
     {
@@ -802,7 +635,7 @@ class Treesearch
                         if (HalfKav2)
                             CurrentNumerator = ValueNet.UseNet(CurrentBoard, OtherColor);
                         else if (Halfkp)
-                            CurrentNumerator = ValueNet.UseHalfkpNet(CurrentBoard, OtherColor);
+                            CurrentNumerator = (float)ValueNet.UseHalfkpNet(CurrentBoard, OtherColor);
                     }
                     else
                         CurrentNumerator = eval.PestoEval(CurrentBoard, OtherColor);
@@ -839,7 +672,7 @@ class Treesearch
                     if(HalfKav2)
                       CurrentNumerator = ValueNet.UseNet(CurrentBoard, CurrentNode.Color);
                     else if (Halfkp)
-                        CurrentNumerator = ValueNet.UseHalfkpNet(CurrentBoard, CurrentNode.Color);
+                        CurrentNumerator = (float)ValueNet.UseHalfkpNet(CurrentBoard, CurrentNode.Color);
                 }
                 else
                     CurrentNumerator = eval.PestoEval(CurrentBoard, CurrentNode.Color);

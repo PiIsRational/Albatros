@@ -24,18 +24,18 @@ class NNUE
     int[] HalfKav2Format = new int[] { 1024, 16, 32, 1 };
     //HalfKp
     //feature transformer
-    public float[,] HalfkpMatrix = new float[40960, 256], HalfkpMatrixChange = new float[40960, 256], HalfkpMatrix_momentum = new float[40960, 256], HalfkpMatrix_old_momentum = new float[40960, 256], HalfkpMatrix_velocity = new float[40960, 256], HalfkpMatrix_lookahead = new float[40960, 256], HalfkpMatrix_velocity_max = new float[40960, 256];
+    public double[,] HalfkpMatrix = new double[40960, 256], HalfkpMatrixChange = new double[40960, 256], HalfkpMatrix_momentum = new double[40960, 256], HalfkpMatrix_old_momentum = new double[40960, 256], HalfkpMatrix_velocity = new double[40960, 256], HalfkpMatrix_lookahead = new double[40960, 256], HalfkpMatrix_velocity_max = new double[40960, 256];
     //featur transformer bias
-    public float[] HalfkpMatrixBias = new float[512], HalfkpMatrixBiasChange = new float[512], HalfkpMatrixBias_momentum = new float[512], HalfkpMatrixBias_old_momentum = new float[512], HalfkpMatrixBias_velocity = new float[512], HalfkpMatrixBias_lookahead = new float[512], HalfkpMatrixBias_velocity_max = new float[512];
+    public double[] HalfkpMatrixBias = new double[512], HalfkpMatrixBiasChange = new double[512], HalfkpMatrixBias_momentum = new double[512], HalfkpMatrixBias_old_momentum = new double[512], HalfkpMatrixBias_velocity = new double[512], HalfkpMatrixBias_lookahead = new double[512], HalfkpMatrixBias_velocity_max = new double[512];
     //weights
-    public float[][,] HalfkpWeigths = new float[3][,], HalfkpWeigthChanges = new float[3][,], HalfkpWeigth_momentum = new float[3][,], HalfkpWeigth_old_momentum = new float[3][,], HalfkpWeigth_velocity = new float[3][,], HalfkpWeigth_lookahead = new float[3][,], HalfkpWeigth_velocity_max = new float[3][,];
+    public double[][,] HalfkpWeigths = new double[3][,], HalfkpWeigthChanges = new double[3][,], HalfkpWeigth_momentum = new double[3][,], HalfkpWeigth_old_momentum = new double[3][,], HalfkpWeigth_velocity = new double[3][,], HalfkpWeigth_lookahead = new double[3][,], HalfkpWeigth_velocity_max = new double[3][,];
     //biases
-    public float[][] HalfkpBiases = new float[3][], HalfkpBias_momentum = new float[3][], HalfkpBias_old_momentum = new float[3][], HalfkpBias_velocity = new float[3][], HalfkpBias_velocity_max = new float[3][], HalfkpBias_lookahead = new float[3][], HalfkpBiasChange = new float[3][];
+    public double[][] HalfkpBiases = new double[3][], HalfkpBias_momentum = new double[3][], HalfkpBias_old_momentum = new double[3][], HalfkpBias_velocity = new double[3][], HalfkpBias_velocity_max = new double[3][], HalfkpBias_lookahead = new double[3][], HalfkpBiasChange = new double[3][];
 
-    public float[][] HalfkpNeuronInput = new float[3][], HalfkpNeuronVal = new float[3][], HalfkpNeuronErrors = new float[3][];
-    public float[] HalfkpMatrixOut = new float[512];
+    public double[][] HalfkpNeuronInput = new double[3][], HalfkpNeuronVal = new double[3][], HalfkpNeuronErrors = new double[3][];
+    public double[] HalfkpMatrixOut = new double[512];
 
-    public float HalfkpOutNet = 0, iterationcount = 0;
+    public double HalfkpOutNet = 0, iterationcount = 0;
     int[] HalfkpFormat = new int[] { 512, 32, 32, 1 };
     public NNUE()
     {
@@ -62,16 +62,16 @@ class NNUE
         //init HalfKp Biases
         for (int i = 0; i < HalfkpBiases.Length; i++)
         {
-            HalfkpBiases[i] = new float[HalfkpFormat[i + 1]];
-            HalfkpBias_momentum[i] = new float[HalfkpFormat[i + 1]];
-            HalfkpBias_old_momentum[i] = new float[HalfkpFormat[i + 1]];
-            HalfkpBias_velocity[i] = new float[HalfkpFormat[i + 1]];
-            HalfkpBias_velocity_max[i] = new float[HalfkpFormat[i + 1]];
-            HalfkpBias_lookahead[i] = new float[HalfkpFormat[i + 1]];
-            HalfkpBiasChange[i] = new float[HalfkpFormat[i + 1]];
-            HalfkpNeuronVal[i] = new float[HalfkpFormat[i + 1]];
-            HalfkpNeuronInput[i] = new float[HalfkpFormat[i + 1]];
-            HalfkpNeuronErrors[i] = new float[HalfkpFormat[i + 1]];
+            HalfkpBiases[i] = new double[HalfkpFormat[i + 1]];
+            HalfkpBias_momentum[i] = new double[HalfkpFormat[i + 1]];
+            HalfkpBias_old_momentum[i] = new double[HalfkpFormat[i + 1]];
+            HalfkpBias_velocity[i] = new double[HalfkpFormat[i + 1]];
+            HalfkpBias_velocity_max[i] = new double[HalfkpFormat[i + 1]];
+            HalfkpBias_lookahead[i] = new double[HalfkpFormat[i + 1]];
+            HalfkpBiasChange[i] = new double[HalfkpFormat[i + 1]];
+            HalfkpNeuronVal[i] = new double[HalfkpFormat[i + 1]];
+            HalfkpNeuronInput[i] = new double[HalfkpFormat[i + 1]];
+            HalfkpNeuronErrors[i] = new double[HalfkpFormat[i + 1]];
             for (int j = 0; j < HalfkpBiases[i].Length; j++)
             {
                 HalfkpBiases[i][j] = Convert.ToSingle(((float)random.NextDouble() - 0.5) * 1 / 2);
@@ -100,13 +100,13 @@ class NNUE
         //init HalfKp Weights
         for (int i = 0; i < HalfkpWeigths.Length; i++)
         {
-            HalfkpWeigth_momentum[i] = new float[HalfkpFormat[i], HalfkpFormat[i + 1]];
-            HalfkpWeigth_old_momentum[i] = new float[HalfkpFormat[i], HalfkpFormat[i + 1]];
-            HalfkpWeigth_velocity[i] = new float[HalfkpFormat[i], HalfkpFormat[i + 1]];
-            HalfkpWeigth_velocity_max[i] = new float[HalfkpFormat[i], HalfkpFormat[i + 1]];
-            HalfkpWeigth_lookahead[i] = new float[HalfkpFormat[i], HalfkpFormat[i + 1]];
-            HalfkpWeigthChanges[i] = new float[HalfkpFormat[i], HalfkpFormat[i + 1]];
-            HalfkpWeigths[i] = new float[HalfkpFormat[i], HalfkpFormat[i + 1]];
+            HalfkpWeigth_momentum[i] = new double[HalfkpFormat[i], HalfkpFormat[i + 1]];
+            HalfkpWeigth_old_momentum[i] = new double[HalfkpFormat[i], HalfkpFormat[i + 1]];
+            HalfkpWeigth_velocity[i] = new double[HalfkpFormat[i], HalfkpFormat[i + 1]];
+            HalfkpWeigth_velocity_max[i] = new double[HalfkpFormat[i], HalfkpFormat[i + 1]];
+            HalfkpWeigth_lookahead[i] = new double[HalfkpFormat[i], HalfkpFormat[i + 1]];
+            HalfkpWeigthChanges[i] = new double[HalfkpFormat[i], HalfkpFormat[i + 1]];
+            HalfkpWeigths[i] = new double[HalfkpFormat[i], HalfkpFormat[i + 1]];
             for (int j = 0; j < HalfkpWeigths[i].GetLength(0); j++)
             {
                 for (int k = 0; k < HalfkpWeigths[i].GetLength(1); k++)
@@ -169,9 +169,9 @@ class NNUE
         }
         return InputVector;
     }
-    public float[] HalfKpMatrixMultiply(List<int>InputVector)
+    public double[] HalfKpMatrixMultiply(List<int>InputVector)
     {
-        float[] Output = new float[256];
+        double[] Output = new double[256];
         for (int i = 0; i < 256; i++)
             Output[i] = HalfkpMatrixBias[i];
         
@@ -195,7 +195,7 @@ class NNUE
         }
         Console.WriteLine("\nThe vector values are:\n {0}", Output);
     }
-    public float HalfkpEval(float[] Input)
+    public double HalfkpEval(double[] Input)
     {
         for (int i = 0; i < 3; i++)
         {
@@ -225,11 +225,11 @@ class NNUE
         else
             return CostOfHalfkpNet(Input);
     }
-    public float UseHalfkpNet(byte[,] InputBoard, byte color)
+    public double UseHalfkpNet(byte[,] InputBoard, byte color)
     {
         List<int>[] Input = BoardToHalfKav2(InputBoard, color);
 
-        float[] EvalVector = new float[512], ConverterOur = new float[256], ConverterTheir = new float[256];
+        double[] EvalVector = new double[512], ConverterOur = new double[256], ConverterTheir = new double[256];
         ConverterOur = HalfKpMatrixMultiply(Input[0]);
         ConverterTheir = HalfKpMatrixMultiply(Input[1]);
         for (int i = 0; i < 256; i++)
@@ -317,33 +317,33 @@ class NNUE
             }
         }
     }
-    public float ReluDerivative(float Input)
+    public double ReluDerivative(double Input)
     {
         if (Input == 0 || Input == 1)
             return 0;
         else
             return 1;
     }
-    public float GetPerspective(int Index, float[] Our, float[] Their)
+    public double GetPerspective(int Index, float[] Our, float[] Their)
     {
         int Place = Index;
         PerspectiveOur = Our[Place];
         PerspectiveTheir = Their[Place];
         return BigClippedRelu((PerspectiveOur - PerspectiveTheir) / 2);
     }
-    public float BigClippedRelu(float Input)
+    public double BigClippedRelu(double Input)
     {
-        if (Input > 5)
-            return 5;
-        else if (Input < -5)
-            return -5;
+        if (Input > 1)
+            return 1;
+        else if (Input < -1)
+            return -1;
         else return Input;
     }
     public int GetPlace_0_To_7_()
     {
         return (Piececount - 1) / 4;
     }
-    public float ClippedReLU(float Input)
+    public double ClippedReLU(double Input)
     {
         if (Input < 0)
             return 0;
@@ -370,7 +370,7 @@ class NNUE
                 //Add Bias
                 NeuronInput[i][j] += Biases[Net][i][j];
                 //Input Connections in Neuron
-                NeuronVal[i][j] = ClippedReLU(NeuronInput[i][j]);
+                NeuronVal[i][j] = (float)ClippedReLU(NeuronInput[i][j]);
             }
         }
         return NeuronInput[2][0];
@@ -394,7 +394,7 @@ class NNUE
         }
         Array.Copy(EvalVector, MatrixOut, 1024);
         OutNet = UseEvalNet(GetPlace_0_To_7_(), EvalVector);
-        OutMatrix = GetPerspective(GetPlace_0_To_7_(), OurVector, TheirVector);
+        OutMatrix = (float)GetPerspective(GetPlace_0_To_7_(), OurVector, TheirVector);
         // Return the Output as a Relu
         return OutMatrix + OutNet;
     }
@@ -419,7 +419,7 @@ class NNUE
         for (int i = 0; i < 8; i++)
         {
             Output[1, i] = UseEvalNet(i, EvalVector);
-            Output[0, i] = GetPerspective(i, OurVector, TheirVector);
+            Output[0, i] = (float)GetPerspective(i, OurVector, TheirVector);
         }
         return Output;
     }
@@ -556,7 +556,7 @@ class NNUE
                     }
                 }
                 for (int l = 0; l < HalfkpWeigths[j].GetLength(1); l++)
-                    FileContent += BitConverter.SingleToInt32Bits(HalfkpWeigths[j][k, l]) + " ";
+                    FileContent += BitConverter.SingleToInt32Bits((float)HalfkpWeigths[j][k, l]) + " ";
                 sw.Write(FileContent);
                 FileContent = "";
             }
@@ -572,7 +572,7 @@ class NNUE
                 FileContent = "";
             }
             for (int k = 0; k < HalfkpBiases[j].Length; k++)
-                FileContent += BitConverter.SingleToInt32Bits(HalfkpBiases[j][k]) + " ";
+                FileContent += BitConverter.SingleToInt32Bits((float)HalfkpBiases[j][k]) + " ";
             sw.Write(FileContent);
             FileContent = "";
         }
@@ -587,7 +587,7 @@ class NNUE
                 FileContent = "";
             }
             for (int j = 0; j < HalfkpMatrix.GetLength(1); j++)
-                FileContent += BitConverter.SingleToInt32Bits(HalfkpMatrix[i, j]) + " ";
+                FileContent += BitConverter.SingleToInt32Bits((float)HalfkpMatrix[i, j]) + " ";
             sw.Write(FileContent);
             FileContent = "";
         }
@@ -601,7 +601,7 @@ class NNUE
             FileContent = "";
         }
         for (int j = 0; j < HalfkpMatrixBias.Length; j++)
-            FileContent += BitConverter.SingleToInt32Bits(HalfkpMatrixBias[j]) + " ";
+            FileContent += BitConverter.SingleToInt32Bits((float)HalfkpMatrixBias[j]) + " ";
         sw.Write(FileContent);
         FileContent = "";
         sw.Write(FileContent);
@@ -1066,14 +1066,14 @@ class NNUE
         }
         return new double[2] { Cost / Input.Length, StaticEvalCost / Input.Length };
     }
-    public float LargeSigmoid(float Input , float Size)
+    public double LargeSigmoid(float Input , float Size)
     {
         return (Input/ Size) / (float)Math.Sqrt((Input / Size) * (Input / Size) + 1);
     }
     public double[] CostOfHalfkpNet(TrainingPosition[] Input)
     {
         Classic_Eval eval = new Classic_Eval();
-        double Cost = 0, StaticEvalCost = 0;
+        double Cost = 0, StaticEvalCost = 0, smallest_cost = 1, largest_cost = 0;
         foreach (TrainingPosition TrainingExample in Input)
         {
             double color = TrainingExample.Color;
@@ -1082,7 +1082,10 @@ class NNUE
             double CurrentCost = (Value - Output);
             if (CurrentCost < 0)
                 CurrentCost = -CurrentCost;
-
+            if (CurrentCost > largest_cost)
+                largest_cost = CurrentCost;
+            else if (CurrentCost < smallest_cost)
+                smallest_cost = CurrentCost;
             Cost += CurrentCost;
 
             Cost += CurrentCost;
@@ -1093,6 +1096,8 @@ class NNUE
 
             StaticEvalCost += CurrentCost;
         }
+        Console.WriteLine("smallest cost {0}", smallest_cost);
+        Console.WriteLine("largest cost {0}", largest_cost);
         return new double[2] { Cost / Input.Length, StaticEvalCost / Input.Length };
     }
     public void BackPropagation2(TrainingPosition[] TrainingInput, float LearningRate)
@@ -1194,20 +1199,20 @@ class NNUE
     public void BackPropagationHalfkp(TrainingPosition[] TrainingInput)
     {
         //init Connection deltas
-        float[] MatrixErrorA = new float[256], MatrixErrorB = new float[256];
-        float LastNeuronOut = 0;
+        double[] MatrixErrorA = new double[256], MatrixErrorB = new double[256];
+        double LastNeuronOut = 0;
         // init BiasChanges
         for (int j = 0; j < HalfkpBiases.Length; j++)
-            HalfkpBiasChange[j] = new float[HalfkpFormat[j + 1]];
+            HalfkpBiasChange[j] = new double[HalfkpFormat[j + 1]];
 
         // init WeightChanges
         for (int j = 0; j < 3; j++)
-            HalfkpWeigthChanges[j] = new float[HalfkpFormat[j], HalfkpFormat[j + 1]];
+            HalfkpWeigthChanges[j] = new double[HalfkpFormat[j], HalfkpFormat[j + 1]];
 
         //Init start MatrixChanges
-        HalfkpMatrixChange = new float[45056, 256];
+        HalfkpMatrixChange = new double[45056, 256];
         //Init Matrix Biases
-        HalfkpMatrixBiasChange = new float[512];
+        HalfkpMatrixBiasChange = new double[512];
 
         for (int gen = 0; gen < TrainingInput.Length; gen++)
         {
@@ -1216,14 +1221,14 @@ class NNUE
             List<int>[] Input = BoardToHalfKav2(TrainingInput[gen].Board, (byte)color);
             Input[0] = ConvertVectorToHalfkp(Input[0]);
             Input[1] = ConvertVectorToHalfkp(Input[1]);
-            float NetOutput = UseHalfkpNet(TrainingInput[gen].Board, (byte)color);
+            double NetOutput = UseHalfkpNet(TrainingInput[gen].Board, (byte)color);
             if (NetOutput != Value)
             {
                 //ResetConnectionErrorDeltas
-                MatrixErrorA = new float[256];
-                MatrixErrorB = new float[256];
+                MatrixErrorA = new double[256];
+                MatrixErrorB = new double[256];
 
-                float Error = (NetOutput - Value);
+                double Error = (NetOutput - Value);
                 HalfkpNeuronErrors[2][0] = Error;
                 for (int i = HalfkpNeuronVal.Length - 1; i > -1; i--)
                 {
@@ -1335,167 +1340,15 @@ class NNUE
             }
         }
     }
-    public void Ranger21(float[][][,] WeightChanges, float[][][] BiasChanges, float[][,] MatrixChanges, float[][] MatrixBiasChanges, float Momentum , float velocity , float learningRate , float t_warmup , float t_max , float t_warmdown , float weight_decay , float k_lookahead , float beta_lookahead)
+    public void GradientDescent(double[][][,] WeightChanges, double[][][] BiasChanges, double[][,] MatrixChanges, double[][] MatrixBiasChanges, double Momentum, double learningRate, float weight_decay , float t_max)
     {
-        float CurrentChange = 0, current_momentum = 0, corrected_momentum = 0, corrected_velocity = 0, update = 0 , decay = 0;
+        double CurrentChange = 0, corrected_momentum = 0, update = 0, decay = 0;
+
+        double norm = 0, largest_change = 0, smallest_change = 2;
         //caculate the current learningrate
-        float currentLearningRate = (float)Math.Min(1, Math.Min(Math.Max(((1 - velocity) * iterationcount) / 2, iterationcount / t_warmup), (t_max - iterationcount) / t_warmdown)) * learningRate;
-        //Change Weigths
-        for (int i = 0; i < HalfkpWeigths.Length; i++)
-        {
-            //Layer
-            for (int k = 0; k < HalfkpWeigths[i].GetLength(1); k++)
-            {
-                //Neuron
-                for (int m = 0; m < HalfkpWeigths[i].GetLength(0); m++)
-                {
-                    //Set New Weight
-                    for (int l = 0; l < WeightChanges.Length; l++)
-                        CurrentChange += WeightChanges[l][i][m, k] / WeightChanges.Length;
-
-                    //calculate the current momentum
-                    current_momentum = Momentum * Momentum * HalfkpWeigth_old_momentum[i][m, k] + (1 - Momentum * Momentum) * CurrentChange;
-                    //correct the momentum bias
-                    corrected_momentum = ((1 + Momentum) * current_momentum - Momentum * HalfkpWeigth_momentum[i][m, k]) / (1 - (float)Math.Pow(Momentum, iterationcount + 1));
-                    //update the old momentum matrix
-                    HalfkpWeigth_old_momentum[i][m, k] = HalfkpWeigth_momentum[i][m, k];
-                    //update the momentum matrix
-                    HalfkpWeigth_momentum[i][m, k] = current_momentum;
-                    //calucalte the velocity
-                    HalfkpWeigth_velocity[i][m, k] = velocity * HalfkpWeigth_velocity[i][m, k] + (1 - velocity) * CurrentChange * CurrentChange;
-                    //calculate the maximum velocity
-                    HalfkpWeigth_velocity_max[i][m, k] = Math.Max(HalfkpWeigth_velocity_max[i][m, k], HalfkpWeigth_velocity[i][m, k]);
-                    //calculate the corrected veocity
-                    corrected_velocity = HalfkpWeigth_velocity_max[i][m, k] / (1 - (float)Math.Pow(velocity, iterationcount + 1));
-                    //calculate the update vector
-                    update = corrected_momentum / ((float)Math.Sqrt((1 + Momentum) * (1 + Momentum) + Momentum * Momentum) * ((float)Math.Sqrt(corrected_velocity) + (float)Math.Pow(10, -8)));
-                    //calculate the decay
-                    decay = weight_decay * HalfkpWeigths[i][m, k];
-                    //update the weights
-                    HalfkpWeigths[i][m, k] -= currentLearningRate * (update - decay);
-                    //perform the lookahead
-                    if(iterationcount % k_lookahead == 0)
-                    {
-                        HalfkpWeigth_lookahead[i][m, k] = beta_lookahead * HalfkpWeigth_lookahead[i][m, k] + (1 - beta_lookahead) * HalfkpWeigths[i][m, k];
-                        HalfkpWeigths[i][m, k] = HalfkpWeigth_lookahead[i][m, k];
-                    }
-                   CurrentChange = 0;
-                    
-                }
-                //Set New Bias
-                for (int l = 0; l < WeightChanges.Length; l++)
-                    CurrentChange += BiasChanges[l][i][k] / WeightChanges.Length;
-
-                //calculate the current momentum
-                current_momentum = Momentum * Momentum * HalfkpBias_old_momentum[i][k] + (1 - Momentum * Momentum) * CurrentChange;
-                //correct the momentum bias
-                corrected_momentum = ((1 + Momentum) * current_momentum - Momentum * HalfkpBias_momentum[i][k]) / (1 - (float)Math.Pow(Momentum, iterationcount + 1 ));
-                //update the old momentum matrix
-                HalfkpBias_old_momentum[i][k] = HalfkpBias_momentum[i][k];
-                //update the momentum matrix
-                HalfkpBias_momentum[i][k] = current_momentum;
-                //calucalte the velocity
-                HalfkpBias_velocity[i][k] = velocity * HalfkpBias_velocity[i][k] + (1 - velocity) * CurrentChange * CurrentChange;
-                //calculate the maximum velocity
-                HalfkpBias_velocity_max[i][k] = Math.Max(HalfkpBias_velocity_max[i][k], HalfkpBias_velocity[i][k]);
-                //calculate the corrected veocity
-                corrected_velocity = HalfkpBias_velocity_max[i][k] / (1 - (float)Math.Pow(velocity, iterationcount + 1));
-                //calculate the update vector
-                update = corrected_momentum / ((float)Math.Sqrt((1 + Momentum) * (1 + Momentum) + Momentum * Momentum) * ((float)Math.Sqrt(corrected_velocity) + (float)Math.Pow(10, -8)));
-                //calculate the decay
-                decay = decay = weight_decay * HalfkpBiases[i][k];
-                //update the weights
-                HalfkpBiases[i][k] -= currentLearningRate * (update - decay);
-                //perform the lookahead
-                if (iterationcount % k_lookahead == 0)
-                {
-                    HalfkpBias_lookahead[i][k] = beta_lookahead * HalfkpBias_lookahead[i][k] + (1 - beta_lookahead) * HalfkpBiases[i][k];
-                    HalfkpBiases[i][k] = HalfkpBias_lookahead[i][k];
-                }
-                CurrentChange = 0;
-            }
-        }
-
-        for (int i = 0; i < HalfkpMatrix.GetLength(0); i++)
-        {
-            for (int j = 0; j < HalfkpMatrix.GetLength(1); j++)
-            {
-                for (int l = 0; l < WeightChanges.Length; l++)
-                    CurrentChange += MatrixChanges[l][i, j] / WeightChanges.Length;
-
-                //calculate the current momentum
-                current_momentum = Momentum * Momentum * HalfkpMatrix_old_momentum[i, j] + (1 - Momentum * Momentum) * CurrentChange;
-                //correct the momentum bias
-                corrected_momentum = ((1 + Momentum) * current_momentum - Momentum * HalfkpMatrix_momentum[i, j]) / (1 - (float)Math.Pow(Momentum, iterationcount + 1));
-                //update the old momentum matrix
-                HalfkpMatrix_old_momentum[i, j] = HalfkpMatrix_momentum[i, j];
-                //update the momentum matrix
-                HalfkpMatrix_momentum[i, j] = current_momentum;
-                //calucalte the velocity
-                HalfkpMatrix_velocity[i, j] = velocity * HalfkpMatrix_velocity[i, j] + (1 - velocity) * CurrentChange * CurrentChange;
-                //calculate the maximum velocity
-                HalfkpMatrix_velocity_max[i, j] = Math.Max(HalfkpMatrix_velocity_max[i, j], HalfkpMatrix_velocity[i, j]);
-                //calculate the corrected veocity
-                corrected_velocity = HalfkpMatrix_velocity_max[i, j] / (1 - (float)Math.Pow(velocity, iterationcount + 1));
-                //calculate the update vector
-                update = corrected_momentum / ((float)Math.Sqrt((1 + Momentum) * (1 + Momentum) + Momentum * Momentum) * ((float)Math.Sqrt(corrected_velocity) + (float)Math.Pow(10, -8)));
-                //calculate the decay
-                decay = weight_decay * HalfkpMatrix[i, j];
-                //update the weights
-                HalfkpMatrix[i, j] -= currentLearningRate * (update - decay);
-                //perform the lookahead
-                if (iterationcount % k_lookahead == 0)
-                {
-                    HalfkpMatrix_lookahead[i, j] = beta_lookahead * HalfkpMatrix_lookahead[i, j] + (1 - beta_lookahead) * HalfkpMatrix[i, j];
-                    HalfkpMatrix[i, j] = HalfkpMatrix_lookahead[i, j];
-                }
-                CurrentChange = 0;
-            }
-        }
-        for (int j = 0; j < HalfkpMatrixBias.Length; j++)
-        {
-            for (int l = 0; l < MatrixBiasChanges.Length; l++)
-                CurrentChange += MatrixBiasChanges[l][j] / WeightChanges.Length;
-
-            //calculate the current momentum
-            current_momentum = Momentum * Momentum * HalfkpMatrixBias_old_momentum[j] + (1 - Momentum * Momentum) * CurrentChange;
-            //correct the momentum bias
-            corrected_momentum = ((1 + Momentum) * current_momentum - Momentum * HalfkpMatrixBias_momentum[j]) / (1 - (float)Math.Pow(Momentum, iterationcount + 1));
-            //update the old momentum matrix
-            HalfkpMatrixBias_old_momentum[j] = HalfkpMatrixBias_momentum[j];
-            //update the momentum matrix
-            HalfkpMatrixBias_momentum[j] = current_momentum;
-            //calucalte the velocity
-            HalfkpMatrixBias_velocity[j] = velocity * HalfkpMatrixBias_velocity[j] + (1 - velocity) * CurrentChange * CurrentChange;
-            //calculate the maximum velocity
-            HalfkpMatrixBias_velocity_max[j] = Math.Max(HalfkpMatrixBias_velocity_max[j], HalfkpMatrixBias_velocity[j]);
-            //calculate the corrected veocity
-            corrected_velocity = HalfkpMatrixBias_velocity_max[j] / (1 - (float)Math.Pow(velocity, iterationcount + 1));
-            //calculate the update vector
-            update = corrected_momentum / ((float)Math.Sqrt((1 + Momentum) * (1 + Momentum) + Momentum * Momentum) * ((float)Math.Sqrt(corrected_velocity) + (float)Math.Pow(10, -8)));
-            //calculate the decay
-            decay = weight_decay * HalfkpMatrixBias[j];
-            //update the weights
-            HalfkpMatrixBias[j] -= currentLearningRate * (update - decay);
-            //perform the lookahead
-            if (iterationcount % k_lookahead == 0)
-            {
-                HalfkpMatrixBias_lookahead[j] = beta_lookahead * HalfkpMatrixBias_lookahead[j] + (1 - beta_lookahead) * HalfkpMatrixBias[j];
-                HalfkpMatrixBias[j] = HalfkpMatrixBias_lookahead[j];
-            }
-            CurrentChange = 0;
-        }
-        //augmant the iteration count by 1
-        iterationcount++;
-        if (iterationcount == t_max)
-            iterationcount = 0;
-    }
-    public void AdamW(float[][][,] WeightChanges, float[][][] BiasChanges, float[][,] MatrixChanges, float[][] MatrixBiasChanges, float Momentum, float velocity, float learningRate, float t_warmup, float t_max, float t_warmdown, float weight_decay)
-    {
-        float CurrentChange = 0, corrected_momentum = 0, corrected_velocity = 0, update = 0, decay = 0;
-        //caculate the current learningrate
-        float currentLearningRate = (float)Math.Min(1, Math.Min(Math.Max(((1 - velocity) * iterationcount % t_max) / 2, iterationcount % t_max / t_warmup), (t_max - iterationcount % t_max) / t_warmdown)) * learningRate;
-        //Change Weigths
+        double currentLearningRate = learningRate;//(Math.Min(2 * (iterationcount % t_max) / t_max, 2 - 2 * (iterationcount % t_max) / t_max) * 2 + 1) * learningRate / 3;
+        //lr range test
+        //currentLearningRate = 0.001f * (float)Math.Pow(10000, (float)iterationcount / 1000);
         for (int i = 0; i < HalfkpWeigths.Length; i++)
         {
             //Layer
@@ -1512,14 +1365,15 @@ class NNUE
                     HalfkpWeigth_momentum[i][m, k] = Momentum * HalfkpWeigth_momentum[i][m, k] + (1 - Momentum) * CurrentChange;
                     //correct the momentum bias
                     corrected_momentum = HalfkpWeigth_momentum[i][m, k] / (1 - (float)Math.Pow(Momentum, iterationcount + 1));
-                    //calucalte the velocity
-                    HalfkpWeigth_velocity[i][m, k] = velocity * HalfkpWeigth_velocity[i][m, k] + (1 - velocity) * CurrentChange * CurrentChange;
-                    //calculate the maximum velocity
-                    HalfkpWeigth_velocity_max[i][m, k] = Math.Max(HalfkpWeigth_velocity_max[i][m, k], HalfkpWeigth_velocity[i][m, k]);
-                    //calculate the corrected veocity
-                    corrected_velocity = HalfkpWeigth_velocity_max[i][m, k] / (1 - (float)Math.Pow(velocity, iterationcount + 1));
                     //calculate the update vector
-                    update = corrected_momentum / ((float)Math.Sqrt(corrected_velocity) + (float)Math.Pow(10, -8));
+                    update = corrected_momentum;
+                    //calculate the norm
+                    norm += update * update;
+
+                    if (Math.Sqrt(update * update) > largest_change)
+                        largest_change = Math.Sqrt(update * update);
+                    else if (Math.Sqrt(update * update) < smallest_change)
+                        smallest_change = Math.Sqrt(update * update);
                     //calculate the decay
                     decay = weight_decay * HalfkpWeigths[i][m, k];
                     //update the weights
@@ -1535,14 +1389,15 @@ class NNUE
                 HalfkpBias_momentum[i][k] = Momentum * HalfkpBias_momentum[i][k] + (1 - Momentum) * CurrentChange;
                 //correct the momentum bias
                 corrected_momentum = HalfkpBias_momentum[i][k] / (1 - (float)Math.Pow(Momentum, iterationcount + 1));
-                //calucalte the velocity
-                HalfkpBias_velocity[i][k] = velocity * HalfkpBias_velocity[i][k] + (1 - velocity) * CurrentChange * CurrentChange;
-                //calculate the maximum velocity
-                HalfkpBias_velocity_max[i][k] = Math.Max(HalfkpBias_velocity_max[i][k], HalfkpBias_velocity[i][k]);
-                //calculate the corrected veocity
-                corrected_velocity = HalfkpBias_velocity_max[i][k] / (1 - (float)Math.Pow(velocity, iterationcount + 1));
                 //calculate the update vector
-                update = corrected_momentum / ((float)Math.Sqrt(corrected_velocity) + (float)Math.Pow(10, -8));
+                update = corrected_momentum;
+                //calculate the norm
+                norm += update * update;
+
+                if (Math.Sqrt(update * update) > largest_change)
+                    largest_change = Math.Sqrt(update * update);
+                else if (Math.Sqrt(update * update) < smallest_change)
+                    smallest_change = Math.Sqrt(update * update);
                 //calculate the decay
                 decay = decay = weight_decay * HalfkpBiases[i][k];
                 //update the weights
@@ -1562,14 +1417,15 @@ class NNUE
                 HalfkpMatrix_momentum[i, j] = Momentum * HalfkpMatrix_momentum[i, j] + (1 - Momentum) * CurrentChange;
                 //correct the momentum bias
                 corrected_momentum = HalfkpMatrix_momentum[i, j] / (1 - (float)Math.Pow(Momentum, iterationcount + 1));
-                //calucalte the velocity
-                HalfkpMatrix_velocity[i, j] = velocity * HalfkpMatrix_velocity[i, j] + (1 - velocity) * CurrentChange * CurrentChange;
-                //calculate the maximum velocity
-                HalfkpMatrix_velocity_max[i, j] = Math.Max(HalfkpMatrix_velocity_max[i, j], HalfkpMatrix_velocity[i, j]);
-                //calculate the corrected veocity
-                corrected_velocity = HalfkpMatrix_velocity_max[i, j] / (1 - (float)Math.Pow(velocity, iterationcount + 1));
                 //calculate the update vector
-                update = corrected_momentum / ((float)Math.Sqrt(corrected_velocity) + (float)Math.Pow(10, -8));
+                update = corrected_momentum;
+                //calculate the norm
+                norm += update * update;
+
+                if (Math.Sqrt(update * update) > largest_change)
+                    largest_change = Math.Sqrt(update * update);
+                else if (Math.Sqrt(update * update) < smallest_change)
+                    smallest_change = Math.Sqrt(update * update);
                 //calculate the decay
                 decay = weight_decay * HalfkpMatrix[i, j];
                 //update the weights
@@ -1586,14 +1442,15 @@ class NNUE
             HalfkpMatrixBias_momentum[j] = Momentum * HalfkpMatrixBias_momentum[j] + (1 - Momentum) * CurrentChange;
             //correct the momentum bias
             corrected_momentum = HalfkpMatrixBias_momentum[j] / (1 - (float)Math.Pow(Momentum, iterationcount + 1));
-            //calucalte the velocity
-            HalfkpMatrixBias_velocity[j] = velocity * HalfkpMatrixBias_velocity[j] + (1 - velocity) * CurrentChange * CurrentChange;
-            //calculate the maximum velocity
-            HalfkpMatrixBias_velocity_max[j] = Math.Max(HalfkpMatrixBias_velocity_max[j], HalfkpMatrixBias_velocity[j]);
-            //calculate the corrected veocity
-            corrected_velocity = HalfkpMatrixBias_velocity_max[j] / (1 - (float)Math.Pow(velocity, iterationcount + 1));
             //calculate the update vector
-            update = corrected_momentum / ((float)Math.Sqrt(corrected_velocity) + (float)Math.Pow(10, -8));
+            update = corrected_momentum;
+            //calculate the norm
+            norm += update * update;
+
+            if (Math.Sqrt(update * update) > largest_change)
+                largest_change = Math.Sqrt(update * update);
+            else if (Math.Sqrt(update * update) < smallest_change)
+                smallest_change = Math.Sqrt(update * update);
             //calculate the decay
             decay = weight_decay * HalfkpMatrixBias[j];
             //update the weights
@@ -1602,6 +1459,9 @@ class NNUE
         }
         //augmant the iteration count by 1
         iterationcount++;
+        Console.WriteLine("largest change {0}", largest_change);
+        Console.WriteLine("smallest change {0}", smallest_change);
+        Console.WriteLine("the norm is {0}", Math.Sqrt(norm));
     }
 }
 class PSQTValue

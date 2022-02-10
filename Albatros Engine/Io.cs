@@ -1,6 +1,6 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Collections.Generic;
+using System.Diagnostics;
 class Io
 {
     string CurrentCommand = "";
@@ -13,7 +13,7 @@ class Io
     {
         game.HalfKav2 = treesearch.NetType;
         game.HalfKp = !treesearch.NetType;
-        AlphaBetaSearch = new AlphaBeta(game.LoadPositionFromFen(game.StartPosition), new int[] { 5, 8, 5, 1 });
+        AlphaBetaSearch = new AlphaBeta(game.LoadPositionFromFen(game.StartPosition), new int[] { 5, 8, 5, 1 }, game.HashSize);
     }
     public void SetCurrentCommand(string Input)
     {
@@ -124,6 +124,7 @@ class Io
                             }
                             catch
                             {
+                                Move[0] = AlphaBetaSearch.iterative_deepening(game.Board, (byte)game.Turn, Convert.ToInt32(command_syntax[2]), game.NNUE);
                                 Console.WriteLine("there was an Error!\n");
                             }
                             break;
@@ -248,52 +249,27 @@ class Io
                         case "fen":
                             try
                             {
-                                if (!game.Playing)
+                                game.Board = game.LoadPositionFromFen(command_syntax[2] + " " + command_syntax[3] + " " + command_syntax[4] + " " + command_syntax[5]);
+                                try
                                 {
-                                    game.Board = game.LoadPositionFromFen(command_syntax[2] + " " + command_syntax[3] + " " + command_syntax[4] + " " + command_syntax[5]);
-                                    try
+                                    for (int i = 5; i < command_syntax.Length; i++)
                                     {
-                                        for (int i = 5; i < command_syntax.Length; i++)
+                                        if (command_syntax[i] == "moves")
                                         {
-                                            if (command_syntax[i] == "moves")
-                                            {
-                                                string[] MoovesComands = new string[command_syntax.Length - (i + 1)];
+                                            string[] MoovesComands = new string[command_syntax.Length - (i + 1)];
 
-                                                for (int j = i + 1; j < command_syntax.Length; j++)
-                                                    MoovesComands[j - (i + 1)] = command_syntax[j];
+                                            for (int j = i + 1; j < command_syntax.Length; j++)
+                                                MoovesComands[j - (i + 1)] = command_syntax[j];
 
-                                                byte[][,] array = PlayGameFromCommand(MoovesComands , false);
-                                                game.Turn = array[1][0, 0];
-                                                Array.Copy(array[0], game.Board, game.Board.Length);
-                                            }
-                                        }
-
-                                    }
-                                    catch
-                                    { }
-                                }
-                                else
-                                {
-                                    try
-                                    {
-                                        for (int i = 5; i < command_syntax.Length; i++)
-                                        {
-                                            if (command_syntax[i] == "moves")
-                                            {
-                                                string[] MoovesComands = new string[command_syntax.Length - (i + 1)];
-
-                                                for (int j = i + 1; j < command_syntax.Length; j++)
-                                                    MoovesComands[j - (i + 1)] = command_syntax[j];
-
-                                                byte[][,] array = PlayGameFromCommand(MoovesComands, false);
-                                                game.Turn = array[1][0, 0];
-                                                Array.Copy(array[0], game.Board, game.Board.Length);
-                                            }
+                                            byte[][,] array = PlayGameFromCommand(MoovesComands, false);
+                                            game.Turn = array[1][0, 0];
+                                            Array.Copy(array[0], game.Board, game.Board.Length);
                                         }
                                     }
-                                    catch
-                                    { }
+
                                 }
+                                catch
+                                { }
                             }
                             catch
                             {
@@ -372,6 +348,7 @@ class Io
     {
         game.Playing = false;
         treesearch.CurrentTree = null;
+        AlphaBetaSearch.HashTable = new byte[game.HashSize * 55556, 18];
         game.Board = game.LoadPositionFromFen(game.StartPosition);
     }
     public void PrintMoovesFromPosition(byte[,] InputBoard, byte color, int depthPly)
@@ -418,28 +395,28 @@ class Io
         }
         Console.WriteLine("\nNodes searched: {0}  \nElapsed Time: {1}\n", completCount, watch.ElapsedMilliseconds);
     }
-    public void ReturnMoove(int[] Moove, int[] PonderMoove)
+    public void ReturnMoove(int[] Move, int[] PonderMove)
     {
         string[] ConvertNumToLetter = new string[] { "0", "a", "b", "c", "d", "e", "f", "g", "h" };
         string[] Promotion = new string[] { "", "n", "b", "q", "r" };
         string Output = "";
         //Promoting Pawn
-        if (Moove.Length == 5)
-            Output = "bestmove " + ConvertNumToLetter[Moove[0]] + Moove[1] + ConvertNumToLetter[Moove[2]] + Moove[3] + Promotion[Moove[4]];
+        if (Move.Length == 5)
+            Output = "bestmove " + ConvertNumToLetter[Move[0]] + Move[1] + ConvertNumToLetter[Move[2]] + Move[3] + Promotion[Move[4]];
 
         //Normal Piece
         else
-            Output = "bestmove " + ConvertNumToLetter[Moove[0]] + Moove[1] + ConvertNumToLetter[Moove[2]] + Moove[3];
+            Output = "bestmove " + ConvertNumToLetter[Move[0]] + Move[1] + ConvertNumToLetter[Move[2]] + Move[3];
 
-        if (PonderMoove.Length != 0)
+        if (PonderMove.Length != 0)
         {
             //Promoting Pawn
-            if (PonderMoove.Length == 5)
-                Output += " ponder " + ConvertNumToLetter[PonderMoove[0]] + PonderMoove[1] + ConvertNumToLetter[PonderMoove[2]] + PonderMoove[3] + Promotion[PonderMoove[4]];
+            if (PonderMove.Length == 5)
+                Output += " ponder " + ConvertNumToLetter[PonderMove[0]] + PonderMove[1] + ConvertNumToLetter[PonderMove[2]] + PonderMove[3] + Promotion[PonderMove[4]];
 
             //Normal Piece
             else
-                Output += " ponder " + ConvertNumToLetter[PonderMoove[0]] + PonderMoove[1] + ConvertNumToLetter[PonderMoove[2]] + PonderMoove[3];
+                Output += " ponder " + ConvertNumToLetter[PonderMove[0]] + PonderMove[1] + ConvertNumToLetter[PonderMove[2]] + PonderMove[3];
         }
         Console.WriteLine(Output);
     }

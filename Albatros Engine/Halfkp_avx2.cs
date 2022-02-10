@@ -38,11 +38,13 @@ class Halfkp_avx2
         initL1();
         initL2();
         initOutput();
+
         try
         {
             LoadOldNetFile("ValueNet.nnue");
         }
         catch { }
+
         initkOnes256();
         initPtype();
         //initialize the feature vectors
@@ -746,7 +748,7 @@ class Halfkp_avx2
         {
             for (int j = 0; j < L1.Output_size; j++) 
             {
-                L1.weight[j * L1.Input_size + i] = Convert.ToSByte(BitConverter.Int32BitsToSingle(Convert.ToInt32(Values[counter])) * weight_scaling);
+                L1.weight[j * L1.Input_size + i] = Convert.ToSByte(MaxMinByte(BitConverter.Int32BitsToSingle(Convert.ToInt32(Values[counter])) * weight_scaling));
                 counter++;
             }
         }
@@ -755,33 +757,33 @@ class Halfkp_avx2
         {
             for (int j = 0; j < L2.Output_size; j++)
             {
-                L2.weight[j * L2.Input_size + i] = Convert.ToSByte(BitConverter.Int32BitsToSingle(Convert.ToInt32(Values[counter])) * weight_scaling);
+                L2.weight[j * L2.Input_size + i] = Convert.ToSByte(MaxMinByte(BitConverter.Int32BitsToSingle(Convert.ToInt32(Values[counter])) * weight_scaling));
                 counter++;
             }
         }
         //Output
         for (int i = 0; i < Output.weight.Length; i++)
         {
-            Output.weight[i] = Convert.ToSByte(BitConverter.Int32BitsToSingle(Convert.ToInt32(Values[counter])) * weight_scaling);
+            Output.weight[i] = Convert.ToSByte(MaxMinByte(BitConverter.Int32BitsToSingle(Convert.ToInt32(Values[counter])) * weight_scaling));
             counter++;
         }
         //Biases
         //L1
         for (int i = 0; i < L1.bias.Length; i++)
         {
-            L1.bias[i] = Convert.ToInt16(MaxMin(BitConverter.Int32BitsToSingle(Convert.ToInt32(Values[counter])) * weight_scaling * activation_scaling));
+            L1.bias[i] = Convert.ToInt16(MaxMinShort(BitConverter.Int32BitsToSingle(Convert.ToInt32(Values[counter])) * weight_scaling * activation_scaling));
             counter++;
         }
         //L2
         for (int i = 0; i < L2.bias.Length; i++)
         {
-            L2.bias[i] = Convert.ToInt16(MaxMin(BitConverter.Int32BitsToSingle(Convert.ToInt32(Values[counter])) * weight_scaling * activation_scaling));
+            L2.bias[i] = Convert.ToInt16(MaxMinShort(BitConverter.Int32BitsToSingle(Convert.ToInt32(Values[counter])) * weight_scaling * activation_scaling));
             counter++;
         }
         //Output
         for (int i = 0; i < Output.bias.Length; i++)
         {
-            Output.bias[i] = Convert.ToInt16(MaxMin(BitConverter.Int32BitsToSingle(Convert.ToInt32(Values[counter])) * weight_scaling * activation_scaling));
+            Output.bias[i] = Convert.ToInt16(MaxMinShort(BitConverter.Int32BitsToSingle(Convert.ToInt32(Values[counter])) * weight_scaling * activation_scaling));
             counter++;
         }
 
@@ -790,7 +792,7 @@ class Halfkp_avx2
         {
             for (int j = 0; j < Transformer.weight.GetLength(1); j++)
             {
-                Transformer.weight[i, j] = Convert.ToInt16(MaxMin(BitConverter.Int32BitsToSingle(Convert.ToInt32(Values[counter])) * weight_scaling * activation_scaling));
+                Transformer.weight[i, j] = Convert.ToInt16(MaxMinShort(BitConverter.Int32BitsToSingle(Convert.ToInt32(Values[counter])) * weight_scaling * activation_scaling));
                 counter++;
             }
         }
@@ -798,15 +800,19 @@ class Halfkp_avx2
         //StartMatrixBias
         for (int i = 0; i < Transformer.bias.Length; i++)
         {
-            Transformer.bias[i] = Convert.ToInt16(MaxMin(BitConverter.Int32BitsToSingle(Convert.ToInt32(Values[counter])) * weight_scaling * activation_scaling));
+            Transformer.bias[i] = Convert.ToInt16(MaxMinShort(BitConverter.Int32BitsToSingle(Convert.ToInt32(Values[counter])) * weight_scaling * activation_scaling));
             counter++;
         }
 
         Console.WriteLine("Done !");
     }
-    public float MaxMin(float Input)
+    public float MaxMinShort(float Input)
     {
-        return (float)Math.Min(short.MinValue , Math.Max(short.MaxValue, Math.Round(Input, 0)));
+        return (float)Math.Max(short.MinValue, Math.Min(short.MaxValue, Math.Round(Input, 0)));
+    }
+    public float MaxMinByte(float Input)
+    {
+        return (float)Math.Max(sbyte.MinValue, Math.Min(sbyte.MaxValue, Math.Round(Input, 0)));
     }
 }
 class Accumulator

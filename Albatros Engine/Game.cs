@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading;
 using System.Collections.Generic;
+using System.IO;
 
 
 class Game
@@ -19,12 +20,12 @@ class Game
     //Training Parameters
     public int Elo = 100;
     public float Lambda = 1;
-    public int BufferSize = 5000;
-    public int TrainingSampleSize = 10000;
+    public int BufferSize = 2000000;
+    public int TrainingSampleSize = 1000000;
     public int GameLength = 350;
     public string NetName = "ValueNet.nnue";
-    public int NodeCount = 50;
-    public float Coefficient = 0.1f;
+    public int NodeCount = 10;
+    public float Coefficient = 0.05f;
     public float Momentum = 0.9f;
     public float NetDecay = 0.75f;
 
@@ -35,6 +36,7 @@ class Game
     public bool HalfKav2 = true;
     public bool HalfKp = false;
     public int ThreadCount = 5;
+    public int HashSize = 1000;
     static void Main(string[] args)
     {
         Console.WriteLine("Albatros");

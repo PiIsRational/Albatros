@@ -51,24 +51,24 @@ class Training
     List<float[][][]> BiasChanges = new List<float[][][]>();
     List<float[,]> InputMatrixChanges = new List<float[,]>();
 
-    List<float[][,]> HalfkpWeightCopy = new List<float[][,]>();
-    List<float[][]> HalfkpBiasCopy = new List<float[][]>();
-    List<float[,]> HalfkpMatrixCopy = new List<float[,]>();
-    List<float[]> HalfkpMatrixBiasCopy = new List<float[]>();
+    List<double[][,]> HalfkpWeightCopy = new List<double[][,]>();
+    List<double[][]> HalfkpBiasCopy = new List<double[][]>();
+    List<double[,]> HalfkpMatrixCopy = new List<double[,]>();
+    List<double[]> HalfkpMatrixBiasCopy = new List<double[]>();
 
-    float[][,] CurrentHalfkpWeights = new float[3][,];
-    float[][] CurrentHalfkpBiases = new float[3][];
-    float[,] CurrentHalfkpMatrix = new float[40960, 256];
-    float[] CurrentHalfkpMatrixBiases = new float[512];
+    double[][,] CurrentHalfkpWeights = new double[3][,];
+    double[][] CurrentHalfkpBiases = new double[3][];
+    double[,] CurrentHalfkpMatrix = new double[40960, 256];
+    double[] CurrentHalfkpMatrixBiases = new double[512];
 
     float[][][][,] WeightChangeCopy = new float[0][][][,];
     float[][][][] BiasChangeCopy = new float[0][][][];
     float[][,] MatrixChangeCopy = new float[0][,];
 
-    float[][][,] HalfkpWeightChangeCopy = new float[0][][,];
-    float[][][] HalfkpBiaseChangeCopy = new float[0][][];
-    float[][,] HalfkpMatrixChangeCopy = new float[0][,];
-    float[][] HalfkpMatrixBiaseChangeCopy = new float[0][];
+    double[][][,] HalfkpWeightChangeCopy = new double[0][][,];
+    double[][][] HalfkpBiaseChangeCopy = new double[0][][];
+    double[][,] HalfkpMatrixChangeCopy = new double[0][,];
+    double[][] HalfkpMatrixBiaseChangeCopy = new double[0][];
 
     float[,] TestMatrix = new float[45056, 520];
     float[][][,] TestWeights = new float[8][][,];
@@ -127,10 +127,10 @@ class Training
             Array.Copy(TrainNet.HalfkpMatrixBias, CurrentHalfkpMatrixBiases, TrainNet.HalfkpMatrixBias.Length);
         }
         //init the change Arrays
-        HalfkpWeightChangeCopy = new float[ThreadAmount][][,];
-        HalfkpMatrixChangeCopy = new float[ThreadAmount][,];
-        HalfkpBiaseChangeCopy = new float[ThreadAmount][][];
-        HalfkpMatrixBiaseChangeCopy = new float[ThreadAmount][];
+        HalfkpWeightChangeCopy = new double[ThreadAmount][][,];
+        HalfkpMatrixChangeCopy = new double[ThreadAmount][,];
+        HalfkpBiaseChangeCopy = new double[ThreadAmount][][];
+        HalfkpMatrixBiaseChangeCopy = new double[ThreadAmount][];
         //start Playing Threads
         Playing = new Thread[ThreadAmount];
         Console.WriteLine("Starting to Play...");
@@ -148,6 +148,7 @@ class Training
     }
     public void ManageTraining()
     {
+        TrainingPosition[] TestPositions = new TrainingPosition[2000];
         double[] cost;
         while (true)
         {
@@ -158,11 +159,9 @@ class Training
                 //Test
                 /*treesearch.Test(1000, CurrentTrainingSet[0] , true , false);
                 treesearch.ValueNet.SaveHalfkpNet("HalfkpMaybeGood.nnue", true);*/
-                //try to find good Hyperparameters
-                //treesearch.findHyperparameters(CurrentTrainingSet[0], true, false);
-                //graph the values from the different Hyperparameters
-                treesearch.graphHyperparameters(CurrentTrainingSet[0], true, false);
                 TrainingSteps++;
+                if (TrainingSteps == 1)
+                    TestPositions = GetRandomSampleFromBuffer(2000);
                 //Give the info about the current Training cycle to the user
                 Console.WriteLine("Wins for White : {0}", WinWhite);
                 Console.WriteLine("Wins for Black : {0}", WinBlack);
@@ -170,7 +169,7 @@ class Training
                 Console.WriteLine("Step number: {0}", TrainingSteps);
                 if (TrainingSteps % 1 == 0)
                 {
-                    cost = TrainNet.NetCost(GetRandomSampleFromBuffer(10000) , CurrentState);
+                    cost = TrainNet.NetCost(TestPositions, CurrentState);
                     Console.WriteLine("The Mean Error is : {0} , It should be smaller then {1}", cost[0], cost[1]);
                     //Log info
                     LogNumbers(cost, TrainingSteps);
@@ -272,13 +271,28 @@ class Training
                         Array.Copy(HalfkpBiasCopy.ToArray(), HalfkpBiaseChangeCopy, HalfkpBiaseChangeCopy.Length);
                         Array.Copy(HalfkpMatrixBiasCopy.ToArray(), HalfkpMatrixBiaseChangeCopy, HalfkpMatrixBiaseChangeCopy.Length);
 
-                        HalfkpWeightCopy = new List<float[][,]>();
-                        HalfkpMatrixCopy = new List<float[,]>();
-                        HalfkpBiasCopy = new List<float[][]>();
-                        HalfkpMatrixBiasCopy = new List<float[]>();
+                        HalfkpWeightCopy = new List<double[][,]>();
+                        HalfkpMatrixCopy = new List<double[,]>();
+                        HalfkpBiasCopy = new List<double[][]>();
+                        HalfkpMatrixBiasCopy = new List<double[]>();
 
-                        //TrainNet.Ranger21(HalfkpWeightChangeCopy, HalfkpBiaseChangeCopy, HalfkpMatrixChangeCopy, HalfkpMatrixBiaseChangeCopy, TrainingMomentum, 0.999f, 1, 220, 1000, 280, 0.0001f, 5, 0.5f);
-                        TrainNet.AdamW(HalfkpWeightChangeCopy, HalfkpBiaseChangeCopy, HalfkpMatrixChangeCopy, HalfkpMatrixBiaseChangeCopy, TrainingMomentum, 0.9f, 0.1f, 22, 100, 28, 0.0001f);
+                        TrainNet.GradientDescent(HalfkpWeightChangeCopy, HalfkpBiaseChangeCopy, HalfkpMatrixChangeCopy, HalfkpMatrixBiaseChangeCopy, TrainingMomentum, LearningRate, 0.00001f, 1000);
+                     /*
+
+                        float error = (float)TrainNet.NetCost(TestPositions, CurrentState)[0];
+
+                        string Content = "";
+
+                        if(File.Exists("RangeTestv3.txt"))
+                        {
+                            StreamReader sr = new StreamReader("RangeTestv3.txt");
+                            Content = sr.ReadToEnd();
+                            sr.Close();
+                        }
+
+                        StreamWriter sw = new StreamWriter("RangeTestv3.txt");
+                        sw.WriteLine(Content + error.ToString().Split(',')[0] + "." + error.ToString().Split(',')[1]);
+                        sw.Close();
 
                         /*Array.Copy(TrainNet.HalfkpWeigths, CurrentHalfkpWeights, TrainNet.HalfkpWeigths.Length);
                         Array.Copy(TrainNet.HalfkpBiases, CurrentHalfkpBiases, TrainNet.HalfkpBiases.Length);

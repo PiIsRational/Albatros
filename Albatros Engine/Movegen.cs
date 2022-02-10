@@ -120,19 +120,15 @@ public class MoveGen
         }
         return Output;
     }
-    public byte[,] PlayMove(byte[,] InputBoard, byte color, int[] Moove)
+    public byte[,] PlayMove(byte[,] InputBoard, byte color, int[] Move)
     {
-        for (int x = 1; x < 9; x++)
-            for (int y = 4; y < 6; y++)
-                if (InputBoard[x, y] != 0 && InputBoard[x, y] >> 4 == color && InputBoard[x, y] - (InputBoard[x, y] >> 4) * 0b10000 == 0b10)
-                    InputBoard[x, y]++;
-        int k = Moove[0];
-        int j = Moove[1];
+        int k = Move[0];
+        int j = Move[1];
         int[] CurrentMoove;
-        if (Moove.Length == 4)
-            CurrentMoove = new int[2] { Moove[2], Moove[3] };
-        else if (Moove.Length == 5)
-            CurrentMoove = new int[3] { Moove[2], Moove[3], Moove[4] };
+        if (Move.Length == 4)
+            CurrentMoove = new int[2] { Move[2], Move[3] };
+        else if (Move.Length == 5)
+            CurrentMoove = new int[3] { Move[2], Move[3], Move[4] };
         else
             CurrentMoove = new int[0];
         switch (InputBoard[k, j] - (InputBoard[k, j] >> 4) * 0b10000)
@@ -174,6 +170,10 @@ public class MoveGen
                 Array.Copy(NormalExecuteMooves(InputBoard, CurrentMoove, k, j), InputBoard, InputBoard.Length);
                 break;
         }
+        for (int x = 1; x < 9; x++)
+            for (int y = 4; y < 6; y++)
+                if (InputBoard[x, y] != 0 && InputBoard[x, y] >> 4 == (1 - color) && InputBoard[x, y] - (InputBoard[x, y] >> 4) * 0b10000 == 0b10)
+                    InputBoard[x, y]++;
         return InputBoard;
     }
     public byte[,] PawnDirectExecuteMooves(byte[,] InputBoard, int[] Move, int X, int Y)
@@ -225,7 +225,7 @@ public class MoveGen
     {
         byte Copy = (byte)(InputBoard[X, Y] + 1);
 
-        if (Move.Length == 2 && Move[0] != X + 2 && Move[0] != X - 2)
+        if (Move.Length == 2 && Move[0] != X + 2 && Move[0] != X - 2) 
         {
             UnmakeMove = new int[] { X, Y, Copy - 1, Move[0], Move[1], InputBoard[Move[0], Move[1]] };
             InputBoard[X, Y] = 0;
