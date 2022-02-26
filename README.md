@@ -3,13 +3,13 @@
 This chess engine is not finished !
 
 
-Currently only the classical evaluation function is working and usable. The NNUE functions have either bugs (which is probably the case for the HalfKav2 version) or no netfile with the requiered strength.
+Currently only the classical evaluation function is working and usable. The NNUE function has no netfile with the requiered strength.
 
 ## Overview
 
 Albatros is an open source UCI-compatible chess engine. It is not a complete chess programm and would require a UCI-compatible graphical user interface (GUI) (ex : Scid, Arena or Shredder) to be used comfortably.
 
-The Albatros chess engine currently features 3 different evaluation functions for chess. The classical, which works with simple piece square tables (PSQT). And the two NNUE evaluation funtions, which are using the HalfKav2 and HalfKp architectures. The classical and halfkp (which is using avx2) evaluation functions are currently the only evaluation functions that are implented efficiently.
+The Albatros chess engine currently features 2 different evaluation functions for chess. The classical, which works with simple piece square tables (PSQT). And the NNUE evaluation funtion, which has the format 768 -> 128x2 -> 1. The NNUE needs avx2 to work.
 
 ## Files
 
@@ -34,17 +34,11 @@ The Universal Chess Interface (UCI) is a standard protocol used to communicate w
 ### This is the list of all the available UCI options in Albatros:
 
  * #### Threads
-   The number of CPU threads used for searching a position and for training. For best performance, set this equal to the number of CPU cores available.
-   
- * #### Ponder 
-   Let Albatros ponder its next move while the opponent is thinking (currently does not do anything).
+   The number of CPU threads used for training. For best performance, set this equal to the number of CPU cores available.
    
  * #### EvalFile
    The name of the file containing the NNUE evaluation parameters.
-   
- * #### EvalType
-   The name of the neural network architecture you want to use. The two possibilities are Halfkp and HalfKav2.
-   
+
  * #### Use NNUE
    Toggle between the NNUE and classical evaluation functions. If set to "true",
    the network parameters must be available to load from file (see also EvalFile).
