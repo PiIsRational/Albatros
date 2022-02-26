@@ -2,6 +2,7 @@
 using System.Threading;
 using System.Collections.Generic;
 using System.IO;
+using System.Windows.Input;
 
 
 class Game
@@ -17,26 +18,28 @@ class Game
     static Io io = new Io();
     static string output = "";
     static string CommandBuffer = "";
+
     //Training Parameters
     public int Elo = 100;
     public float Lambda = 1;
-    public int BufferSize = 2000000;
-    public int TrainingSampleSize = 1000000;
+    public int BufferSize = 70000000;
+    public int TrainingSampleSize = 1000;
     public int GameLength = 350;
     public string NetName = "ValueNet.nnue";
     public int NodeCount = 10;
-    public float Coefficient = 0.05f;
+    public float Coefficient = 0.01f;
     public float Momentum = 0.9f;
     public float NetDecay = 0.75f;
+    public bool Play = false;
+    public string LogFile = "BufferLog-70000000.txt";
 
     //Other Parameters
     public float c_puct = 10;
     public bool IsPlaying = false;
     public bool NNUE = false;
-    public bool HalfKav2 = true;
-    public bool HalfKp = false;
-    public int ThreadCount = 5;
+    public int ThreadCount = 10;
     public int HashSize = 1000;
+    public bool USE_MCTS = false;
     static void Main(string[] args)
     {
         Console.WriteLine("Albatros");
@@ -51,6 +54,7 @@ class Game
         //Loads Start Position Into Current Position Board
         io.LoadPositionBoard();
         CommandExecute = new Thread(io.ThreadStart);
+        Console.WriteLine("ready");
     }
     public void SetOutput(string Input)
     {
@@ -58,6 +62,7 @@ class Game
     }
     static void Update()
     {
+        string Command = "";
         if (CommandBuffer != "")
         {
             if (!CommandExecute.IsAlive)
@@ -70,7 +75,8 @@ class Game
         }
         else
         {
-            string Command = Console.ReadLine();
+            Command = Console.ReadLine();
+            
             string[] Input = io.SyntaxWithoutHoles(Command.Split(' '));
             if (Input.Length != 0 && Input[0] == "stop")
             {

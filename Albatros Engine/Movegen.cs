@@ -46,6 +46,11 @@ public class MoveGen
     public int[] UnmakeMove;
     bool WrongPosition = false;
     int[] kingpositions = new int[4];
+    int[] EnPassent = new int[2];
+    bool castle_kingside_white = true;
+    bool castle_kingside_black = true;
+    bool castle_queenside_white = true;
+    bool castle_queenside_black = true;
     public byte[,] UndoMove(byte[,] Position, int[] MoveUndo)
     {
         if ((MoveUndo.Length / 3) * 3 == MoveUndo.Length)
@@ -187,28 +192,28 @@ public class MoveGen
             {
                 // EnPassent
                 case 0:
-                    UnmakeMove = new int[] { X, Y, Copy, Move[0], Move[1], 0, Move[0], Y, InputBoard[Move[0], Y] };
+                    UnmakeMove = new int[] { X, Y, InputBoard[X, Y], Move[0], Move[1], 0, Move[0], Y, InputBoard[Move[0], Y] };
                     InputBoard[Move[0], Y] = 0;
                     break;
                 case 1:
                     //Knight
                     Copy++;
-                    UnmakeMove = new int[] { X, Y, Copy, Move[0], Move[1], InputBoard[Move[0], Move[1]] };
+                    UnmakeMove = new int[] { X, Y, InputBoard[X, Y], Move[0], Move[1], InputBoard[Move[0], Move[1]] };
                     break;
                 case 2:
                     //Bishop
                     Copy += 2;
-                    UnmakeMove = new int[] { X, Y, Copy, Move[0], Move[1], InputBoard[Move[0], Move[1]] };
+                    UnmakeMove = new int[] { X, Y, InputBoard[X, Y], Move[0], Move[1], InputBoard[Move[0], Move[1]] };
                     break;
                 case 3:
                     //Queen
                     Copy += 5;
-                    UnmakeMove = new int[] { X, Y, Copy, Move[0], Move[1], InputBoard[Move[0], Move[1]] };
+                    UnmakeMove = new int[] { X, Y, InputBoard[X, Y], Move[0], Move[1], InputBoard[Move[0], Move[1]] };
                     break;
                 case 4:
                     //Rook
                     Copy += 7;
-                    UnmakeMove = new int[] { X, Y, Copy, Move[0], Move[1], InputBoard[Move[0], Move[1]] };
+                    UnmakeMove = new int[] { X, Y, InputBoard[X, Y], Move[0], Move[1], InputBoard[Move[0], Move[1]] };
                     break;
             }
         }
@@ -223,6 +228,19 @@ public class MoveGen
     }
     public byte[,] KingCastleExecuteMooves(byte[,] InputBoard, int[] Move, int X, int Y)
     {
+        byte KingColor = (byte)(InputBoard[X, Y] >> 4);
+
+        if(KingColor == 0)
+        {
+            castle_kingside_black = false;
+            castle_queenside_black = false;
+        }
+        else
+        {
+            castle_kingside_white = false;
+            castle_queenside_white = false;
+        }
+
         byte Copy = (byte)(InputBoard[X, Y] + 1);
 
         if (Move.Length == 2 && Move[0] != X + 2 && Move[0] != X - 2) 
@@ -234,7 +252,6 @@ public class MoveGen
         // if Castelling
         else
         {
-            byte KingColor = (byte)(InputBoard[X, Y] >> 4);
             byte EnemyColor = 0;
             if (KingColor == 0)
                 EnemyColor = 1;
@@ -307,6 +324,8 @@ public class MoveGen
         {
             UnmakeMove = new int[] { X, Y, Copy - 2, Move[0], Move[1], 0 };
             InputBoard[Move[0], Move[1]] = (byte)(Copy - 1);
+            EnPassent[0] = Move[0];
+            EnPassent[1] = Move[1];
         }
         else
         {
