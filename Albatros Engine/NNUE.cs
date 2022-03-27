@@ -241,22 +241,9 @@ class NNUE
         else
             return 1;
     }
-    public double BigClippedRelu(double Input)
-    {
-        if (Input > 1)
-            return 1;
-        else if (Input < -1)
-            return -1;
-        else return Input;
-    }
     public double ClippedReLU(double Input)
     {
-        if (Input < 0)
-            return 0;
-        else if (Input > 1)
-            return 1;
-        else
-            return Input;
+        return Math.Max(Math.Min(Input, 1), 0); 
     }
     public void SaveNet(string FileName, bool UseBackup)
     {
@@ -400,7 +387,7 @@ class NNUE
         foreach (TrainingPosition TrainingExample in Input)
         {
             double color = TrainingExample.Color;
-            double Output = UseNet(TrainingExample.Board, (byte)color);
+            double Output = LargeClippedRelu(UseNet(TrainingExample.Board, (byte)color));
             double Value = TrainingExample.Eval;
             double CurrentCost = (Value - Output) * (Value - Output);
 
@@ -427,7 +414,7 @@ class NNUE
         Console.WriteLine("largest cost of the static evaluation {0}", largest_cost_e);
         return new double[2] { Cost / Input.Length, StaticEvalCost / Input.Length };
     }
-    public void BackPropagation(TrainingPosition[] TrainingInput, int Random_Position_Skip_Size)
+    public void BackPropagation(TrainingPosition[] TrainingInput)
     {
         Random random = new Random();
         //init Connection deltas
@@ -448,22 +435,17 @@ class NNUE
 
         for (int gen = 0; gen < TrainingInput.Length; gen++)
         {
-            //skip
-            gen += random.Next(0, Random_Position_Skip_Size);
-            if (gen > TrainingInput.Length)
-                gen = TrainingInput.Length - 1;
-
             float Value = TrainingInput[gen].Eval;
             float color = TrainingInput[gen].Color;
             List<int>[] Input = BoardToHalfP(TrainingInput[gen].Board);
-            double NetOutput = UseNet(TrainingInput[gen].Board, (byte)color);
+            double NetOutput = LargeClippedRelu((float)UseNet(TrainingInput[gen].Board, (byte)color));
             if (NetOutput != Value)
             {
                 //ResetConnectionErrorDeltas
                 MatrixErrorA = new double[128];
                 MatrixErrorB = new double[128];
 
-                double Error = (NetOutput - Value);
+                double Error = 2 * (NetOutput - Value);
                 HalfkpNeuronErrors[0][0] = Error;
                 for (int i = HalfkpNeuronVal.Length - 1; i > -1; i--)
                 {
@@ -647,6 +629,10 @@ class NNUE
         Console.WriteLine("largest change {0}", largest_change);
         Console.WriteLine("smallest change {0}", smallest_change);
         Console.WriteLine("the norm is {0}", Math.Sqrt(norm));*/
+    }
+    public double LargeClippedRelu(double Input)
+    {
+        return Math.Max(Math.Min(Input, 0.999f), -0.999f);
     }
 }
 

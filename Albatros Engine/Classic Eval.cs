@@ -18,85 +18,82 @@ class Classic_Eval
             for (int j = 1; j < 9; j++)
             {
                 int currentColor = InputBoard[i, j] >> 4;
-                float ColorMinus = 1;
-                if (currentColor == 0)
-                    ColorMinus = -1;
+                float ColorMinus = 2 * currentColor - 1;
                 switch (InputBoard[i, j] - (InputBoard[i, j] >> 4) * 0b10000)
                 {
                     //PawnStart
                     case 0b00000001:
-                        EndGameValue += ColorMinus * (0.94f + psqt.PawnEG[Exchange(j, currentColor), i] / 100);
-                        MiddleGameValue += ColorMinus * (0.82f + psqt.PawnMG[Exchange(j, currentColor), i] / 100);
+                        EndGameValue += ColorMinus * (0.94f + psqt.PawnEG[ExchangeY(j, currentColor), i] / 100);
+                        MiddleGameValue += ColorMinus * (0.82f + psqt.PawnMG[ExchangeY(j, currentColor), i] / 100);
                         break;
                     //PawnEnPassent
                     case 0b00000010:
-                        EndGameValue += ColorMinus * (0.94f + psqt.PawnEG[Exchange(j, currentColor), i] / 100);
-                        MiddleGameValue += ColorMinus * (0.8f + psqt.PawnMG[Exchange(j, currentColor),i] / 100);
+                        EndGameValue += ColorMinus * (0.94f + psqt.PawnEG[ExchangeY(j, currentColor), i] / 100);
+                        MiddleGameValue += ColorMinus * (0.82f + psqt.PawnMG[ExchangeY(j, currentColor), i] / 100);
                         break;
                     //NormalPawn
                     case 0b00000011:
-                        EndGameValue += ColorMinus * (0.94f + psqt.PawnEG[Exchange(j, currentColor), i] / 100);
-                        MiddleGameValue += ColorMinus * (0.82f + psqt.PawnMG[Exchange(j, currentColor),i] / 100);
+                        EndGameValue += ColorMinus * (0.94f + psqt.PawnEG[ExchangeY(j, currentColor), i] / 100);
+                        MiddleGameValue += ColorMinus * (0.82f + psqt.PawnMG[ExchangeY(j, currentColor), i] / 100);
                         break;
                     //Knight
                     case 0b00000100:
                         GamePhase += 1;
-                        EndGameValue += ColorMinus * (2.81f + psqt.KnightEG[Exchange(j, currentColor), i] / 100);
-                        MiddleGameValue += ColorMinus * (3.37f + psqt.KnightMG[Exchange(j, currentColor), i] / 100);
+                        EndGameValue += ColorMinus * (2.81f + psqt.KnightEG[ExchangeY(j, currentColor), i] / 100);
+                        MiddleGameValue += ColorMinus * (3.37f + psqt.KnightMG[ExchangeY(j, currentColor), i] / 100);
                         break;
                     //Bishop
                     case 0b00000101:
                         GamePhase += 1;
-                        EndGameValue += ColorMinus * (2.97f + psqt.BishopEG[Exchange(j, currentColor), i] / 100);
-                        MiddleGameValue += ColorMinus * (3.65f + psqt.BishopMG[Exchange(j, currentColor),i] / 100);
+                        EndGameValue += ColorMinus * (2.97f + psqt.BishopEG[ExchangeY(j, currentColor), i] / 100);
+                        MiddleGameValue += ColorMinus * (3.65f + psqt.BishopMG[ExchangeY(j, currentColor), i] / 100);
                         break;
                     //Queen
                     case 0b00001000:
                         GamePhase += 4;
-                        EndGameValue += ColorMinus * (9.36f + psqt.QueenEG[Exchange(j, currentColor), i] / 100);
-                        MiddleGameValue += ColorMinus * (10.25f + psqt.QueenMG[Exchange(j, currentColor), i] / 100);
+                        EndGameValue += ColorMinus * (9.36f + psqt.QueenEG[ExchangeY(j, currentColor), i] / 100);
+                        MiddleGameValue += ColorMinus * (10.25f + psqt.QueenMG[ExchangeY(j, currentColor), i] / 100);
                         break;
                     //RookCanCastle
                     case 0b00001001:
                         GamePhase += 2;
-                        EndGameValue += ColorMinus * (5.12f + psqt.RookEG[Exchange(j, currentColor), i] / 100);
-                        MiddleGameValue += ColorMinus * (4.77f + psqt.RookMG[Exchange(j, currentColor),i] / 100);
+                        EndGameValue += ColorMinus * (5.12f + psqt.RookEG[ExchangeY(j, currentColor), i] / 100);
+                        MiddleGameValue += ColorMinus * (4.77f + psqt.RookMG[ExchangeY(j, currentColor), i] / 100);
                         break;
                     //Normal Rook
                     case 0b00001010:
                         GamePhase += 2;
-                        EndGameValue += ColorMinus * (5.12f + psqt.RookEG[Exchange(j, currentColor), i] / 100);
-                        MiddleGameValue += ColorMinus * (4.77f + psqt.RookMG[Exchange(j, currentColor), i] / 100);
+                        EndGameValue += ColorMinus * (5.12f + psqt.RookEG[ExchangeY(j, currentColor), i] / 100);
+                        MiddleGameValue += ColorMinus * (4.77f + psqt.RookMG[ExchangeY(j, currentColor), i] / 100);
                         break;
                     //King Can Castle
                     case 0b00000110:
-                        EndGameValue += ColorMinus * (psqt.KingEG[Exchange(j, currentColor), i] / 100);
-                        MiddleGameValue += ColorMinus * psqt.KingMG[Exchange(j, currentColor), i] / 100;
+                        EndGameValue += ColorMinus * (psqt.KingEG[ExchangeY(j, currentColor), i] / 100);
+                        MiddleGameValue += ColorMinus * psqt.KingMG[ExchangeY(j, currentColor), i] / 100;
                         break;
                     //Normal King
                     case 0b00000111:
-                        EndGameValue += ColorMinus * (psqt.KingEG[Exchange(j, currentColor), i] / 100 );
-                        MiddleGameValue += ColorMinus * psqt.KingMG[Exchange(j, currentColor), i] / 100;
+                        EndGameValue += ColorMinus * psqt.KingEG[ExchangeY(j, currentColor), i] / 100;
+                        MiddleGameValue += ColorMinus * psqt.KingMG[ExchangeY(j, currentColor),i] / 100;
                         break;
                 }
             }
         }
-        MiddelGamePhase = GamePhase;
-        if (MiddelGamePhase > 24)
-            MiddelGamePhase = 24;
+        MiddelGamePhase = Math.Min(GamePhase, 24);
         EndGamePhase = 24 - MiddelGamePhase;
-        return (-2 * Color + 1) * LargeSigmoid(((MiddelGamePhase * MiddleGameValue + EndGamePhase * EndGameValue) / 24), 4.2f);
+        return (2 * Color - 1) * LargeSigmoid(((MiddelGamePhase * MiddleGameValue + EndGamePhase * EndGameValue) / 24), 4.2f);
     }
     public float LargeSigmoid(float Input , float Size)
     {
         return (Input / Size) / (float)Math.Sqrt((Input / Size) * (Input / Size) + 1);
     }
-    public int Exchange(int Y ,int Color )
+
+    public int ExchangeY(int Y ,int Color )
     {
         if (Color == 0)
             return Y;
         else
-            return -Y + 9;
+            return 9 - Y;
     }
 }
 
@@ -199,7 +196,7 @@ public class PSQT
         {0 ,  -9, -26,  -9, -10,  -2,  -4,   3,  -3},
         {0 , -14,   2, -11,  -2,  -5,   2,  14,   5},
         {0 , -35,  -8,  11,   2,   8,  15,  -3,   1},
-        {0 , -1, -18,  -9,  10, -15, -25, -31, -50,},
+        {0 , -1,  -18,  -9,  10, -15, -25, -31, -50},
     };
     public float[,] QueenEG = new float[9, 9] {
         {0 ,   0,   0,   0,   0,   0,   0,   0,  0 },

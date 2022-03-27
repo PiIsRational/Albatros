@@ -43,14 +43,13 @@ public class MoveGen
     * If Moove Format is int[3] , or int[4] then special Moove involving two pieces
     * Unmove has the format X_a , Y_a , Piece_a , X_b , Y_b , Piece_b
     */
-    public int[] UnmakeMove;
+    public int[] UnmakeMove, EnPassent = new int[2];
     bool WrongPosition = false;
+    public bool non_pawn_material = false;
     int[] kingpositions = new int[4];
-    int[] EnPassent = new int[2];
-    bool castle_kingside_white = true;
-    bool castle_kingside_black = true;
-    bool castle_queenside_white = true;
-    bool castle_queenside_black = true;
+    public int fifty_move_rule = 0;
+    List<int[]> MoveList = new List<int[]>();
+    List<int[]>[][,] Move_lookup = new List<int[]>[2][,];
     public byte[,] UndoMove(byte[,] Position, int[] MoveUndo)
     {
         if ((MoveUndo.Length / 3) * 3 == MoveUndo.Length)
@@ -66,18 +65,20 @@ public class MoveGen
     {
         //Look for blocking of Position
         List<int[]> Moves = ReturnPossibleMoves(InputBoard, Color);
+
         if (Moves == null)
             return 2;
+
         byte[,] MoveUndo = new byte[9, 9];
-        byte NewColor = 0;
-        if (Color == 0)
-            NewColor = 1;
+        byte NewColor = (byte)(1 - Color);
+
         foreach (int[] Move in Moves)
         {
             if (Move.Length != 5 || !CastlingCheck(InputBoard, Move))
             {
                 Array.Copy(InputBoard, MoveUndo, MoveUndo.Length);
                 InputBoard = PlayMove(InputBoard, Color, Move);
+
                 if (!CompleteCheck(InputBoard, NewColor))
                 {
                     Array.Copy(MoveUndo, InputBoard, InputBoard.Length);
@@ -90,7 +91,7 @@ public class MoveGen
         //Mate or Stalemate
         //Case: Mate
         if (CompleteCheck(InputBoard, NewColor))
-            return (2 * NewColor - 1);
+            return -1;
         //Case: Stalemate
         else
             return 0;
@@ -130,62 +131,96 @@ public class MoveGen
         int k = Move[0];
         int j = Move[1];
         int[] CurrentMoove;
+
         if (Move.Length == 4)
             CurrentMoove = new int[2] { Move[2], Move[3] };
         else if (Move.Length == 5)
             CurrentMoove = new int[3] { Move[2], Move[3], Move[4] };
         else
             CurrentMoove = new int[0];
+
         switch (InputBoard[k, j] - (InputBoard[k, j] >> 4) * 0b10000)
         {
             //PawnStart
             case 0b00000001:
+                fifty_move_rule = 0;
                 Array.Copy(PawnStartExecuteMooves(InputBoard, CurrentMoove, k, j), InputBoard, InputBoard.Length);
                 break;
             //NormalPawn
             case 0b00000011:
+                fifty_move_rule = 0;
                 Array.Copy(PawnDirectExecuteMooves(InputBoard, CurrentMoove, k, j), InputBoard, InputBoard.Length);
                 break;
             //Knight
             case 0b00000100:
+                fifty_move_rule++;
                 Array.Copy(NormalExecuteMooves(InputBoard, CurrentMoove, k, j), InputBoard, InputBoard.Length);
                 break;
             //Bishop
             case 0b00000101:
+                fifty_move_rule++;
                 Array.Copy(NormalExecuteMooves(InputBoard, CurrentMoove, k, j), InputBoard, InputBoard.Length);
                 break;
             //King Can Castle
             case 0b00000110:
+                fifty_move_rule++;
                 Array.Copy(KingCastleExecuteMooves(InputBoard, CurrentMoove, k, j), InputBoard, InputBoard.Length);
                 break;
             //Normal King
             case 0b00000111:
+                fifty_move_rule++;
                 Array.Copy(NormalExecuteMooves(InputBoard, CurrentMoove, k, j), InputBoard, InputBoard.Length);
                 break;
             //Queen
             case 0b00001000:
+                fifty_move_rule++;
                 Array.Copy(NormalExecuteMooves(InputBoard, CurrentMoove, k, j), InputBoard, InputBoard.Length);
                 break;
             //RookCanCastle
             case 0b00001001:
+                fifty_move_rule++;
                 Array.Copy(StartExecuteMooves(InputBoard, CurrentMoove, k, j), InputBoard, InputBoard.Length);
                 break;
             //Normal Rook
             case 0b00001010:
+                fifty_move_rule++;
                 Array.Copy(NormalExecuteMooves(InputBoard, CurrentMoove, k, j), InputBoard, InputBoard.Length);
                 break;
         }
+
+        if (UnmakeMove[2] != 0 && UnmakeMove[5] != 0)
+            fifty_move_rule = 0;
+
         for (int x = 1; x < 9; x++)
-            for (int y = 4; y < 6; y++)
-                if (InputBoard[x, y] != 0 && InputBoard[x, y] >> 4 == (1 - color) && InputBoard[x, y] - (InputBoard[x, y] >> 4) * 0b10000 == 0b10)
-                    InputBoard[x, y]++;
+        {
+            int y = 4 + color;
+
+            if (InputBoard[x, y] != 0 && InputBoard[x, y] >> 4 == (1 - color) && InputBoard[x, y] - (InputBoard[x, y] >> 4) * 0b10000 == 0b10)
+            {
+                //create a copy of the move
+                int[] Copy = new int[UnmakeMove.Length];
+                Array.Copy(UnmakeMove, Copy, Copy.Length);
+                //make the array larger
+                UnmakeMove = new int[UnmakeMove.Length + 3];
+                //copy the copy into the move
+                Array.Copy(Copy, 0, UnmakeMove, 0, Copy.Length);
+                //create the additive to the move undo
+                Copy = new int[] { x, y, InputBoard[x, y] };
+                //copy it to the unmake move 
+                Array.Copy(Copy, 0, UnmakeMove, UnmakeMove.Length - 3, Copy.Length);
+                //increment the piece
+                InputBoard[x, y]++;
+                break;
+            }
+        }
+
         return InputBoard;
     }
     public byte[,] PawnDirectExecuteMooves(byte[,] InputBoard, int[] Move, int X, int Y)
     {
         byte Copy = InputBoard[X, Y];
 
-        //Queening
+        //Queening or en passent
         if (Move.Length == 3)
         {
             switch (Move[2])
@@ -219,7 +254,14 @@ public class MoveGen
         }
         else
         {
-            UnmakeMove = new int[] { X, Y, Copy, Move[0], Move[1], InputBoard[Move[0], Move[1]] };
+            //en passent
+            if (Move[0] != X && InputBoard[Move[0], Move[1]] == 0)
+            {
+                UnmakeMove = new int[] { X, Y, InputBoard[X, Y], Move[0], Move[1], 0, Move[0], Y, InputBoard[Move[0], Y] };
+                InputBoard[Move[0], Y] = 0;
+            }
+            else
+                UnmakeMove = new int[] { X, Y, Copy, Move[0], Move[1], InputBoard[Move[0], Move[1]] };
         }
         InputBoard[X, Y] = 0;
         InputBoard[Move[0], Move[1]] = Copy;
@@ -229,18 +271,6 @@ public class MoveGen
     public byte[,] KingCastleExecuteMooves(byte[,] InputBoard, int[] Move, int X, int Y)
     {
         byte KingColor = (byte)(InputBoard[X, Y] >> 4);
-
-        if(KingColor == 0)
-        {
-            castle_kingside_black = false;
-            castle_queenside_black = false;
-        }
-        else
-        {
-            castle_kingside_white = false;
-            castle_queenside_white = false;
-        }
-
         byte Copy = (byte)(InputBoard[X, Y] + 1);
 
         if (Move.Length == 2 && Move[0] != X + 2 && Move[0] != X - 2) 
@@ -281,31 +311,6 @@ public class MoveGen
         }
         return InputBoard;
     }
-    public bool CastlingCheck(byte[,] InputBoard, int[] Moove)
-    {
-        byte Copy = (byte)(InputBoard[Moove[0], Moove[1]] + 1);
-        bool Output = false;
-        byte[,] CurrentBoard = new byte[9, 9];
-
-        Array.Copy(InputBoard, 0, CurrentBoard, 0, InputBoard.Length);
-
-        if (Moove.Length == 5)
-        {
-            byte KingColor = (byte)(InputBoard[Moove[0], Moove[1]] >> 4);
-            byte EnemyColor = 0;
-            if (KingColor == 0)
-                EnemyColor = 1;
-
-            //Copy the King to two new Squares
-            CurrentBoard[(Moove[0] + Moove[2]) / 2, Moove[1]] = Copy;
-            CurrentBoard[Moove[2], Moove[3]] = Copy;
-
-            //Check if any of the Kings are in Check
-            if (CompleteCheck(CurrentBoard, EnemyColor))
-                Output = true;
-        }
-        return Output;
-    }
     public byte[,] StartExecuteMooves(byte[,] InputBoard, int[] Move, int X, int Y)
     {
         byte Copy = (byte)(InputBoard[X, Y] + 1);
@@ -324,6 +329,7 @@ public class MoveGen
         {
             UnmakeMove = new int[] { X, Y, Copy - 2, Move[0], Move[1], 0 };
             InputBoard[Move[0], Move[1]] = (byte)(Copy - 1);
+
             EnPassent[0] = Move[0];
             EnPassent[1] = Move[1];
         }
@@ -343,13 +349,40 @@ public class MoveGen
         InputBoard[Move[0], Move[1]] = Copy;
         return InputBoard;
     }
+    public void reset_move_lookup(List<int[]> MoveList, byte color, byte[,] board)
+    {
+        //Reset the move lookup table
+        Move_lookup[color] = new List<int[]>[9, 9];
+        for (int i = 0; i < 9; i++)
+            for (int j = 0; j < 9; j++)
+                Move_lookup[color][i, j] = new List<int[]>();
+
+        foreach (int[] Move in MoveList) 
+        {
+            switch (board[Move[0], Move[1]] - (board[Move[0], Move[1]] >> 4) * 0b10000)
+            {
+                //normal pawn
+                case 0b00000011:
+
+                //king which can caste
+                case 0b00000110:
+                    for (int i = 1; i < 9; i++)
+                        Move_lookup[color][i, Move[1]].Add(new int[] { Move[0], Move[1] });
+
+                    Move_lookup[color][Move[2], Move[3]].Add(new int[] { Move[0], Move[1] });
+                    break;
+                //normal moves
+                default:
+                    Move_lookup[color][Move[2], Move[3]].Add(new int[] { Move[0], Move[1] });
+                    break;
+            }
+
+        }
+    }
     public List<int[]> ReturnPossibleMoves(byte[,] InputBoard, byte color)
     {
         List<int[]> Output = new List<int[]>();
-        for (int i = 1; i < 9; i++)
-            for (int j = 4; j < 6; j++)
-                if (InputBoard[i, j] != 0 && InputBoard[i, j] >> 4 == color && InputBoard[i, j] - (InputBoard[i, j] >> 4) * 0b10000 == 0b10)
-                    InputBoard[i, j]++;
+        non_pawn_material = false;
         for (int i = 1; i < 9; i++)
         {
             for (int j = 1; j < 9; j++)
@@ -365,9 +398,11 @@ public class MoveGen
                             Output.AddRange(UpdatePawnOutput(PawnMoove(InputBoard, i, j, color), i, j));
                             break;
                         case 0b00000100:
+                            non_pawn_material = true;
                             Output.AddRange(UpdatePieceOutput(KnightMoove(InputBoard, i, j, color), i, j));
                             break;
                         case 0b00000101:
+                            non_pawn_material = true;
                             Output.AddRange(UpdatePieceOutput(BishopMoove(InputBoard, i, j, color), i, j));
                             break;
                         case 0b00000110:
@@ -377,12 +412,15 @@ public class MoveGen
                             Output.AddRange(UpdatePieceOutput(KingMoove(InputBoard, i, j, color), i, j));
                             break;
                         case 0b00001000:
+                            non_pawn_material = true;
                             Output.AddRange(UpdatePieceOutput(QueenMoove(InputBoard, i, j, color), i, j));
                             break;
                         case 0b00001001:
+                            non_pawn_material = true;
                             Output.AddRange(UpdatePieceOutput(RookMoove(InputBoard, i, j, color), i, j));
                             break;
                         case 0b00001010:
+                            non_pawn_material = true;
                             Output.AddRange(UpdatePieceOutput(RookMoove(InputBoard, i, j, color), i, j));
                             break;
 
@@ -400,10 +438,7 @@ public class MoveGen
     public List<int[]> ReturnPossibleCaptures(byte[,] InputBoard, byte color)
     {
         List<int[]> Output = new List<int[]>();
-        for (int i = 1; i < 9; i++)
-            for (int j = 4; j < 6; j++)
-                if (InputBoard[i, j] != 0 && InputBoard[i, j] >> 4 == color && InputBoard[i, j] - (InputBoard[i, j] >> 4) * 0b10000 == 0b10)
-                    InputBoard[i, j]++;
+
         for (int i = 1; i < 9; i++)
         {
             for (int j = 1; j < 9; j++)
@@ -454,39 +489,39 @@ public class MoveGen
     public List<int[]> UpdatePieceOutput(List<int[]> InputList, int X, int Y)
     {
         List<int[]> OutputList = new List<int[]>();
-        foreach (int[] Array in InputList)
+        foreach (int[] Move in InputList)
         {
-            if (Array.Length == 2)
-                OutputList.Add(new int[4] { X, Y, Array[0], Array[1] });
+            if (Move.Length == 2)
+                OutputList.Add(new int[4] { X, Y, Move[0], Move[1] });
             else
-                OutputList.Add(new int[5] { X, Y, Array[0], Array[1], 0 });
+                OutputList.Add(new int[5] { X, Y, Move[0], Move[1], 0 });
         }
         return OutputList;
     }
     public List<int[]> UpdatePawnOutput(List<int[]> InputList, int X, int Y)
     {
         List<int[]> OutputList = new List<int[]>();
-        foreach (int[] Array in InputList)
+        foreach (int[] Move in InputList)
         {
             //if Promoting Pawn
-            if (Array[1] == 8 || Array[1] == 1)
+            if (Move[1] == 8 || Move[1] == 1)
             {
                 //Knight
-                OutputList.Add(new int[5] { X, Y, Array[0], Array[1], 1 });
+                OutputList.Add(new int[5] { X, Y, Move[0], Move[1], 1 });
                 //Bishop
-                OutputList.Add(new int[5] { X, Y, Array[0], Array[1], 2 });
+                OutputList.Add(new int[5] { X, Y, Move[0], Move[1], 2 });
                 //Queen 
-                OutputList.Add(new int[5] { X, Y, Array[0], Array[1], 3 });
+                OutputList.Add(new int[5] { X, Y, Move[0], Move[1], 3 });
                 //Rook
-                OutputList.Add(new int[5] { X, Y, Array[0], Array[1], 4 });
+                OutputList.Add(new int[5] { X, Y, Move[0], Move[1], 4 });
             }
-            else if (Array.Length == 3)
+            else if (Move.Length == 3)
             {
-                OutputList.Add(new int[5] { X, Y, Array[0], Array[1], 0 });
+                OutputList.Add(new int[5] { X, Y, Move[0], Move[1], 0 });
             }
             else
             {
-                OutputList.Add(new int[4] { X, Y, Array[0], Array[1] });
+                OutputList.Add(new int[4] { X, Y, Move[0], Move[1] });
             }
         }
         return OutputList;
@@ -494,16 +529,10 @@ public class MoveGen
     public void check(byte[,] InputBoard, int X, int Y)
     {
         if ((InputBoard[X, Y] - (InputBoard[X, Y] >> 4) * 0b10000) >> 1 == 0b11)
-        {
             WrongPosition = true;
-        }
     }
     public bool CompleteCheck(byte[,] InputBoard, byte color)
     {
-        for (int i = 1; i < 9; i++)
-            for (int j = 4; j < 6; j++)
-                if (InputBoard[i, j] != 0 && InputBoard[i, j] >> 4 == color && InputBoard[i, j] - (InputBoard[i, j] >> 4) * 0b10000 == 0b10)
-                    InputBoard[i, j]++;
         for (int i = 1; i < 9; i++)
         {
             for (int j = 1; j < 9; j++)
@@ -549,6 +578,31 @@ public class MoveGen
             }
         }
         return false;
+    }
+    public bool CastlingCheck(byte[,] InputBoard, int[] move)
+    {
+        byte Copy = (byte)(InputBoard[move[0], move[1]]);
+        if (Copy != 0b00000110 && Copy != 0b00010110)
+            return false;
+        bool Output = false;
+        byte[,] CurrentBoard = new byte[9, 9];
+
+        Array.Copy(InputBoard, 0, CurrentBoard, 0, InputBoard.Length);
+
+        if (move.Length == 5)
+        {
+            byte KingColor = (byte)(InputBoard[move[0], move[1]] >> 4);
+            byte EnemyColor = (byte)(1 - KingColor);
+
+            //Copy the King to two new Squares
+            CurrentBoard[(move[0] + move[2]) / 2, move[1]] = Copy;
+            CurrentBoard[move[2], move[3]] = Copy;
+
+            //Check if any of the Kings are in Check
+            if (CompleteCheck(CurrentBoard, EnemyColor))
+                Output = true;
+        }
+        return Output;
     }
     public List<int[]> KnightMoove(byte[,] InputBoard, int PositionX, int PositionY, byte color)
     {
@@ -1026,23 +1080,20 @@ public class MoveGen
         if (InputBoard[PositionX, PositionY] - color * 0b10000 == 0b1 && InputBoard[PositionX, PositionY + colorminus] == 0 && InputBoard[PositionX, PositionY + 2 * colorminus] == 0)
             Output.Add(new int[2] { PositionX, PositionY + 2 * colorminus });
 
+        if (InputBoard[PositionX, PositionY + colorminus] == 0)
+            Output.Add(new int[2] { PositionX, PositionY + 1 * colorminus });
 
-        if (PositionY + colorminus >= 1 && PositionY + colorminus <= 8)
+        if (PositionX + 1 <= 8 && InputBoard[PositionX + 1, PositionY + colorminus] != 0 && InputBoard[PositionX + 1, PositionY + colorminus] >> 4 != color)
         {
-            if (InputBoard[PositionX, PositionY + colorminus] == 0)
-                Output.Add(new int[2] { PositionX, PositionY + 1 * colorminus });
-
-            if (PositionX + 1 <= 8 && InputBoard[PositionX + 1, PositionY + colorminus] != 0 && InputBoard[PositionX + 1, PositionY + colorminus] >> 4 != color)
-            {
-                check(InputBoard, PositionX + 1, PositionY + 1 * colorminus);
-                Output.Add(new int[2] { PositionX + 1, PositionY + 1 * colorminus });
-            }
-            if (PositionX - 1 >= 1 && InputBoard[PositionX - 1, PositionY + colorminus] != 0 && InputBoard[PositionX - 1, PositionY + colorminus] >> 4 != color)
-            {
-                check(InputBoard, PositionX - 1, PositionY + 1 * colorminus);
-                Output.Add(new int[2] { PositionX - 1, PositionY + 1 * colorminus });
-            }
+            check(InputBoard, PositionX + 1, PositionY + 1 * colorminus);
+            Output.Add(new int[2] { PositionX + 1, PositionY + 1 * colorminus });
         }
+        if (PositionX - 1 >= 1 && InputBoard[PositionX - 1, PositionY + colorminus] != 0 && InputBoard[PositionX - 1, PositionY + colorminus] >> 4 != color)
+        {
+            check(InputBoard, PositionX - 1, PositionY + 1 * colorminus);
+            Output.Add(new int[2] { PositionX - 1, PositionY + 1 * colorminus });
+        }
+
         //en passent
         if (PositionX + 1 <= 8 && PositionY == 4 + color && InputBoard[PositionX + 1, PositionY] != 0 && InputBoard[PositionX + 1, PositionY] >> 4 != color && InputBoard[PositionX + 1, PositionY] - (InputBoard[PositionX + 1, PositionY] >> 4) * 0b10000 == 0b00000010)
             Output.Add(new int[3] { PositionX + 1, PositionY + 1 * colorminus, 0 });

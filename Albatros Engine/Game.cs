@@ -20,25 +20,26 @@ class Game
     static string CommandBuffer = "";
 
     //Training Parameters
+    public int depthPly = 4;
     public int Elo = 100;
-    public float Lambda = 1;
-    public int BufferSize = 70000000;
-    public int TrainingSampleSize = 1000;
+    public float Lambda = 0.5f;
+    public int BufferSize = 140000000;
+    public int batch_size = 1000;
     public int GameLength = 350;
     public string NetName = "ValueNet.nnue";
     public int NodeCount = 10;
-    public float Coefficient = 0.01f;
+    public float learning_rate = 0.01f;
     public float Momentum = 0.9f;
     public float NetDecay = 0.75f;
-    public bool Play = false;
-    public string LogFile = "BufferLog-70000000.txt";
+    public bool Play = true;
+    public string LogFile = "BufferLog";
 
     //Other Parameters
     public float c_puct = 10;
     public bool IsPlaying = false;
     public bool NNUE = false;
     public int ThreadCount = 10;
-    public int HashSize = 1000;
+    public int HashSize = 18;
     public bool USE_MCTS = false;
     static void Main(string[] args)
     {

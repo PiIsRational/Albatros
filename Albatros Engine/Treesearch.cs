@@ -58,8 +58,6 @@ class Treesearch
     public Random random;
     bool stop = false;
     public bool wasStopped = false;
-    int Nodecount = 0;
-
 
     public Treesearch(int seed, bool LoadNet ,int ThreadCount)
     {
@@ -113,7 +111,7 @@ class Treesearch
         for (int i = 0; i < Iterations; i++)
         {
             //Backpropagate the network
-            ValueNet.BackPropagation(Positions, 10);
+            ValueNet.BackPropagation(Positions);
             Console.WriteLine("The Error is {0}", ValueNet.CostOfNet(Positions)[0]);
         }
     }
@@ -479,33 +477,6 @@ class Treesearch
 
         return 0;
     }
-    public byte[][,] PlayGameFromMooves(byte[,] InputBoard, byte color, int[][] Mooves , bool TreeUpdate)
-    {
-        for (int i = 0; i < Mooves.Length; i++)
-        {
-            InputBoard = MoveGenerator.PlayMove(InputBoard, color, Mooves[i]);
-            if (color == 1)
-                color = 0;
-            else
-                color = 1;
-            if(TreeUpdate && CurrentTree != null)
-            {
-                bool Change = false;
-                for (int l = 0; l < CurrentTree.ChildNodes.Count; l++)
-                    if (CurrentTree.ChildNodes[l].Board != null && CompareBoards(InputBoard, CurrentTree.ChildNodes[l].Board))
-                    {
-                        Change = true;
-                        CurrentTree = CurrentTree.ChildNodes[l];
-                        break;
-                    }
-                if (!Change)
-                    CurrentTree = null;
-            }
-        }
-        byte[,] ColorOut = new byte[1, 1];
-        ColorOut[0, 0] = color;
-        return new byte[2][,] { InputBoard, ColorOut };
-    }
     public TreesearchOutput GetTree(long NodeCount, bool Output, bool NNUE, Node startNode, bool Infinite, float c_puct)
     {
         Node Tree = startNode;
@@ -775,9 +746,7 @@ class Treesearch
     {
         List<int[]> Moves = MoveGenerator.ReturnPossibleMoves(board, color);
         int[] MoveUndo;
-        byte newcolor = 0;
-        if (color == 0)
-            newcolor = 1;
+        byte newcolor = (byte)(1 - color);
         int OutputNumber = 0;
         if (Moves == null)
             return 0;
@@ -802,9 +771,7 @@ class Treesearch
                 }
             }
             else if (depthPly < 1)
-            {
                 return 1;
-            }
             else
             {
                 foreach (int[] Move in Moves)

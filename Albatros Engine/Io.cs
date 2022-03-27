@@ -9,6 +9,8 @@ class Io
     Treesearch treesearch = new Treesearch(1245845, true, 5);
     Stopwatch sw = new Stopwatch();
     public AlphaBeta AlphaBetaSearch;
+    int movestogo = 50;
+    bool movelimit = false;
     public Io()
     {
         AlphaBetaSearch = new AlphaBeta(game.HashSize);
@@ -44,15 +46,16 @@ class Io
                     break;
                 case "uci":
                     Console.WriteLine(
-                        "id name Albatros v.1" +
-                        "\nid author D.Grévent" +
+                        "\nid name Albatros" +
+                        "\nid author D.Grevent" +
                         "\n" +
-                        "\noption name Ponder type check default false" +
+                        "\noption name Hash type spin default 18 min 1 max 10000"+
                         "\noption name c_puct type string default 1" +
                         "\noption name EvalFile type string default ValueNet.nnue" +
                         "\noption name Use NNUE type check default true" +
                         "\noption name Threads type spin default 1 min 1 max 1" +
-                        "\nuciok");
+                        "\n" +
+                        "\nuciok") ;
                     break;
                 case "ucinewgame":
                     LoadPositionBoard();
@@ -61,103 +64,131 @@ class Io
                     ReturnEvaluation((byte)game.Turn, game.Board);
                     break;
                 case "go":
-                    switch (command_syntax[1])
+                    if(command_syntax.Length >= 2)
                     {
-                        case "winc":
-                            Move = PlanMoveTime(command_syntax, game.Board, (byte)game.Turn, game.NNUE, game.USE_MCTS);
-                            if (Move != null)
-                                ReturnMoove(Move[0], Move[1]);
-                            break;
-                        case "binc":
-                            Move = PlanMoveTime(command_syntax, game.Board, (byte)game.Turn, game.NNUE, game.USE_MCTS);
-                            if (Move != null)
-                                ReturnMoove(Move[0], Move[1]);
-                            break;
-                        case "btime":
-                            Move = PlanMoveTime(command_syntax, game.Board, (byte)game.Turn, game.NNUE, game.USE_MCTS);
-                            if (Move != null)
-                                ReturnMoove(Move[0], Move[1]);
-                            break;
-                        case "wtime":
-                            Move = PlanMoveTime(command_syntax, game.Board, (byte)game.Turn, game.NNUE, game.USE_MCTS);
-                            if (Move != null)
-                                ReturnMoove(Move[0], Move[1]);
-                            break;
-                        case "movestogo":
-                            Move = PlanMoveTime(command_syntax, game.Board, (byte)game.Turn, game.NNUE, game.USE_MCTS);
-                            if (Move != null)
-                                ReturnMoove(Move[0], Move[1]);
-                            break;
-                        case "ponder":
-                            if (game.USE_MCTS)
-                            {
-                                Move = treesearch.MultithreadMcts(game.Board, (byte)game.Turn, Int32.MaxValue, game.NNUE, game.ThreadCount, true, false, 0, game.c_puct);
+                        switch (command_syntax[1])
+                        {
+                            case "winc":
+                                Move = PlanMoveTime(command_syntax, game.Board, (byte)game.Turn, game.NNUE, game.USE_MCTS);
                                 if (Move != null)
-                                    ReturnMoove(Move[0], Move[1]);
-                            }
-                            else
-                            {
-                                Move[0] = AlphaBetaSearch.iterative_deepening(game.Board, (byte)game.Turn, byte.MaxValue, game.NNUE, true);
-                                ReturnMoove(Move[0], new int[0]);
-                            }
-                            break;
-                        case "infinite":
-                            if (game.USE_MCTS)
-                            {
-                                Move = treesearch.MultithreadMcts(game.Board, (byte)game.Turn, Int32.MaxValue, game.NNUE, game.ThreadCount, true, false, 0, game.c_puct);
+                                    ReturnMove(Move[0], Move[1]);
+                                break;
+                            case "binc":
+                                Move = PlanMoveTime(command_syntax, game.Board, (byte)game.Turn, game.NNUE, game.USE_MCTS);
                                 if (Move != null)
-                                    ReturnMoove(Move[0], Move[1]);
-                            }
-                            else
-                            {
-                                Move[0] = AlphaBetaSearch.iterative_deepening(game.Board, (byte)game.Turn, byte.MaxValue, game.NNUE, true);
-                                ReturnMoove(Move[0], new int[0]);
-                            }
-                            break;
-                        case "movetime":
-                            if (game.USE_MCTS)
-                            {
-                                Move = treesearch.MultithreadMcts(game.Board, (byte)game.Turn, Int32.MaxValue, game.NNUE, game.ThreadCount, true, true, Convert.ToInt64(command_syntax[2]), game.c_puct);
+                                    ReturnMove(Move[0], Move[1]);
+                                break;
+                            case "btime":
+                                Move = PlanMoveTime(command_syntax, game.Board, (byte)game.Turn, game.NNUE, game.USE_MCTS);
                                 if (Move != null)
-                                    ReturnMoove(Move[0], Move[1]);
-                            }
-                            else
-                            {
-                                Move[0] = AlphaBetaSearch.TimedAlphaBeta(Convert.ToInt64(command_syntax[2]), game.Board, (byte)game.Turn, game.NNUE, true);
-                                ReturnMoove(Move[0], new int[0]);
-                            }
-                            break;
-                        case "perft":
-                            try
-                            {
-                                PrintMoovesFromPosition(game.Board, (byte)game.Turn, Convert.ToInt32(command_syntax[2]));
-                            }
-                            catch
-                            {
-                                Console.WriteLine("there was an Error!\n");
-                            }
-                            break;
-                        case "depth":
-                            try
-                            {
-                                Move[0] = AlphaBetaSearch.iterative_deepening(game.Board, (byte)game.Turn, Convert.ToInt32(command_syntax[2]), game.NNUE , true);
-                                ReturnMoove(Move[0], new int[0]);
-                            }
-                            catch
-                            {
-                                Console.WriteLine("there was an Error!\n");
-                            }
-                            break;
-                        case "nodes":
-                            Move = treesearch.MultithreadMcts(game.Board, (byte)game.Turn, Convert.ToInt32(command_syntax[2]), game.NNUE, game.ThreadCount, false , false , 0 , game.c_puct);
+                                    ReturnMove(Move[0], Move[1]);
+                                break;
+                            case "wtime":
+                                Move = PlanMoveTime(command_syntax, game.Board, (byte)game.Turn, game.NNUE, game.USE_MCTS);
+                                if (Move != null)
+                                    ReturnMove(Move[0], Move[1]);
+                                break;
+                            case "movestogo":
+                                Move = PlanMoveTime(command_syntax, game.Board, (byte)game.Turn, game.NNUE, game.USE_MCTS);
+                                if (Move != null)
+                                    ReturnMove(Move[0], Move[1]);
+                                break;
+                            case "ponder":
+                                if (game.USE_MCTS)
+                                {
+                                    Move = treesearch.MultithreadMcts(game.Board, (byte)game.Turn, Int32.MaxValue, game.NNUE, game.ThreadCount, true, false, 0, game.c_puct);
+                                    if (Move != null)
+                                        ReturnMove(Move[0], Move[1]);
+                                }
+                                else
+                                {
+                                    Move[0] = AlphaBetaSearch.iterative_deepening(game.Board, (byte)game.Turn, byte.MaxValue, game.NNUE);
+                                    ReturnMove(Move[0], new int[0]);
+                                }
+                                break;
+                            case "infinite":
+                                if (game.USE_MCTS)
+                                {
+                                    Move = treesearch.MultithreadMcts(game.Board, (byte)game.Turn, Int32.MaxValue, game.NNUE, game.ThreadCount, true, false, 0, game.c_puct);
+                                    if (Move != null)
+                                        ReturnMove(Move[0], Move[1]);
+                                }
+                                else
+                                {
+                                    Move[0] = AlphaBetaSearch.iterative_deepening(game.Board, (byte)game.Turn, byte.MaxValue, game.NNUE);
+                                    ReturnMove(Move[0], new int[0]);
+                                }
+                                break;
+                            case "movetime":
+                                if (game.USE_MCTS)
+                                {
+                                    Move = treesearch.MultithreadMcts(game.Board, (byte)game.Turn, Int32.MaxValue, game.NNUE, game.ThreadCount, true, true, Convert.ToInt64(command_syntax[2]), game.c_puct);
+                                    if (Move != null)
+                                        ReturnMove(Move[0], Move[1]);
+                                }
+                                else
+                                {
+                                    Move[0] = AlphaBetaSearch.TimedAlphaBeta(Convert.ToInt64(command_syntax[2]), game.Board, (byte)game.Turn, game.NNUE);
+                                    ReturnMove(Move[0], new int[0]);
+                                }
+                                break;
+                            case "perft":
+                                try
+                                {
+                                    PrintMovesFromPosition(game.Board, (byte)game.Turn, Convert.ToInt32(command_syntax[2]));
+                                }
+                                catch
+                                {
+                                    Console.WriteLine("there was an Error!\n");
+                                }
+                                break;
+                            case "captures":
+                                PrintCapturesFromPosition(game.Board, (byte)game.Turn);
+                                break;
+                            case "depth":
+                                try
+                                {
+                                    Move[0] = AlphaBetaSearch.iterative_deepening(game.Board, (byte)game.Turn, Convert.ToInt32(command_syntax[2]), game.NNUE);
+                                    ReturnMove(Move[0], new int[0]);
+                                }
+                                catch
+                                {
+                                    Console.WriteLine("there was an Error!\n");
+                                }
+                                break;
+                            case "nodes":
+                                Move = treesearch.MultithreadMcts(game.Board, (byte)game.Turn, Convert.ToInt32(command_syntax[2]), game.NNUE, game.ThreadCount, false, false, 0, game.c_puct);
+                                if (Move != null)
+                                    ReturnMove(Move[0], Move[1]);
+                                break;
+                            default:
+                                if (game.USE_MCTS)
+                                {
+                                    Move = treesearch.MultithreadMcts(game.Board, (byte)game.Turn, Int32.MaxValue, game.NNUE, game.ThreadCount, true, false, 0, game.c_puct);
+                                    if (Move != null)
+                                        ReturnMove(Move[0], Move[1]);
+                                }
+                                else
+                                {
+                                    Move[0] = AlphaBetaSearch.iterative_deepening(game.Board, (byte)game.Turn, byte.MaxValue, game.NNUE);
+                                    ReturnMove(Move[0], new int[0]);
+                                }
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        if (game.USE_MCTS)
+                        {
+                            Move = treesearch.MultithreadMcts(game.Board, (byte)game.Turn, Int32.MaxValue, game.NNUE, game.ThreadCount, true, false, 0, game.c_puct);
                             if (Move != null)
-                                ReturnMoove(Move[0], Move[1]);
-                            break;
-                        default:
-                            Move = treesearch.MultithreadMcts(game.Board, (byte)game.Turn, Int32.MaxValue, game.NNUE, game.ThreadCount, true, false, 0 , game.c_puct);
-                            if (Move != null)
-                                ReturnMoove(Move[0], Move[1]);
-                            break;
+                                ReturnMove(Move[0], Move[1]);
+                        }
+                        else
+                        {
+                            Move[0] = AlphaBetaSearch.iterative_deepening(game.Board, (byte)game.Turn, byte.MaxValue, game.NNUE);
+                            ReturnMove(Move[0], new int[0]);
+                        }
                     }
                     break;
                 case "export_net":
@@ -193,18 +224,6 @@ class Io
                                     Console.WriteLine("{0} is not a number \n", command_syntax[4]);
                                 }
                                 break;
-                            case "Elo":
-                                try
-                                {
-                                    game.Elo = Convert.ToInt32(command_syntax[4]);
-                                    if (game.Elo < 0)
-                                        game.Elo = 0;
-                                }
-                                catch
-                                {
-                                    Console.WriteLine("{0} is not a number \n" , command_syntax[4]);
-                                }
-                                break;
                             case "Use":
                                 if (command_syntax[3] == "NNUE")
                                 {
@@ -222,7 +241,16 @@ class Io
                                         game.ThreadCount = 1;
                                     treesearch.ChangeThreadCount(game.ThreadCount);
                                 }
-                                catch { }
+                                catch { Console.WriteLine("{0} is not a number \n", command_syntax[4]); }
+                                break;
+                            case "Hash":
+                                try
+                                {
+                                    game.HashSize = Convert.ToInt32(command_syntax[4]);
+                                    game.HashSize = Math.Max(Math.Min(game.HashSize, 10000), 1);
+                                    AlphaBetaSearch.HashTable = new byte[game.HashSize * 55556, 18];
+                                }
+                                catch { Console.WriteLine("{0} is not a number \n", command_syntax[4]); }
                                 break;
                         }
                     }
@@ -231,18 +259,17 @@ class Io
                     switch (command_syntax[1])
                     {
                         case "startpos":
-                            game.Playing = true;
-                            game.Board = game.LoadPositionFromFen(game.StartPosition);
+                            reset_board();
                             try
                             {
                                 if (command_syntax[2] == "moves")
                                 {
-                                    string[] MoovesComands = new string[command_syntax.Length - 3];
+                                    string[] move_commands = new string[command_syntax.Length - 3];
 
                                     for (int i = 3; i < command_syntax.Length; i++)
-                                        MoovesComands[i - 3] = command_syntax[i];
+                                        move_commands[i - 3] = command_syntax[i];
 
-                                    byte[][,] array = PlayGameFromCommand(MoovesComands, false);
+                                    byte[][,] array = PlayGameFromCommand(move_commands, false);
                                     game.Turn = array[1][0, 0];
                                     Array.Copy(array[0], game.Board, game.Board.Length);
                                 }
@@ -253,6 +280,7 @@ class Io
                         case "fen":
                             try
                             {
+                                reset_board();
                                 game.Board = game.LoadPositionFromFen(command_syntax[2] + " " + command_syntax[3] + " " + command_syntax[4] + " " + command_syntax[5]);
                                 try
                                 {
@@ -297,7 +325,7 @@ class Io
     }
     public int[][] PlanMoveTime(string[] Command, byte[,] InputBoard, byte color , bool NNUE , bool USE_MCTS)
     {
-        int wtime = 0, btime = 0, winc = 0, binc = 0 , movestogo = 50;
+        int wtime = 0, btime = 0, winc = 0, binc = 0;
         int timeMe = 0, TimeEnemy = 0, Meinc = 0, Enemyinc = 0;
         long timeToUse = 0;
         for (int i = 0; i < Command.Length - 1; i++)
@@ -318,6 +346,7 @@ class Io
                     break;
                 case "movestogo":
                     movestogo = Convert.ToInt32(Command[i + 1]);
+                    movelimit = true;
                     break;
             }
         }
@@ -335,34 +364,57 @@ class Io
             Meinc = winc;
             Enemyinc = binc;
         }
-        timeToUse = (9 * Meinc) / 10;
-        timeToUse += timeMe / movestogo;
-        if (timeToUse > 300000)
-            timeToUse = 300000;
-        if (USE_MCTS)
+
+        if (Meinc != 0)
+            timeToUse = Meinc;
+
+        if (!movelimit)
         {
-            if (timeToUse < 3000)
+            if (movestogo >= 5)
             {
-                return new int[][] { AlphaBetaSearch.TimedAlphaBeta(timeToUse - 50, InputBoard, color, NNUE, true), new int[0] };
+                timeToUse += timeMe / movestogo;
+                movestogo--;
             }
             else
             {
-                return treesearch.MultithreadMcts(game.Board, (byte)game.Turn, Int32.MaxValue, game.NNUE, game.ThreadCount, true, true, timeToUse - 500, game.c_puct);
+                timeToUse = (9 * Meinc) / 10;
             }
+
+            if (timeToUse >= Meinc * 2)
+                movestogo++;
+
         }
         else
+            timeToUse += timeMe / (movestogo + 1);
+
+        if (USE_MCTS)
         {
-            return new int[][] { AlphaBetaSearch.TimedAlphaBeta(timeToUse - 50, InputBoard, color, NNUE, true), new int[0] };
+            if (timeToUse < 3000)
+                return new int[][] { AlphaBetaSearch.TimedAlphaBeta(timeToUse - 50, InputBoard, color, NNUE), new int[0] };
+            else
+                return treesearch.MultithreadMcts(game.Board, (byte)game.Turn, Int32.MaxValue, game.NNUE, game.ThreadCount, true, true, timeToUse - 500, game.c_puct);
         }
+        else
+            return new int[][] { AlphaBetaSearch.TimedAlphaBeta(timeToUse - 20, InputBoard, color, NNUE), new int[0] };
     }
     public void LoadPositionBoard()
     {
+        AlphaBetaSearch.time_to_use = 0;
+        movestogo = 50;
         game.Playing = false;
         treesearch.CurrentTree = null;
         AlphaBetaSearch.HashTable = new byte[game.HashSize * 55556, 18];
+        AlphaBetaSearch.MoveGenerator.fifty_move_rule = 0;
         game.Board = game.LoadPositionFromFen(game.StartPosition);
     }
-    public void PrintMoovesFromPosition(byte[,] InputBoard, byte color, int depthPly)
+    public void reset_board()
+    {
+        AlphaBetaSearch.time_to_use = 0;
+        AlphaBetaSearch.HashTable = new byte[game.HashSize * 55556, 18];
+        AlphaBetaSearch.MoveGenerator.fifty_move_rule = 0;
+        game.Board = game.LoadPositionFromFen(game.StartPosition);
+    }
+    public void PrintMovesFromPosition(byte[,] InputBoard, byte color, int depthPly)
     {
         byte othercolor = 0;
         if (color == 0)
@@ -406,11 +458,51 @@ class Io
         }
         Console.WriteLine("\nNodes searched: {0}  \nElapsed Time: {1}\n", completCount, watch.ElapsedMilliseconds);
     }
-    public void ReturnMoove(int[] Move, int[] PonderMove)
+    public void PrintCapturesFromPosition(byte[,] InputBoard, byte color)
+    {
+        byte othercolor = (byte)(1 - color);
+        int completCount = 0;
+        int currentNumber = 1;
+        List<int[]> Moves = treesearch.MoveGenerator.ReturnPossibleCaptures(InputBoard, color);
+        string[] ConvertNumToLetter = new string[] { "0", "a", "b", "c", "d", "e", "f", "g", "h" };
+        string[] Promotion = new string[] { "", "n", "b", "q", "r" };
+        Stopwatch watch = new Stopwatch();
+        watch.Start();
+        //if not Checkmate
+        if (treesearch.PossiblePositionCounter(InputBoard, 1, color) != 0)
+        {
+            foreach (int[] Move in Moves)
+            {
+                if (Move.Length != 5 || !treesearch.MoveGenerator.CastlingCheck(InputBoard, Move))
+                {
+                    InputBoard = AlphaBetaSearch.MoveGenerator.PlayMove(InputBoard, color, Move);
+                    if (currentNumber != 0 && !AlphaBetaSearch.MoveGenerator.CompleteCheck(InputBoard , othercolor))
+                    {
+                        //Promoting Pawn
+                        if (Move.Length == 5)
+                        {
+                            Console.WriteLine(ConvertNumToLetter[Move[0]] + Move[1] + ConvertNumToLetter[Move[2]] + Move[3] + Promotion[Move[4]] + ": " + currentNumber);
+                            completCount += currentNumber;
+                        }
+                        //Normal Piece
+                        else
+                        {
+                            Console.WriteLine(ConvertNumToLetter[Move[0]] + Move[1] + ConvertNumToLetter[Move[2]] + Move[3] + ": " + currentNumber);
+                            completCount += currentNumber;
+                        }
+                    }
+                    InputBoard = AlphaBetaSearch.MoveGenerator.UndoMove(InputBoard, AlphaBetaSearch.MoveGenerator.UnmakeMove);
+                }
+            }
+        }
+        Console.WriteLine("\nNodes searched: {0}  \nElapsed Time: {1}\n", completCount, watch.ElapsedMilliseconds);
+    }
+    public void ReturnMove(int[] Move, int[] PonderMove)
     {
         string[] ConvertNumToLetter = new string[] { "0", "a", "b", "c", "d", "e", "f", "g", "h" };
         string[] Promotion = new string[] { "", "n", "b", "q", "r" };
         string Output = "";
+
         //Promoting Pawn
         if (Move.Length == 5)
             Output = "bestmove " + ConvertNumToLetter[Move[0]] + Move[1] + ConvertNumToLetter[Move[2]] + Move[3] + Promotion[Move[4]];
@@ -419,7 +511,7 @@ class Io
         else
             Output = "bestmove " + ConvertNumToLetter[Move[0]] + Move[1] + ConvertNumToLetter[Move[2]] + Move[3];
 
-        if (PonderMove.Length != 0)
+        if (PonderMove.Length >= 4)
         {
             //Promoting Pawn
             if (PonderMove.Length == 5)
@@ -429,6 +521,7 @@ class Io
             else
                 Output += " ponder " + ConvertNumToLetter[PonderMove[0]] + PonderMove[1] + ConvertNumToLetter[PonderMove[2]] + PonderMove[3];
         }
+
         Console.WriteLine(Output);
     }
     public void DisplayCurrentBoard(byte[,] InputBoard)
@@ -535,20 +628,20 @@ class Io
         char[] ConvertNumToLetter = new char[] { '0', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h' };
         char[] Promotion = new char[] { '0', 'n', 'b', 'q', 'r' };
         int[][] PlayingMooves = new int[Commands.Length][];
-        char[] MooveInParts;
+        char[] MoveInParts;
         for (int i = 0; i < Commands.Length; i++)
         {
-            MooveInParts = Commands[i].ToCharArray();
-            if (MooveInParts.Length == 4)
+            MoveInParts = Commands[i].ToCharArray();
+            if (MoveInParts.Length == 4)
             {
-                PlayingMooves[i] = new int[4] { GetPlaceInArray(ConvertNumToLetter, MooveInParts[0]), Convert.ToInt32(MooveInParts[1]) - 48, GetPlaceInArray(ConvertNumToLetter, MooveInParts[2]), Convert.ToInt32(MooveInParts[3]) - 48 };
+                PlayingMooves[i] = new int[4] { GetPlaceInArray(ConvertNumToLetter, MoveInParts[0]), Convert.ToInt32(MoveInParts[1]) - 48, GetPlaceInArray(ConvertNumToLetter, MoveInParts[2]), Convert.ToInt32(MoveInParts[3]) - 48 };
             }
-            else if (MooveInParts.Length == 5)
+            else if (MoveInParts.Length == 5)
             {
-                PlayingMooves[i] = new int[5] { GetPlaceInArray(ConvertNumToLetter, MooveInParts[0]), Convert.ToInt32(MooveInParts[1]) - 48, GetPlaceInArray(ConvertNumToLetter, MooveInParts[2]), Convert.ToInt32(MooveInParts[3]) - 48, GetPlaceInArray(Promotion, MooveInParts[4]) };
+                PlayingMooves[i] = new int[5] { GetPlaceInArray(ConvertNumToLetter, MoveInParts[0]), Convert.ToInt32(MoveInParts[1]) - 48, GetPlaceInArray(ConvertNumToLetter, MoveInParts[2]), Convert.ToInt32(MoveInParts[3]) - 48, GetPlaceInArray(Promotion, MoveInParts[4]) };
             }
         }
-        return treesearch.PlayGameFromMooves(game.Board, (byte)game.Turn, PlayingMooves , TreeUpdate);
+        return AlphaBetaSearch.PlayGameFromMoves(game.Board, (byte)game.Turn, PlayingMooves , TreeUpdate);
     }
     public string ReturnNumber(float Input)
     {
@@ -604,6 +697,6 @@ class Io
     }
     public void TrainingStart()
     {
-        game.training = new Training(game.Board, game.NetName, game.BufferSize, game.GameLength, game.NodeCount, game.Coefficient, game.ThreadCount, game.Momentum, game.TrainingSampleSize, game.Lambda, game.Play , game.LogFile);
+        game.training = new Training(game.Board, game.NetName, game.BufferSize, game.GameLength, game.NodeCount, game.learning_rate, game.ThreadCount, game.Momentum, game.batch_size, game.Lambda, game.Play, game.LogFile, game.depthPly);
     }
 }
