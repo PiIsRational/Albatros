@@ -22,13 +22,13 @@ class NNUE_avx2
     //other stuff
     Vector256<int> kOnes256 = new Vector256<int>();
     short[] initKOnes256 = new short[16];
-    int weight_scaling = 16384;
+    int weight_scaling = 4096;
     int activation_scaling = 32767;
     //returns the piecetype of the halfkp encoding
     //piecetype[0] is for black and piecetype[1] is for white
     int[][] PieceType = new int[2][];
     //Log2 of weigtscale
-    byte Log2WeightScale = 14;
+    byte Log2WeightScale = 12;
     public NNUE_avx2(bool LoadNet)
     {
         initTransformer();
@@ -593,7 +593,7 @@ class NNUE_avx2
 }
 class Accumulator
 {
-    //Accumulator (Acc[0] White, Acc[1] Black)
+    //Accumulator (Acc[1] White, Acc[0] Black)
     public int[][] Acc;
 
     public Accumulator(int Size)
