@@ -15,6 +15,7 @@ class Training
     StreamWriter position_logger;
     StreamReader position_reader;
     Treesearch treesearch = new Treesearch(1, false, 1);
+    standart_chess chess_stuff = new standart_chess();
     Random random1 = new Random();
     float CurrentLearningRate = 0;
     float LearningRate;
@@ -115,50 +116,48 @@ class Training
     }
     public void ManageTraining()
     {
-        double[] cost;
-        TrainingPosition[] TestPositions = LoadPositionsFromFile("BufferLog-7000000.txt");
-
-        cost = TrainNet.CostOfNet(TestPositions);
-        Console.WriteLine("The Mean Error is : {0} , It should be smaller then {1}", cost[0], cost[1]);
-
         semaphoreEveryone.WaitOne();
         semaphoreTraining.WaitOne();
         bool finished = false;
-        if (online_thread_counter == 0)
+        //End of Play
+        if (IsPlaying)
         {
-            //End of Play
-            if (IsPlaying)
+            semaphoreEveryone.Release();
+            semaphoreTraining.Release();
+            bool done = false;
+
+            while (!done)
             {
-                stop_logging();
-                Console.WriteLine("finished game generation!");
-
-                //Give the info about the current Training cycle to the user
-                Console.WriteLine("Wins for White : {0}", WinWhite);
-                Console.WriteLine("Wins for Black : {0}", WinBlack);
-                Console.WriteLine("The Finishing Rate is : {0}% ", FinishedGames * 100 / AmountofGames);
-                Console.WriteLine("Step number: {0}", TrainingSteps);
-                if (TrainingSteps % 1 == 0)
-                {
-                    cost = TrainNet.CostOfNet(TestPositions);
-                    Console.WriteLine("The Mean Error is : {0} , It should be smaller then {1}", cost[0], cost[1]);
-                    //Log info
-                    LogNumbers(cost, TrainingSteps);
-                }
-                CurrentLearningRate = LearningRate;
-                WinWhite = 0;
-                WinBlack = 0;
-                AmountofGames = 0;
-                FinishedGames = 0;
-                ThreadFinished = Playing.Length;
-                semaphoreTraining.Release();
-
-                //Stop the PlayingThreads
-                Continuing = false;
+                semaphoreEveryone.WaitOne();
+                done = online_thread_counter == 0;
                 semaphoreEveryone.Release();
+
             }
+
+            stop_logging();
+            Console.WriteLine("finished game generation!");
+
+            CurrentLearningRate = LearningRate;
+            WinWhite = 0;
+            WinBlack = 0;
+            AmountofGames = 0;
+            FinishedGames = 0;
+            ThreadFinished = Playing.Length;
+            semaphoreTraining.Release();
+
+            //Stop the PlayingThreads
+            Continuing = false;
+            semaphoreEveryone.Release();
+        }
+        else if (online_thread_counter == 0)
+        {
             //Start of Training
-            else
-            {
+                double[] cost;
+                TrainingPosition[] TestPositions = LoadPositionsFromFile("BufferLog-7000000.txt");
+
+                cost = TrainNet.CostOfNet(TestPositions);
+                Console.WriteLine("The Mean Error is : {0} , It should be smaller then {1}", cost[0], cost[1]);
+
                 semaphoreEveryone.Release();
                 semaphoreTraining.Release();
                 //Setup the Training set
@@ -233,7 +232,7 @@ class Training
                 Console.WriteLine("                Training successfull !");
                 Console.WriteLine("               <=====================>");
                 stop_reading();
-            }
+            
         }
     }
     public float LargeSigmoid(float Input, float Size)
@@ -642,7 +641,7 @@ class Training
                 //use the static Eval function
                 if (i >= LogStart)
                 {
-                    simOutput = treesearchV1.MonteCarloTreeSim(Board, Color, NodeCount, NewStart, false, false, false, 2, true, depthPly);
+                    simOutput = treesearchV1.MonteCarloTreeSim(Board, Color, NodeCount, NewStart, false, false, false, 1, true, depthPly);
                     Array.Copy(simOutput.Position, Board, Board.Length);
                 }
                 //start with random play
@@ -657,14 +656,20 @@ class Training
                 //Check for Mate
                 MateVal = treesearchV1.MoveGenerator.Mate(Board, Color);
 
-                if (MateVal != 2 && MateVal !=-2)
+                if (MateVal != 2 && MateVal != -2)
                 {
+                    MateVal = 1 - 2 * Color;
                     Value = MateVal;
                     break;
                 }
+
+                //look for draw
+                if (simOutput.draw)
+                    break;
+
                 //add the board
                 byte[,] BoardCopy = new byte[9, 9];
-                if (i >= LogStart)
+                if (i >= LogStart && simOutput.is_quiet)
                 {
                     Array.Copy(Board, BoardCopy, Board.Length);
                     if (i > LogStart)
@@ -677,7 +682,7 @@ class Training
             if (Value == MateVal && Value != 2 && Eval.Count >= 1)
                 Eval.Add(Value);
             else
-                Eval.Add(treesearchV1.eval.PestoEval(Board, Color));
+                Eval.Add(chess_stuff.convert_millipawn_to_wdl(treesearchV1.eval.pesto_eval(Board, Color)));
 
             if (Work)
             {

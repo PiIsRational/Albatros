@@ -47,9 +47,11 @@ class Treesearch
      * If Moove Format is int[3] then special Moove involving two pieces
      * Unmove has the format X_a , Y_a , Piece_a , X_b , Y_b , Piece_b
      */
+
+    public standart_chess chess_stuff = new standart_chess();
     public Classic_Eval eval = new Classic_Eval();
     public Node CurrentTree;
-    public NNUE ValueNet = new NNUE();
+    public NNUE_avx2 ValueNet;
     public AlphaBeta alphaBeta = new AlphaBeta(100);
     public BranchThread[] ThreadTreesearches;
     public Semaphore StopSemaphore = new Semaphore(1, 1);
@@ -57,67 +59,36 @@ class Treesearch
     BranchThread MainBranch;
     public Random random;
     bool stop = false;
+    bool use_nnue = false;
     public bool wasStopped = false;
 
     public Treesearch(int seed, bool LoadNet ,int ThreadCount)
     {
         random = new Random(seed);
-        if (LoadNet)
-        {
-            //if the file exists
-            try
-            {
-                //Open ValueNet
-                ValueNet.OpenNet("ValueNet.nnue");
-            }
-            catch
-            {
-            }
-        }
+        ValueNet = new NNUE_avx2(LoadNet);
+        use_nnue = LoadNet;
+        ChangeThreadCount(ThreadCount);
     }
     public void ChangeThreadCount(int Count)
     {
-        MainBranch = new BranchThread();
-        float[,] HalfkpMatrix = new float[40960, 256];
-        Array.Copy(ValueNet.HalfkpMatrix, HalfkpMatrix, HalfkpMatrix.Length);
-        float[] HalfkpMatrixBias = new float[512];
-        Array.Copy(ValueNet.HalfkpMatrixBias, HalfkpMatrixBias, HalfkpMatrixBias.Length);
-        float[][,] HalfkpWeigths = new float[3][,];
-        Array.Copy(ValueNet.HalfkpWeigths, HalfkpWeigths, HalfkpWeigths.Length);
-        float[][] HalfkpBiases = new float[3][];
-        Array.Copy(ValueNet.HalfkpBiases, HalfkpBiases, HalfkpBiases.Length);
-        Array.Copy(HalfkpMatrix, MainBranch.treesearch.ValueNet.HalfkpMatrix, HalfkpMatrix.Length);
-        Array.Copy(HalfkpMatrixBias, MainBranch.treesearch.ValueNet.HalfkpMatrixBias, HalfkpMatrixBias.Length);
-        Array.Copy(HalfkpWeigths, MainBranch.treesearch.ValueNet.HalfkpWeigths, HalfkpWeigths.Length);
-        Array.Copy(HalfkpBiases, MainBranch.treesearch.ValueNet.HalfkpBiases, HalfkpBiases.Length);
+        if (Count > 0)
+            MainBranch = new BranchThread(use_nnue , 1);
+        
         if (Count > 1)
         {
             ThreadTreesearches = new BranchThread[Count - 1];
             for (int i = 0; i < Count - 1; i++)
             {
-                ThreadTreesearches[i] = new BranchThread();
-                Array.Copy(HalfkpMatrix, ThreadTreesearches[i].treesearch.ValueNet.HalfkpMatrix, HalfkpMatrix.Length);
-                Array.Copy(HalfkpMatrixBias, ThreadTreesearches[i].treesearch.ValueNet.HalfkpMatrixBias, HalfkpMatrixBias.Length);
-                Array.Copy(HalfkpWeigths, ThreadTreesearches[i].treesearch.ValueNet.HalfkpWeigths, HalfkpWeigths.Length);
-                Array.Copy(HalfkpBiases, ThreadTreesearches[i].treesearch.ValueNet.HalfkpBiases, HalfkpBiases.Length);
+                ThreadTreesearches[i] = new BranchThread(use_nnue, 1);
             }
 
         }
         else
             ThreadTreesearches = null;
     }
-    public void Test(int Iterations, TrainingPosition[] Positions)
-    {
-        for (int i = 0; i < Iterations; i++)
-        {
-            //Backpropagate the network
-            ValueNet.BackPropagation(Positions);
-            Console.WriteLine("The Error is {0}", ValueNet.CostOfNet(Positions)[0]);
-        }
-    }
     public void SetNet(string File)
     {
-        ValueNet.OpenNet(File);
+        ValueNet.LoadOldNetFile(File);
     }
     public MCTSimOutput MonteCarloTreeSim(byte[,] InputBoard, byte color, int NodeCount, bool NewTree, bool WeightedRandom, bool Random,  bool NNUE, float c_puct , bool alpha_beta , int depth)
     {
@@ -125,35 +96,46 @@ class Treesearch
         alpha_beta_output ab_tree_out = new alpha_beta_output();
 
         if (alpha_beta)
-            ab_tree_out = alphaBeta.selfplay_iterative_deepening(InputBoard, color, depth, NNUE);
-        else if (NewTree)
-            CurrentTree = GetTree(NodeCount, false, NNUE, new Node(InputBoard, color, null, 0), false, c_puct).Tree;
-        else
-            CurrentTree = GetTree(NodeCount, false, NNUE, CurrentTree, false, c_puct).Tree;
-        int BestscorePlace = 0;
-
-        List<double> Values = new List<double>();
-        if (alpha_beta)
-            foreach (float Value in ab_tree_out.Scores)
-                Values.Add(Value);
-        else
-            foreach (Node node in CurrentTree.ChildNodes)
-                Values.Add(node.Denominator);
-
-        if (Random)
-            BestscorePlace = random.Next(0, Values.Count - 1);
-        else if (WeightedRandom)
-            BestscorePlace = RandomWeightedChooser(Values);
-        else
-            BestscorePlace = BestNumber(Values);
-
-        if (alpha_beta)
         {
-            Output.Position = MoveGenerator.PlayMove(InputBoard, color, ab_tree_out.movelist[BestscorePlace]);
-            Output.eval = ab_tree_out.Scores[BestscorePlace];
+
+            ab_tree_out = alphaBeta.selfplay_iterative_deepening(InputBoard, color, depth, NNUE);
+            if (ab_tree_out.draw)
+            {
+                Output.draw = true;
+                Output.Position = InputBoard;
+                Output.eval = 0;
+            }
+            else
+            {
+                Output.is_quiet = ab_tree_out.is_quiet;
+                Output.Position = MoveGenerator.PlayMove(InputBoard, color, ab_tree_out.movelist[0]);
+                Output.eval = ab_tree_out.Scores[0];
+            }
         }
         else
         {
+            if (NewTree)
+                CurrentTree = GetTree(NodeCount, false, NNUE, new Node(InputBoard, color, null, 0), false, c_puct).Tree;
+            else
+                CurrentTree = GetTree(NodeCount, false, NNUE, CurrentTree, false, c_puct).Tree;
+            int BestscorePlace = 0;
+
+            List<double> Values = new List<double>();
+            if (alpha_beta)
+                foreach (float Value in ab_tree_out.Scores)
+                    Values.Add(Value);
+            else
+                foreach (Node node in CurrentTree.ChildNodes)
+                    Values.Add(node.Denominator);
+
+            if (Random)
+                BestscorePlace = random.Next(0, Values.Count - 1);
+            else if (WeightedRandom)
+                BestscorePlace = RandomWeightedChooser(Values);
+            else
+                BestscorePlace = BestNumber(Values);
+
+
             Output.Position = MoveGenerator.PlayMove(CurrentTree.Board, CurrentTree.ChildNodes[BestscorePlace].Color, CurrentTree.ChildNodes[BestscorePlace].Move);
             Output.eval = CurrentTree.Numerator / CurrentTree.Denominator;
             CurrentTree = CurrentTree.ChildNodes.ToArray()[BestscorePlace];
@@ -329,8 +311,8 @@ class Treesearch
                     Tree.Denominator += Tree.ChildNodes[i].Denominator;
                 Tree.Numerator -= Tree.ChildNodes[i].Numerator;
                 }
-                //Output first Info
-                Console.WriteLine("info depth {0} seldepth {1} time {4} nodes {5} score cp {2} nps {3}", (int)(AverageDepth / (Tree.Denominator + 0.000000001)) + 1, Seldepth + 1, -Math.Round(CentipawnLoss(Tree.Numerator / Tree.Denominator)), (int)(((float)Tree.Denominator / (sw.ElapsedMilliseconds + 1)) * 1000), sw.ElapsedMilliseconds, Tree.Denominator);
+            //Output first Info
+            Console.WriteLine("info depth {0} seldepth {1} time {4} nodes {5} score cp {2} nps {3}", (int)(AverageDepth / (Tree.Denominator + 0.000000001)) + 1, Seldepth + 1, -chess_stuff.convert_wdl_to_millipawn(Tree.Numerator / Tree.Denominator) / 10, (int)(((float)Tree.Denominator / (sw.ElapsedMilliseconds + 1)) * 1000), sw.ElapsedMilliseconds, Tree.Denominator);
         }
         //Get the Output(the next node with the Biggest Average score) from the tree
         for (int i = 0; i < 2; i++)
@@ -406,25 +388,31 @@ class Treesearch
         }
         return Score;
     }
-    public byte[,] RandomSim(byte[,] InputBoard, byte color)
+    public byte[,] RandomSim(byte[,] board, byte color)
     {
-        List<int[]> Moves = MoveGenerator.ReturnPossibleMoves(InputBoard, color);
-        bool finished = false;
-        byte otherColor = 0;
-        if (color == 0)
-            otherColor = 1;
-        while (!finished)
+        List<int[]> moves = MoveGenerator.ReturnPossibleMoves(board, color), cleaned_moves = new List<int[]>();
+
+        //get only the legal moves
+        foreach (int[] move in moves)
+            if (!chess_stuff.is_castelling(move, board) || !MoveGenerator.CastlingCheck(board, move))
+                cleaned_moves.Add(move);
+
+        byte otherColor = (byte)(1 - color);
+
+        while (cleaned_moves.Count > 0) 
         {
-            int Place = random.Next(Moves.Count - 1);
-            InputBoard = MoveGenerator.PlayMove(InputBoard, color, Moves[Place]);
+            int Place = random.Next(cleaned_moves.Count - 1);
+            board = MoveGenerator.PlayMove(board, color, cleaned_moves[Place]);
             int[] MoveUnmake = MoveGenerator.UnmakeMove;
 
-            if (!MoveGenerator.CompleteCheck(InputBoard, otherColor))
-                return InputBoard;
-            else
-                InputBoard = MoveGenerator.UndoMove(InputBoard, MoveUnmake);
+            if (!MoveGenerator.CompleteCheck(board, otherColor))
+                return board;
+
+            board = MoveGenerator.UndoMove(board, MoveUnmake);
+            cleaned_moves.RemoveAt(Place);
         }
-        return InputBoard;
+
+        return board;
     }
     public int BestNumber(List<double> Input)
     {
@@ -562,7 +550,7 @@ class Treesearch
                     if (!MoveGenerator.CompleteCheck(CurrentBoard, OtherColor))
                     {
                         End = false;
-                        Predictor = (eval.PestoEval(CurrentBoard, OtherColor) + 1) / 2;
+                        Predictor = (chess_stuff.convert_millipawn_to_wdl(eval.pesto_eval(CurrentBoard, OtherColor)) + 1) / 2;
                         CurrentNode.ChildNodes.Add(new Node(null, OtherColor, Move , Predictor));
                         if (CurrentNode.ChildNodes[Counter].Probability > BestScore)
                         {
@@ -586,10 +574,12 @@ class Treesearch
                     CurrentBoard = MoveGenerator.PlayMove(CurrentBoard, CurrentNode.Color, CurrentNode.ChildNodes.ToArray()[place].Move);
                     //Update the Numerator and Denominator
                     if (NNUE)
-                        CurrentNumerator = (float)ValueNet.UseNet(CurrentBoard, OtherColor);
-
+                    {
+                        ValueNet.set_acc_from_position(CurrentBoard);
+                        CurrentNumerator = ValueNet.AccToOutput(ValueNet.acc, OtherColor);
+                    }
                     else
-                        CurrentNumerator = eval.PestoEval(CurrentBoard, OtherColor);
+                        CurrentNumerator = chess_stuff.convert_millipawn_to_wdl(eval.pesto_eval(CurrentBoard, OtherColor));
 
                     Array.Copy(BoardCopy, CurrentBoard, CurrentBoard.Length);
 
@@ -619,9 +609,12 @@ class Treesearch
             {
                 //Update the Numerator and Denominator
                 if (NNUE)
-                    CurrentNumerator = (float)ValueNet.UseNet(CurrentBoard, CurrentNode.Color);
+                {
+                    ValueNet.set_acc_from_position(CurrentBoard);
+                    CurrentNumerator = ValueNet.AccToOutput(ValueNet.acc, CurrentNode.Color);
+                }
                 else
-                    CurrentNumerator = eval.PestoEval(CurrentBoard, CurrentNode.Color);
+                    CurrentNumerator = chess_stuff.convert_millipawn_to_wdl(eval.pesto_eval(CurrentBoard, CurrentNode.Color));
 
                 CurrentNode.Numerator = CurrentNumerator;
                 CurrentNode.Denominator++;
@@ -649,7 +642,7 @@ class Treesearch
 
             if (Output && i % outputCount == 0)
             {
-                Console.WriteLine("info depth {0} seldepth {1} time {4} nodes {5} score cp {2} nps {3}", averageDepth / (i + 1), seldepth, -Math.Round(CentipawnLoss(Tree.Numerator / Tree.Denominator)), (int)(((float)i / (sw.ElapsedMilliseconds + 1)) * 1000), sw.ElapsedMilliseconds, Tree.Denominator);
+                Console.WriteLine("info depth {0} seldepth {1} time {4} nodes {5} score cp {2} nps {3}", averageDepth / (i + 1), seldepth, -Math.Round((Tree.Numerator / Tree.Denominator)), (int)(((float)i / (sw.ElapsedMilliseconds + 1)) * 1000), sw.ElapsedMilliseconds, Tree.Denominator);
             }
 
             StopSemaphore.WaitOne();
@@ -678,10 +671,6 @@ class Treesearch
             MainBranch.Stop();
         StopSemaphore.Release();
     }
-    public double CentipawnLoss(double Input)
-    {
-        return Input * 800;
-    }
     public bool CompareBoards(byte[,] Board1 , byte[,] Board2)
     {
         for(int i = 0; i < 9; i++)
@@ -694,55 +683,7 @@ class Treesearch
         }
         return true;
     }
-    public List<int[]> OrderMoves(List <int[]> Moves , byte[,] InputBoard , byte color)
-    {
-        byte OtherColor = 0;
-        if (color == 0)
-            OtherColor = 1;
-        bool done = false;
-        int CurrentIndex = 0;
-        int[] MoveUndo;
-        List<float> MoveValues = new List<float>();
-        List<int[]> MoveList = new List<int[]>();
-        foreach(int[] Move in Moves)
-        {
-            InputBoard = MoveGenerator.PlayMove(InputBoard, color, Move);
-            MoveUndo = new int[MoveGenerator.UnmakeMove.Length];
-            Array.Copy(MoveGenerator.UnmakeMove, MoveUndo, MoveUndo.Length);
-            if (!MoveGenerator.CompleteCheck(InputBoard, OtherColor)) 
-            {
-                float currentValue = eval.PestoEval(InputBoard, OtherColor);
-                if (CurrentIndex == 0)
-                {
-                    MoveValues.Add(currentValue);
-                    MoveList.Add(Moves[0]);
-                }
-                else
-                {
-                    for (int i = 0; i < MoveValues.Count; i++)
-                    {
-                        if (MoveValues[i] < currentValue)
-                        {
-                            MoveValues.Insert(i, currentValue);
-                            MoveList.Insert(i, Moves[CurrentIndex]);
-                            done = true;
-                            break;
-                        }
-                    }
-                    if(!done)
-                    {
-                        MoveValues.Add(currentValue);
-                        MoveList.Add(Moves[CurrentIndex]);
-                    }
-                    done = false;
-                }
-            }
-            InputBoard = MoveGenerator.UndoMove(InputBoard, MoveUndo);
-            CurrentIndex++;
-        }
-        return MoveList;
-    }
-    public int PossiblePositionCounter(byte[,] board, int depthPly, byte color)
+    public int PossiblePositionCounter(byte[,] board, int depth, byte color)
     {
         List<int[]> Moves = MoveGenerator.ReturnPossibleMoves(board, color);
         int[] MoveUndo;
@@ -752,38 +693,30 @@ class Treesearch
             return 0;
         else
         {
-            if (depthPly == 1)
+            if (depth == 1)
             {
                 OutputNumber = Moves.Count;
                 foreach (int[] Move in Moves)
                 {
-                    if (Move.Length != 5 || !MoveGenerator.CastlingCheck(board, Move))
-                    {
-                        board = MoveGenerator.PlayMove(board, color, Move);
-                        MoveUndo = new int[MoveGenerator.UnmakeMove.Length];
-                        Array.Copy(MoveGenerator.UnmakeMove, MoveUndo, MoveUndo.Length);
-                        if (MoveGenerator.CompleteCheck(board, newcolor))
-                            OutputNumber--;
-                        board = MoveGenerator.UndoMove(board, MoveUndo);
-                    }
-                    else
+                    board = MoveGenerator.PlayMove(board, color, Move);
+                    MoveUndo = new int[MoveGenerator.UnmakeMove.Length];
+                    Array.Copy(MoveGenerator.UnmakeMove, MoveUndo, MoveUndo.Length);
+                    if (MoveGenerator.CompleteCheck(board, newcolor))
                         OutputNumber--;
+                    board = MoveGenerator.UndoMove(board, MoveUndo);
                 }
             }
-            else if (depthPly < 1)
+            else if (depth < 1)
                 return 1;
             else
             {
                 foreach (int[] Move in Moves)
                 {
-                    if (Move.Length != 5 || !MoveGenerator.CastlingCheck(board, Move))
-                    {
-                        board = MoveGenerator.PlayMove(board, color, Move);
-                        int[] Moveunmake = new int[MoveGenerator.UnmakeMove.Length];
-                        Array.Copy(MoveGenerator.UnmakeMove, Moveunmake, MoveGenerator.UnmakeMove.Length);
-                        OutputNumber += PossiblePositionCounter(board, depthPly - 1, newcolor);
-                        board = MoveGenerator.UndoMove(board, Moveunmake);
-                    }
+                    board = MoveGenerator.PlayMove(board, color, Move);
+                    int[] Moveunmake = new int[MoveGenerator.UnmakeMove.Length];
+                    Array.Copy(MoveGenerator.UnmakeMove, Moveunmake, MoveGenerator.UnmakeMove.Length);
+                    OutputNumber += PossiblePositionCounter(board, depth - 1, newcolor);
+                    board = MoveGenerator.UndoMove(board, Moveunmake);
                 }
             }
             return OutputNumber;
@@ -822,6 +755,8 @@ class TreesearchOutput
 }
 class MCTSimOutput
 {
+    public bool is_quiet = false;
+    public bool draw = false;
     public byte[,] Position;
     public float eval;
 }
@@ -839,7 +774,7 @@ class BranchThreadInput
 }
 class BranchThread
 {
-    public Treesearch treesearch = new Treesearch(1, false, 1);
+    public Treesearch treesearch;
     public int[] BranchNumber;
     public float c_puct = 1;
     public int Nodecount = 0;
@@ -849,6 +784,10 @@ class BranchThread
     Node ReplacementRoot;
     public TreesearchOutput[] Outputs;
     TreesearchOutput Startoutput;
+    public BranchThread(bool load_netfile , int random_seed)
+    {
+        treesearch = new Treesearch(random_seed, load_netfile, 0);
+    }
     public void Stop()
     {
         treesearch.SetStop(true);

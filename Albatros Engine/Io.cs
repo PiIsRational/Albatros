@@ -4,12 +4,14 @@ using System.Diagnostics;
 class Io
 {
     string CurrentCommand = "";
+    standart stuff = new standart();
+    standart_chess chess_stuff = new standart_chess();
     Game game = new Game();
     public int[][] Move = new int[2][];
     Treesearch treesearch = new Treesearch(1245845, true, 5);
     Stopwatch sw = new Stopwatch();
     public AlphaBeta AlphaBetaSearch;
-    int movestogo = 50;
+    int movestogo = 40, played_moves = 0;
     bool movelimit = false;
     public Io()
     {
@@ -42,7 +44,7 @@ class Io
                 case "test":
                     break;
                 case "d":
-                    DisplayCurrentBoard(game.Board);
+                    print_board_and_info(game.Board, (byte)game.Turn, AlphaBetaSearch.MoveGenerator.fifty_move_rule);
                     break;
                 case "uci":
                     Console.WriteLine(
@@ -190,9 +192,6 @@ class Io
                             ReturnMove(Move[0], new int[0]);
                         }
                     }
-                    break;
-                case "export_net":
-                    treesearch.ValueNet.SaveNet(command_syntax[1], false);
                     break;
                 case "setoption":
                     if (command_syntax[1] == "name")
@@ -365,27 +364,17 @@ class Io
             Enemyinc = binc;
         }
 
-        if (Meinc != 0)
-            timeToUse = Meinc;
+        timeToUse = Meinc;
 
-        if (!movelimit)
-        {
-            if (movestogo >= 5)
-            {
-                timeToUse += timeMe / movestogo;
-                movestogo--;
-            }
-            else
-            {
-                timeToUse = (9 * Meinc) / 10;
-            }
+        float move_number = Math.Min(played_moves, 10);
+        played_moves++;
 
-            if (timeToUse >= Meinc * 2)
-                movestogo++;
+        if (movestogo <= 10 && !movelimit)
+            movestogo += 15;
 
-        }
-        else
-            timeToUse += timeMe / (movestogo + 1);
+        timeToUse += (long)(timeMe / (movestogo - 1));
+        movestogo--;
+        
 
         if (USE_MCTS)
         {
@@ -395,12 +384,13 @@ class Io
                 return treesearch.MultithreadMcts(game.Board, (byte)game.Turn, Int32.MaxValue, game.NNUE, game.ThreadCount, true, true, timeToUse - 500, game.c_puct);
         }
         else
-            return new int[][] { AlphaBetaSearch.TimedAlphaBeta(timeToUse - 20, InputBoard, color, NNUE), new int[0] };
+            return new int[][] { AlphaBetaSearch.TimedAlphaBeta(timeToUse - 50, InputBoard, color, NNUE), new int[0] };
     }
     public void LoadPositionBoard()
     {
+        movestogo = 40;
+        played_moves = 0;
         AlphaBetaSearch.time_to_use = 0;
-        movestogo = 50;
         game.Playing = false;
         treesearch.CurrentTree = null;
         AlphaBetaSearch.HashTable = new byte[game.HashSize * 55556, 18];
@@ -416,43 +406,41 @@ class Io
     }
     public void PrintMovesFromPosition(byte[,] InputBoard, byte color, int depthPly)
     {
-        byte othercolor = 0;
-        if (color == 0)
-            othercolor = 1;
-        int completCount = 0;
-        int currentNumber = 0;
+        bool illegal = false;
+        byte othercolor = (byte)(1 - color);
+        int completCount = 0, currentNumber = 0;
         List<int[]> Moves = treesearch.MoveGenerator.ReturnPossibleMoves(InputBoard, color);
-        string[] ConvertNumToLetter = new string[] { "0", "a", "b", "c", "d", "e", "f", "g", "h" };
-        string[] Promotion = new string[] { "", "n", "b", "q", "r" };
+        string[] ConvertNumToLetter = new string[] { "0", "a", "b", "c", "d", "e", "f", "g", "h" }, Promotion = new string[] { "", "n", "b", "q", "r" };
         Stopwatch watch = new Stopwatch();
         watch.Start();
+
         //if not Checkmate
         if (treesearch.PossiblePositionCounter(InputBoard, 1, color) != 0)
         {
             foreach (int[] Move in Moves)
             {
-                if (Move.Length != 5 || !treesearch.MoveGenerator.CastlingCheck(InputBoard, Move))
+                if (!treesearch.MoveGenerator.CompleteCheck(InputBoard, color))
                 {
                     InputBoard = treesearch.MoveGenerator.PlayMove(InputBoard, color, Move);
+                    if (treesearch.MoveGenerator.CompleteCheck(InputBoard, othercolor))
+                        illegal = true;
                     int[] MoveUndo = new int[treesearch.MoveGenerator.UnmakeMove.Length];
                     Array.Copy(treesearch.MoveGenerator.UnmakeMove, MoveUndo, treesearch.MoveGenerator.UnmakeMove.Length);
                     currentNumber = treesearch.PossiblePositionCounter(InputBoard, depthPly - 1, othercolor);
                     InputBoard = treesearch.MoveGenerator.UndoMove(InputBoard, MoveUndo);
-                    if (currentNumber != 0 || depthPly - 1 > 0)
+                    if (!illegal && (currentNumber != 0 || depthPly - 1 > 0))
                     {
                         //Promoting Pawn
                         if (Move.Length == 5)
-                        {
                             Console.WriteLine(ConvertNumToLetter[Move[0]] + Move[1] + ConvertNumToLetter[Move[2]] + Move[3] + Promotion[Move[4]] + ": " + currentNumber);
-                            completCount += currentNumber;
-                        }
                         //Normal Piece
                         else
-                        {
                             Console.WriteLine(ConvertNumToLetter[Move[0]] + Move[1] + ConvertNumToLetter[Move[2]] + Move[3] + ": " + currentNumber);
-                            completCount += currentNumber;
-                        }
+
+                        completCount += currentNumber;
                     }
+                    else
+                        illegal = false;
                 }
             }
         }
@@ -524,91 +512,13 @@ class Io
 
         Console.WriteLine(Output);
     }
-    public void DisplayCurrentBoard(byte[,] InputBoard)
+    public void print_board_and_info(byte[,] board , byte color , int fifty_move_rule)
     {
-        string spacer = "+---+---+---+---+---+---+---+---+";
-        string backrow = "  a   b   c   d   e   f   g   h";
-        string[] rows = new string[8];
-        for (int i = 1; i < 9; i++)
-        {
-            for (int j = 0; j < 8; j++)
-            {
-                if (InputBoard[i, j + 1] != 0)
-                {
-                    switch (InputBoard[i, j + 1])
-                    {
-                        case 0b00000001:
-                            rows[j] += "| p ";
-                            break;
-                        case 0b00000011:
-                            rows[j] += "| p ";
-                            break;
-                        case 0b00000010:
-                            rows[j] += "| p ";
-                            break;
-                        case 0b00000100:
-                            rows[j] += "| n ";
-                            break;
-                        case 0b00000101:
-                            rows[j] += "| b ";
-                            break;
-                        case 0b00000110:
-                            rows[j] += "| k ";
-                            break;
-                        case 0b00000111:
-                            rows[j] += "| k ";
-                            break;
-                        case 0b00001000:
-                            rows[j] += "| q ";
-                            break;
-                        case 0b00001001:
-                            rows[j] += "| r ";
-                            break;
-                        case 0b00001010:
-                            rows[j] += "| r ";
-                            break;
-                        case 0b00010001:
-                            rows[j] += "| P ";
-                            break;
-                        case 0b00010010:
-                            rows[j] += "| P ";
-                            break;
-                        case 0b00010011:
-                            rows[j] += "| P ";
-                            break;
-                        case 0b00010100:
-                            rows[j] += "| N ";
-                            break;
-                        case 0b00010101:
-                            rows[j] += "| B ";
-                            break;
-                        case 0b00010110:
-                            rows[j] += "| K ";
-                            break;
-                        case 0b00010111:
-                            rows[j] += "| K ";
-                            break;
-                        case 0b00011000:
-                            rows[j] += "| Q ";
-                            break;
-                        case 0b00011001:
-                            rows[j] += "| R ";
-                            break;
-                        case 0b00011010:
-                            rows[j] += "| R ";
-                            break;
-                    }
-                }
-                else
-                    rows[j] += "|   ";
-
-            }
-        }
-        for (int i = 7; i >= 0; i--)
-        {
-            Console.WriteLine(spacer + "\n" + rows[i] + "| " + (i + 1));
-        }
-        Console.WriteLine(spacer + "\n" + backrow);
+        chess_stuff.display_board(board, color);
+        Console.WriteLine();
+        Console.WriteLine("Fen: {0}", chess_stuff.generate_fen_from_position(board, color, fifty_move_rule));
+        Console.WriteLine("Key: {0}", AlphaBetaSearch.zobrist_hash(board, color));
+        Console.WriteLine();
     }
     public string[] SyntaxWithoutHoles(string[] Syntax)
     {
@@ -627,21 +537,21 @@ class Io
     {
         char[] ConvertNumToLetter = new char[] { '0', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h' };
         char[] Promotion = new char[] { '0', 'n', 'b', 'q', 'r' };
-        int[][] PlayingMooves = new int[Commands.Length][];
+        int[][] PlayingMoves = new int[Commands.Length][];
         char[] MoveInParts;
         for (int i = 0; i < Commands.Length; i++)
         {
             MoveInParts = Commands[i].ToCharArray();
             if (MoveInParts.Length == 4)
             {
-                PlayingMooves[i] = new int[4] { GetPlaceInArray(ConvertNumToLetter, MoveInParts[0]), Convert.ToInt32(MoveInParts[1]) - 48, GetPlaceInArray(ConvertNumToLetter, MoveInParts[2]), Convert.ToInt32(MoveInParts[3]) - 48 };
+                PlayingMoves[i] = new int[4] { GetPlaceInArray(ConvertNumToLetter, MoveInParts[0]), Convert.ToInt32(MoveInParts[1]) - 48, GetPlaceInArray(ConvertNumToLetter, MoveInParts[2]), Convert.ToInt32(MoveInParts[3]) - 48 };
             }
             else if (MoveInParts.Length == 5)
             {
-                PlayingMooves[i] = new int[5] { GetPlaceInArray(ConvertNumToLetter, MoveInParts[0]), Convert.ToInt32(MoveInParts[1]) - 48, GetPlaceInArray(ConvertNumToLetter, MoveInParts[2]), Convert.ToInt32(MoveInParts[3]) - 48, GetPlaceInArray(Promotion, MoveInParts[4]) };
+                PlayingMoves[i] = new int[5] { GetPlaceInArray(ConvertNumToLetter, MoveInParts[0]), Convert.ToInt32(MoveInParts[1]) - 48, GetPlaceInArray(ConvertNumToLetter, MoveInParts[2]), Convert.ToInt32(MoveInParts[3]) - 48, GetPlaceInArray(Promotion, MoveInParts[4]) };
             }
         }
-        return AlphaBetaSearch.PlayGameFromMoves(game.Board, (byte)game.Turn, PlayingMooves , TreeUpdate);
+        return AlphaBetaSearch.PlayGameFromMoves(game.Board, (byte)game.Turn, PlayingMoves , TreeUpdate);
     }
     public string ReturnNumber(float Input)
     {
@@ -667,21 +577,13 @@ class Io
             Console.WriteLine("\nNNUE network contributions (White to move)\n");
         float Value = 0;
 
-        Value = (float)treesearch.ValueNet.UseNet(Position, color);
-        if (color == 1)
-            Value = -Value;
+        AlphaBetaSearch.ValueNet.set_acc_from_position(Position);
+        Value = AlphaBetaSearch.ValueNet.AccToOutput(AlphaBetaSearch.ValueNet.acc, (byte)(color));
+
         Console.WriteLine("NNUE evaluation                  {0} (white side)", ReturnNumber((float)Value));
 
-        int[] KingSquares = treesearch.MoveGenerator.FindKings(Position);
-        AlphaBetaSearch.ValueNet.set_acc_from_position(Position);
-        Value = AlphaBetaSearch.ValueNet.AccToOutput(AlphaBetaSearch.ValueNet.acc, color);
-        if (color == 1)
-            Value = -Value;
-        Console.WriteLine("NNUE Avx2 evaluation             {0} (white side)", ReturnNumber((float)Value));
+        Value = chess_stuff.convert_millipawn_to_wdl(treesearch.eval.pesto_eval(Position, color));
 
-        Value = treesearch.eval.PestoEval(Position, color);
-        if (color == 1)
-            Value = -Value;
         Console.WriteLine("Classical evaluation             {0} (white side)\n", ReturnNumber((float)Value));
     }
     public int GetPlaceInArray(char[] Array, char character)
@@ -697,6 +599,6 @@ class Io
     }
     public void TrainingStart()
     {
-        game.training = new Training(game.Board, game.NetName, game.BufferSize, game.GameLength, game.NodeCount, game.learning_rate, game.ThreadCount, game.Momentum, game.batch_size, game.Lambda, game.Play, game.LogFile, game.depthPly);
+        game.training = new Training(game.Board, game.NetName, game.buffer_size, game.GameLength, game.NodeCount, game.learning_rate, game.ThreadCount, game.Momentum, game.batch_size, game.Lambda, game.Play, game.LogFile, game.depthPly);
     }
 }

@@ -61,10 +61,10 @@ public class MoveGen
             Console.WriteLine("Error");
         return Position;
     }
-    public int Mate(byte[,] InputBoard, byte Color)
+    public int Mate(byte[,] board, byte Color)
     {
         //Look for blocking of Position
-        List<int[]> Moves = ReturnPossibleMoves(InputBoard, Color);
+        List<int[]> Moves = ReturnPossibleMoves(board, Color);
 
         if (Moves == null)
             return 2;
@@ -74,23 +74,21 @@ public class MoveGen
 
         foreach (int[] Move in Moves)
         {
-            if (Move.Length != 5 || !CastlingCheck(InputBoard, Move))
-            {
-                Array.Copy(InputBoard, MoveUndo, MoveUndo.Length);
-                InputBoard = PlayMove(InputBoard, Color, Move);
+            Array.Copy(board, MoveUndo, MoveUndo.Length);
+            board = PlayMove(board, Color, Move);
 
-                if (!CompleteCheck(InputBoard, NewColor))
-                {
-                    Array.Copy(MoveUndo, InputBoard, InputBoard.Length);
-                    return 2;
-                }
-                else
-                    Array.Copy(MoveUndo, InputBoard, InputBoard.Length);
+            if (!CompleteCheck(board, NewColor))
+            {
+                Array.Copy(MoveUndo, board, board.Length);
+                return 2;
             }
+            else
+                Array.Copy(MoveUndo, board, board.Length);
         }
+
         //Mate or Stalemate
         //Case: Mate
-        if (CompleteCheck(InputBoard, NewColor))
+        if (CompleteCheck(board, NewColor))
             return -1;
         //Case: Stalemate
         else
@@ -126,20 +124,20 @@ public class MoveGen
         }
         return Output;
     }
-    public byte[,] PlayMove(byte[,] InputBoard, byte color, int[] Move)
+    public byte[,] PlayMove(byte[,] InputBoard, byte color, int[] move)
     {
-        int k = Move[0];
-        int j = Move[1];
+        int k = move[0];
+        int j = move[1];
         int[] CurrentMoove;
 
-        if (Move.Length == 4)
-            CurrentMoove = new int[2] { Move[2], Move[3] };
-        else if (Move.Length == 5)
-            CurrentMoove = new int[3] { Move[2], Move[3], Move[4] };
+        if (move.Length == 4)
+            CurrentMoove = new int[2] { move[2], move[3] };
+        else if (move.Length == 5)
+            CurrentMoove = new int[3] { move[2], move[3], move[4] };
         else
             CurrentMoove = new int[0];
 
-        switch (InputBoard[k, j] - (InputBoard[k, j] >> 4) * 0b10000)
+        switch (InputBoard[k, j] & 0b00001111)
         {
             //PawnStart
             case 0b00000001:
@@ -195,7 +193,7 @@ public class MoveGen
         {
             int y = 4 + color;
 
-            if (InputBoard[x, y] != 0 && InputBoard[x, y] >> 4 == (1 - color) && InputBoard[x, y] - (InputBoard[x, y] >> 4) * 0b10000 == 0b10)
+            if (InputBoard[x, y] != 0 && InputBoard[x, y] >> 4 == (1 - color) && (InputBoard[x, y] & 0b00001111) == 0b10)
             {
                 //create a copy of the move
                 int[] Copy = new int[UnmakeMove.Length];
@@ -379,7 +377,7 @@ public class MoveGen
 
         }
     }
-    public List<int[]> ReturnPossibleMoves(byte[,] InputBoard, byte color)
+    public List<int[]> ReturnPossibleMoves(byte[,] board, byte color)
     {
         List<int[]> Output = new List<int[]>();
         non_pawn_material = false;
@@ -387,41 +385,41 @@ public class MoveGen
         {
             for (int j = 1; j < 9; j++)
             {
-                if (InputBoard[i, j] != 0 && InputBoard[i, j] >> 4 == color)
+                if (board[i, j] != 0 && board[i, j] >> 4 == color)
                 {
-                    switch (InputBoard[i, j] - (InputBoard[i, j] >> 4) * 0b10000)
+                    switch (board[i, j] & 0b00001111)
                     {
                         case 0b00000001:
-                            Output.AddRange(UpdatePieceOutput(PawnMoove(InputBoard, i, j, color), i, j));
+                            Output = pawn_move(Output, board, i, j, color);
                             break;
                         case 0b00000011:
-                            Output.AddRange(UpdatePawnOutput(PawnMoove(InputBoard, i, j, color), i, j));
+                            Output = pawn_move(Output, board, i, j, color);
                             break;
                         case 0b00000100:
                             non_pawn_material = true;
-                            Output.AddRange(UpdatePieceOutput(KnightMoove(InputBoard, i, j, color), i, j));
+                            Output = knight_move(Output, board, i, j, color);
                             break;
                         case 0b00000101:
                             non_pawn_material = true;
-                            Output.AddRange(UpdatePieceOutput(BishopMoove(InputBoard, i, j, color), i, j));
+                            Output = bishop_move(Output, board, i, j, color);
                             break;
                         case 0b00000110:
-                            Output.AddRange(UpdatePieceOutput(KingMoove(InputBoard, i, j, color), i, j));
+                            Output = king_move(Output, board, i, j, color);
                             break;
                         case 0b00000111:
-                            Output.AddRange(UpdatePieceOutput(KingMoove(InputBoard, i, j, color), i, j));
+                            Output = king_move(Output, board, i, j, color);
                             break;
                         case 0b00001000:
                             non_pawn_material = true;
-                            Output.AddRange(UpdatePieceOutput(QueenMoove(InputBoard, i, j, color), i, j));
+                            Output = queen_move(Output, board, i, j, color);
                             break;
                         case 0b00001001:
                             non_pawn_material = true;
-                            Output.AddRange(UpdatePieceOutput(RookMoove(InputBoard, i, j, color), i, j));
+                            Output = rook_move(Output, board, i, j, color);
                             break;
                         case 0b00001010:
                             non_pawn_material = true;
-                            Output.AddRange(UpdatePieceOutput(RookMoove(InputBoard, i, j, color), i, j));
+                            Output = rook_move(Output, board, i, j, color);
                             break;
 
                     }
@@ -445,34 +443,34 @@ public class MoveGen
             {
                 if (InputBoard[i, j] != 0 && InputBoard[i, j] >> 4 == color)
                 {
-                    switch (InputBoard[i, j] - (InputBoard[i, j] >> 4) * 0b10000)
+                    switch (InputBoard[i, j] & 0b00001111)
                     {
                         case 0b00000001:
-                            Output.AddRange(UpdatePieceOutput(PawnCaptures(InputBoard, i, j, color), i, j));
+                            Output = PawnCaptures(Output,InputBoard, i, j, color);
                             break;
                         case 0b00000011:
-                            Output.AddRange(UpdatePawnOutput(PawnCaptures(InputBoard, i, j, color), i, j));
+                            Output = PawnCaptures(Output, InputBoard, i, j, color);
                             break;
                         case 0b00000100:
-                            Output.AddRange(UpdatePieceOutput(KnightCaptures(InputBoard, i, j, color), i, j));
+                            Output = KnightCaptures(Output, InputBoard, i, j, color);
                             break;
                         case 0b00000101:
-                            Output.AddRange(UpdatePieceOutput(BishopCaptures(InputBoard, i, j, color), i, j));
+                            Output = BishopCaptures(Output, InputBoard, i, j, color);
                             break;
                         case 0b00000110:
-                            Output.AddRange(UpdatePieceOutput(KingCaptures(InputBoard, i, j, color), i, j));
+                            Output = KingCaptures(Output, InputBoard, i, j, color);
                             break;
                         case 0b00000111:
-                            Output.AddRange(UpdatePieceOutput(KingCaptures(InputBoard, i, j, color), i, j));
+                            Output = KingCaptures(Output, InputBoard, i, j, color);
                             break;
                         case 0b00001000:
-                            Output.AddRange(UpdatePieceOutput(QueenCaptures(InputBoard, i, j, color), i, j));
+                            Output = QueenCaptures(Output, InputBoard, i, j, color);
                             break;
                         case 0b00001001:
-                            Output.AddRange(UpdatePieceOutput(RookCaptures(InputBoard, i, j, color), i, j));
+                            Output = RookCaptures(Output, InputBoard, i, j, color);
                             break;
                         case 0b00001010:
-                            Output.AddRange(UpdatePieceOutput(RookCaptures(InputBoard, i, j, color), i, j));
+                            Output = RookCaptures(Output, InputBoard, i, j, color);
                             break;
 
                     }
@@ -486,50 +484,9 @@ public class MoveGen
         }
         return Output;
     }
-    public List<int[]> UpdatePieceOutput(List<int[]> InputList, int X, int Y)
-    {
-        List<int[]> OutputList = new List<int[]>();
-        foreach (int[] Move in InputList)
-        {
-            if (Move.Length == 2)
-                OutputList.Add(new int[4] { X, Y, Move[0], Move[1] });
-            else
-                OutputList.Add(new int[5] { X, Y, Move[0], Move[1], 0 });
-        }
-        return OutputList;
-    }
-    public List<int[]> UpdatePawnOutput(List<int[]> InputList, int X, int Y)
-    {
-        List<int[]> OutputList = new List<int[]>();
-        foreach (int[] Move in InputList)
-        {
-            //if Promoting Pawn
-            if (Move[1] == 8 || Move[1] == 1)
-            {
-                //Knight
-                OutputList.Add(new int[5] { X, Y, Move[0], Move[1], 1 });
-                //Bishop
-                OutputList.Add(new int[5] { X, Y, Move[0], Move[1], 2 });
-                //Queen 
-                OutputList.Add(new int[5] { X, Y, Move[0], Move[1], 3 });
-                //Rook
-                OutputList.Add(new int[5] { X, Y, Move[0], Move[1], 4 });
-            }
-            else if (Move.Length == 3)
-            {
-                OutputList.Add(new int[5] { X, Y, Move[0], Move[1], 0 });
-            }
-            else
-            {
-                OutputList.Add(new int[4] { X, Y, Move[0], Move[1] });
-            }
-        }
-        return OutputList;
-    }
     public void check(byte[,] InputBoard, int X, int Y)
     {
-        if ((InputBoard[X, Y] - (InputBoard[X, Y] >> 4) * 0b10000) >> 1 == 0b11)
-            WrongPosition = true;
+        WrongPosition = ((InputBoard[X, Y] & 0b00001110) == 0b110) || WrongPosition;
     }
     public bool CompleteCheck(byte[,] InputBoard, byte color)
     {
@@ -539,7 +496,7 @@ public class MoveGen
             {
                 if (InputBoard[i, j] != 0 && InputBoard[i, j] >> 4 == color)
                 {
-                    switch (InputBoard[i, j] - (InputBoard[i, j] >> 4) * 0b10000)
+                    switch (InputBoard[i, j] & 0b00001111)
                     {
                         case 0b00000001:
                             PawnCheck(InputBoard, i, j, color);
@@ -582,9 +539,8 @@ public class MoveGen
     public bool CastlingCheck(byte[,] InputBoard, int[] move)
     {
         byte Copy = (byte)(InputBoard[move[0], move[1]]);
-        if (Copy != 0b00000110 && Copy != 0b00010110)
-            return false;
-        bool Output = false;
+        if ((Copy & 0b00001111) != 0b00000110) return false;
+
         byte[,] CurrentBoard = new byte[9, 9];
 
         Array.Copy(InputBoard, 0, CurrentBoard, 0, InputBoard.Length);
@@ -595,945 +551,619 @@ public class MoveGen
             byte EnemyColor = (byte)(1 - KingColor);
 
             //Copy the King to two new Squares
-            CurrentBoard[(move[0] + move[2]) / 2, move[1]] = Copy;
+            CurrentBoard[(move[0] + move[2]) >> 1, move[1]] = Copy;
             CurrentBoard[move[2], move[3]] = Copy;
 
             //Check if any of the Kings are in Check
             if (CompleteCheck(CurrentBoard, EnemyColor))
-                Output = true;
+                return true;
+        }
+        return false;
+    }
+    public int[] make_normal_move(byte[,] board, int x, int y, int new_x, int new_y)
+    {
+        check(board, new_x, new_y);
+        return new int[4] { x, y, new_x, new_y };
+    }
+    public int[] make_quiet_move(int x, int y, int new_x, int new_y)
+    {
+        return new int[4] { x, y, new_x, new_y };
+    }
+    public int[] make_non_normal_quiet_move(int x, int y, int new_x, int new_y, int move_index)
+    {
+        return new int[5] { x, y, new_x, new_y, move_index };
+    }
+    public int[] make_non_normal_move(byte[,] board, int x, int y, int new_x, int new_y, int move_index)
+    {
+        check(board, new_x, new_y);
+        return new int[5] { x, y, new_x, new_y, move_index };
+    }
+    public List<int[]> make_normal_pawn_moves(List<int[]> output, byte[,] board, int x, int y, int new_x, int new_y)
+    {
+        check(board, new_x, new_y);
+        if (!WrongPosition)
+        {
+            if (new_y == 1 || new_y == 8)
+                for (int i = 1; i <= 4; i++)
+                    output.Add(make_non_normal_quiet_move(x, y, new_x, new_y, i));
+            else
+                output.Add(make_quiet_move(x, y, new_x, new_y));
+        }
+        return output;
+    }
+    public List<int[]> make_quiet_pawn_moves(List<int[]> output, byte[,] board, int x, int y, int new_x, int new_y)
+    {
+        if (new_y == 1 || new_y == 8)
+            for (int i = 1; i <= 4; i++)
+                output.Add(make_non_normal_quiet_move(x, y, new_x, new_y, i));
+        else
+            output.Add(make_quiet_move(x, y, new_x, new_y));
+
+        return output;
+    }
+    public List<int[]> knight_move(List<int[]> Output, byte[,] board, int current_x, int current_y, byte color)
+    {
+        int new_x = current_x + 2 , new_y = 0;
+        if (new_x <= 8)
+        {
+            new_y = current_y - 1;
+            if (new_y >= 1 && (board[new_x, new_y] == 0 || board[new_x, new_y] >> 4 != color))
+                Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
+
+            new_y = current_y + 1;
+            if (new_y <= 8 && (board[new_x, new_y] == 0 || board[new_x, new_y] >> 4 != color))
+                Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
+        }
+        new_x -= 4;
+        if (new_x >= 1)
+        {
+            new_y = current_y + 1;
+            if (new_y <= 8 && (board[new_x, new_y] == 0 || board[new_x, new_y] >> 4 != color))
+                Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
+
+            new_y = current_y - 1;
+            if (new_y >= 1 && (board[new_x, new_y] == 0 || board[new_x, new_y] >> 4 != color))
+                Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
+        }
+        new_x += 3;
+        if (new_x <= 8)
+        {
+            new_y = current_y - 2;
+            if (new_y >= 1 && (board[new_x, new_y] == 0 || board[new_x, new_y] >> 4 != color))
+                Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
+
+            new_y = current_y + 2;
+            if (new_y <= 8 && (board[new_x, new_y] == 0 || board[new_x, new_y] >> 4 != color))
+                Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
+        }
+        new_x -= 2;
+        if (new_x >= 1)
+        {
+            new_y = current_y + 2;
+            if (new_y <= 8 && (board[new_x, new_y] == 0 || board[new_x, new_y] >> 4 != color))
+                Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
+
+            new_y = current_y - 2;
+            if (new_y >= 1 && (board[new_x, new_y] == 0 || board[new_x, new_y] >> 4 != color))
+                Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
         }
         return Output;
     }
-    public List<int[]> KnightMoove(byte[,] InputBoard, int PositionX, int PositionY, byte color)
+    public List<int[]> bishop_move(List<int[]> Output, byte[,] board, int current_x, int current_y, byte color)
     {
-        List<int[]> Output = new List<int[]>();
+        int new_x, new_y;
 
-        if (PositionX + 2 <= 8)
+        for (int i = 1; i + current_x <= 8 && i + current_y <= 8; i++)
         {
-            if (PositionY - 1 >= 1 && InputBoard[PositionX + 2, PositionY - 1] == 0 || PositionY - 1 >= 1 && (InputBoard[PositionX + 2, PositionY - 1]) >> 4 != color)
-            {
-                check(InputBoard, PositionX + 2, PositionY - 1);
-                Output.Add(new int[2] { PositionX + 2, PositionY - 1 });
-            }
-            if (PositionY + 1 <= 8 && InputBoard[PositionX + 2, PositionY + 1] == 0 || PositionY + 1 <= 8 && (InputBoard[PositionX + 2, PositionY + 1]) >> 4 != color)
-            {
-                check(InputBoard, PositionX + 2, PositionY + 1);
-                Output.Add(new int[2] { PositionX + 2, PositionY + 1 });
-            }
+            new_x = current_x + i;
+            new_y = current_y + i;
 
-        }
-        if (PositionX - 2 >= 1)
-        {
-            if (PositionY - 1 >= 1 && InputBoard[PositionX - 2, PositionY - 1] == 0 || PositionY - 1 >= 1 && (InputBoard[PositionX - 2, PositionY - 1]) >> 4 != color)
-            {
-                check(InputBoard, PositionX - 2, PositionY - 1);
-                Output.Add(new int[2] { PositionX - 2, PositionY - 1 });
-            }
-            if (PositionY + 1 <= 8 && InputBoard[PositionX - 2, PositionY + 1] == 0 || PositionY + 1 <= 8 && (InputBoard[PositionX - 2, PositionY + 1]) >> 4 != color)
-            {
-                check(InputBoard, PositionX - 2, PositionY + 1);
-                Output.Add(new int[2] { PositionX - 2, PositionY + 1 });
-            }
-
-        }
-        if (PositionX + 1 <= 8)
-        {
-            if (PositionY - 2 >= 1 && InputBoard[PositionX + 1, PositionY - 2] == 0 || PositionY - 2 >= 1 && (InputBoard[PositionX + 1, PositionY - 2]) >> 4 != color)
-            {
-                check(InputBoard, PositionX + 1, PositionY - 2);
-                Output.Add(new int[2] { PositionX + 1, PositionY - 2 });
-            }
-
-
-            if (PositionY + 2 <= 8 && InputBoard[PositionX + 1, PositionY + 2] == 0 || PositionY + 2 <= 8 && (InputBoard[PositionX + 1, PositionY + 2]) >> 4 != color)
-            {
-                check(InputBoard, PositionX + 1, PositionY + 2);
-                Output.Add(new int[2] { PositionX + 1, PositionY + 2 });
-            }
-        }
-        if (PositionX - 1 >= 1)
-        {
-            if (PositionY - 2 >= 1 && InputBoard[PositionX - 1, PositionY - 2] == 0  || PositionY - 2 >= 1 && (InputBoard[PositionX - 1, PositionY - 2]) >> 4 != color)
-            {
-                check(InputBoard, PositionX - 1, PositionY - 2);
-                Output.Add(new int[2] { PositionX - 1, PositionY - 2 });
-            }
-            if (PositionY + 2 <= 8 && InputBoard[PositionX - 1, PositionY + 2] == 0 || PositionY + 2 <= 8 && (InputBoard[PositionX - 1, PositionY + 2]) >> 4 != color)
-            {
-                check(InputBoard, PositionX - 1, PositionY + 2);
-                Output.Add(new int[2] { PositionX - 1, PositionY + 2 });
-            }
-        }
-        return Output;
-    }
-    public List<int[]> BishopMoove(byte[,] InputBoard, int PositionX, int PositionY, byte color)
-    {
-        List<int[]> Output = new List<int[]>();
-
-        for (int i = 1; i + PositionX <= 8 && i + PositionY <= 8; i++)
-        {
-            if (InputBoard[PositionX + i, PositionY + i] == 0)
-                Output.Add(new int[2] { PositionX + i, PositionY + i });
+            if (board[new_x, new_y] == 0)
+                Output.Add(make_quiet_move(current_x, current_y, new_x, new_y));
 
             else
             {
-                if (InputBoard[PositionX + i, PositionY + i] >> 4 != color)
+                if (board[new_x, new_y] >> 4 != color)
                 {
-                    check(InputBoard, PositionX + i, PositionY + i);
-                    Output.Add(new int[2] { PositionX + i, PositionY + i });
+                    Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
                     break;
                 }
                 else
-                {
                     break;
-                }
             }
         }
 
-        for (int i = 1; PositionX - i >= 1 && PositionY - i >= 1; i++)
+        for (int i = 1; current_x - i >= 1 && current_y - i >= 1; i++)
         {
-            if (InputBoard[PositionX - i, PositionY - i] == 0)
-                Output.Add(new int[2] { PositionX - i, PositionY - i });
+            new_x = current_x - i;
+            new_y = current_y - i;
+
+            if (board[new_x, new_y] == 0)
+                Output.Add(make_quiet_move(current_x, current_y, new_x, new_y));
 
             else
             {
-                if (InputBoard[PositionX - i, PositionY - i] >> 4 != color)
+                if (board[new_x, new_y] >> 4 != color)
                 {
-                    check(InputBoard, PositionX - i, PositionY - i);
-                    Output.Add(new int[2] { PositionX - i, PositionY - i });
+                    Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
                     break;
                 }
                 else
-                {
                     break;
-                }
             }
         }
 
-        for (int i = 1; PositionX - i >= 1 && i + PositionY <= 8; i++)
+        for (int i = 1; current_x - i >= 1 && i + current_y <= 8; i++)
         {
-            if (InputBoard[PositionX - i, PositionY + i] == 0)
-                Output.Add(new int[2] { PositionX - i, PositionY + i });
+            new_x = current_x - i;
+            new_y = current_y + i;
+
+            if (board[new_x, new_y] == 0)
+                Output.Add(make_quiet_move(current_x, current_y, new_x, new_y));
 
             else
             {
-                if (InputBoard[PositionX - i, PositionY + i] >> 4 != color)
+                if (board[new_x, new_y] >> 4 != color)
                 {
-                    check(InputBoard, PositionX - i, PositionY + i);
-                    Output.Add(new int[2] { PositionX - i, PositionY + i });
+                    Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
                     break;
                 }
                 else
-                {
                     break;
-                }
             }
         }
 
-        for (int i = 1; i + PositionX <= 8 && PositionY - i >= 1; i++)
+        for (int i = 1; i + current_x <= 8 && current_y - i >= 1; i++)
         {
-            if (InputBoard[PositionX + i, PositionY - i] == 0 )
-                Output.Add(new int[2] { PositionX + i, PositionY - i });
+            new_x = current_x + i;
+            new_y = current_y - i;
+
+            if (board[new_x, new_y] == 0)
+                Output.Add(make_quiet_move(current_x, current_y, new_x, new_y));
 
             else
             {
-                if (InputBoard[PositionX + i, PositionY - i] >> 4 != color)
+                if (board[new_x, new_y] >> 4 != color)
                 {
-                    check(InputBoard, PositionX + i, PositionY - i);
-                    Output.Add(new int[2] { PositionX + i, PositionY - i });
+                    Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
                     break;
                 }
                 else
-                {
                     break;
-                }
-            }
-        }
-
-        return Output;
-    }
-    public List<int[]> RookMoove(byte[,] InputBoard, int PositionX, int PositionY, byte color)
-    {
-        List<int[]> Output = new List<int[]>();
-
-        for (int i = PositionX + 1; i <= 8; i++)
-        {
-            if (InputBoard[i, PositionY] == 0)
-                Output.Add(new int[2] { i, PositionY });
-
-            else
-            {
-                if (InputBoard[i, PositionY] >> 4 != color)
-                {
-                    check(InputBoard, i, PositionY);
-                    Output.Add(new int[2] { i, PositionY });
-                    break;
-                }
-                else
-                {
-                    break;
-                }
-            }
-        }
-
-        for (int i = PositionX - 1; i >= 1; i--)
-        {
-            if (InputBoard[i, PositionY] == 0)
-                Output.Add(new int[2] { i, PositionY });
-
-            else
-            {
-                if (InputBoard[i, PositionY] >> 4 != color)
-                {
-                    check(InputBoard, i, PositionY);
-                    Output.Add(new int[2] { i, PositionY });
-                    break;
-                }
-                else
-                {
-                    break;
-                }
-            }
-        }
-
-        for (int i = PositionY + 1; i <= 8; i++)
-        {
-            if (InputBoard[PositionX, i] == 0)
-                Output.Add(new int[2] { PositionX, i });
-
-            else
-            {
-                if (InputBoard[PositionX, i] >> 4 != color)
-                {
-                    check(InputBoard, PositionX, i);
-                    Output.Add(new int[2] { PositionX, i });
-                    break;
-                }
-                else
-                {
-                    break;
-                }
-            }
-        }
-
-        for (int i = PositionY - 1; i >= 1; i--)
-        {
-            if (InputBoard[PositionX, i] == 0 )
-                Output.Add(new int[2] { PositionX, i });
-
-            else
-            {
-                if (InputBoard[PositionX, i] >> 4 != color)
-                {
-                    check(InputBoard, PositionX, i);
-                    Output.Add(new int[2] { PositionX, i });
-                    break;
-                }
-                else
-                {
-                    break;
-                }
-            }
-        }
-
-        return Output;
-
-    }
-    public List<int[]> QueenMoove(byte[,] InputBoard, int PositionX, int PositionY, byte color)
-    {
-        List<int[]> Output = new List<int[]>();
-
-        for (int i = 1; i + PositionX <= 8 && i + PositionY <= 8; i++)
-        {
-            if (InputBoard[PositionX + i, PositionY + i] == 0)
-                Output.Add(new int[2] { PositionX + i, PositionY + i });
-
-            else
-            {
-                if (InputBoard[PositionX + i, PositionY + i] >> 4 != color)
-                {
-                    check(InputBoard, PositionX + i, PositionY + i);
-                    Output.Add(new int[2] { PositionX + i, PositionY + i });
-                    break;
-                }
-                else
-                {
-                    break;
-                }
-            }
-        }
-
-        for (int i = 1; PositionX - i >= 1 && PositionY - i >= 1; i++)
-        {
-            if (InputBoard[PositionX - i, PositionY - i] == 0)
-                Output.Add(new int[2] { PositionX - i, PositionY - i });
-
-            else
-            {
-                if (InputBoard[PositionX - i, PositionY - i] >> 4 != color)
-                {
-                    check(InputBoard, PositionX - i, PositionY - i);
-                    Output.Add(new int[2] { PositionX - i, PositionY - i });
-                    break;
-                }
-                else
-                {
-                    break;
-                }
-            }
-        }
-
-        for (int i = 1; PositionX - i >= 1 && i + PositionY <= 8; i++)
-        {
-            if (InputBoard[PositionX - i, PositionY + i] == 0)
-                Output.Add(new int[2] { PositionX - i, PositionY + i });
-
-            else
-            {
-                if (InputBoard[PositionX - i, PositionY + i] >> 4 != color)
-                {
-                    check(InputBoard, PositionX - i, PositionY + i);
-                    Output.Add(new int[2] { PositionX - i, PositionY + i });
-                    break;
-                }
-                else
-                {
-                    break;
-                }
-            }
-        }
-
-        for (int i = 1; i + PositionX <= 8 && PositionY - i >= 1; i++)
-        {
-            if (InputBoard[PositionX + i, PositionY - i] == 0)
-                Output.Add(new int[2] { PositionX + i, PositionY - i });
-
-            else
-            {
-                if (InputBoard[PositionX + i, PositionY - i] >> 4 != color)
-                {
-                    check(InputBoard, PositionX + i, PositionY - i);
-                    Output.Add(new int[2] { PositionX + i, PositionY - i });
-                    break;
-                }
-                else
-                {
-                    break;
-                }
-            }
-        }
-        for (int i = PositionX + 1; i <= 8; i++)
-        {
-            if (InputBoard[i, PositionY] == 0)
-                Output.Add(new int[2] { i, PositionY });
-
-            else
-            {
-                if (InputBoard[i, PositionY] >> 4 != color)
-                {
-                    check(InputBoard, i, PositionY);
-                    Output.Add(new int[2] { i, PositionY });
-                    break;
-                }
-                else
-                {
-                    break;
-                }
-            }
-        }
-
-        for (int i = PositionX - 1; i >= 1; i--)
-        {
-            if (InputBoard[i, PositionY] == 0)
-                Output.Add(new int[2] { i, PositionY });
-
-            else
-            {
-                if (InputBoard[i, PositionY] >> 4 != color)
-                {
-                    check(InputBoard, i, PositionY);
-                    Output.Add(new int[2] { i, PositionY });
-                    break;
-                }
-                else
-                {
-                    break;
-                }
-            }
-        }
-
-        for (int i = PositionY + 1; i <= 8; i++)
-        {
-            if (InputBoard[PositionX, i] == 0)
-                Output.Add(new int[2] { PositionX, i });
-
-            else
-            {
-                if (InputBoard[PositionX, i] >> 4 != color)
-                {
-                    check(InputBoard, PositionX, i);
-                    Output.Add(new int[2] { PositionX, i });
-                    break;
-                }
-                else
-                {
-                    break;
-                }
-            }
-        }
-
-        for (int i = PositionY - 1; i >= 1; i--)
-        {
-            if (InputBoard[PositionX, i] == 0)
-                Output.Add(new int[2] { PositionX, i });
-
-            else
-            {
-                if (InputBoard[PositionX, i] >> 4 != color)
-                {
-                    check(InputBoard, PositionX, i);
-                    Output.Add(new int[2] { PositionX, i });
-                    break;
-                }
-                else
-                {
-                    break;
-                }
             }
         }
 
         return Output;
     }
-    public List<int[]> KingMoove(byte[,] InputBoard, int PositionX, int PositionY, byte color)
+    public List<int[]> rook_move(List<int[]> Output,byte[,] board, int current_x, int current_y, byte color)
     {
-        List<int[]> Output = new List<int[]>();
+
+        for (int i = current_x + 1; i <= 8; i++)
+        {
+            if (board[i, current_y] == 0)
+                Output.Add(make_quiet_move(current_x, current_y, i, current_y));
+
+            else
+            {
+                if (board[i, current_y] >> 4 != color)
+                {
+                    Output.Add(make_normal_move(board, current_x, current_y, i, current_y));
+                    break;
+                }
+                else
+                    break;
+            }
+        }
+
+        for (int i = current_x - 1; i >= 1; i--)
+        {
+            if (board[i, current_y] == 0)
+                Output.Add(make_quiet_move(current_x, current_y, i, current_y));
+
+            else
+            {
+                if (board[i, current_y] >> 4 != color)
+                {
+                    Output.Add(make_normal_move(board, current_x, current_y, i, current_y));
+                    break;
+                }
+                else
+                    break;
+            }
+        }
+
+        for (int i = current_y + 1; i <= 8; i++)
+        {
+            if (board[current_x, i] == 0)
+                Output.Add(make_quiet_move(current_x, current_y, current_x, i));
+
+            else
+            {
+                if (board[current_x, i] >> 4 != color)
+                {
+                    Output.Add(make_normal_move(board, current_x, current_y, current_x, i));
+                    break;
+                }
+                else
+                    break;
+            }
+        }
+
+        for (int i = current_y - 1; i >= 1; i--)
+        {
+            if (board[current_x, i] == 0)
+                Output.Add(make_quiet_move(current_x, current_y, current_x, i));
+
+            else
+            {
+                if (board[current_x, i] >> 4 != color)
+                {
+                    Output.Add(make_normal_move(board, current_x, current_y, current_x, i));
+                    break;
+                }
+                else
+                    break;
+            }
+        }
+
+        return Output;
+    }
+    public List<int[]> queen_move(List<int[]> Output, byte[,] board, int current_x, int current_y, byte color)
+    {
+        Output = bishop_move(Output, board, current_x, current_y, color);
+        Output = rook_move(Output, board, current_x, current_y, color);
+
+        return Output;
+    }
+    public List<int[]> king_move(List<int[]> Output, byte[,] board, int current_x, int current_y, byte color)
+    {
+        int new_x = current_x + 2, new_y = current_y;
 
         //Casteling
-        if (InputBoard[PositionX, PositionY] - color * 0b10000 == 0b00000110 && InputBoard[PositionX + 1, PositionY] == 0 && InputBoard[PositionX + 2, PositionY] == 0 && InputBoard[PositionX + 3, PositionY] != 0 && InputBoard[PositionX + 3, PositionY] - color * 0b10000 == 0b00001001)
-        {
-            Output.Add(new int[3] { PositionX + 2, PositionY, 0 });
-        }
-        if (InputBoard[PositionX, PositionY] - color * 0b10000 == 0b00000110 && InputBoard[PositionX - 1, PositionY] == 0 && InputBoard[PositionX - 2, PositionY] == 0 && InputBoard[PositionX - 3, PositionY] == 0 && InputBoard[PositionX - 4, PositionY] != 0 && InputBoard[PositionX - 4, PositionY] - color * 0b10000 == 0b00001001 )
-        {
-            Output.Add(new int[3] { PositionX - 2, PositionY, 0 });
-        }
+        if ((board[current_x, current_y] & 0b00001111) == 0b00000110 && board[current_x + 1, new_y] == 0 && board[new_x, new_y] == 0 && board[current_x + 3, new_y] != 0 &&
+            (board[current_x + 3, new_y] & 0b00001111) == 0b00001001 && !CastlingCheck(board, make_non_normal_quiet_move(current_x, current_y, new_x, new_y, 0)))
+            Output.Add(make_non_normal_quiet_move(current_x, current_y, new_x, new_y, 0));
+
+        new_x = current_x - 2;
+        if ((board[current_x, current_y] & 0b00001111) == 0b00000110 && board[current_x - 1, new_y] == 0 && board[new_x, new_y] == 0 && board[current_x - 3, new_y] == 0 &&
+            board[current_x - 4, new_y] != 0 && (board[current_x - 4, new_y] & 0b00001111) == 0b00001001 && !CastlingCheck(board, make_non_normal_quiet_move(current_x, current_y, new_x, new_y, 0)))
+            Output.Add(make_non_normal_quiet_move(current_x, current_y, new_x, new_y, 0));
 
         // normal Mooves
-        if (PositionX - 1 >= 1)
+        new_x += 1;
+        if (new_x >= 1)
         {
-            if (InputBoard[PositionX - 1, PositionY] == 0|| InputBoard[PositionX - 1, PositionY] >> 4 != color)
-            {
-                check(InputBoard, PositionX - 1, PositionY);
-                Output.Add(new int[2] { PositionX - 1, PositionY });
-            }
-            if (PositionY + 1 <= 8 && InputBoard[PositionX - 1, PositionY + 1] == 0|| PositionY + 1 <= 8 && InputBoard[PositionX - 1, PositionY + 1] >> 4 != color)
-            {
-                check(InputBoard, PositionX - 1, PositionY + 1);
-                Output.Add(new int[2] { PositionX - 1, PositionY + 1 });
-            }
-            if (PositionY - 1 >= 1 && InputBoard[PositionX - 1, PositionY - 1] == 0 || PositionY - 1 >= 1 && InputBoard[PositionX - 1, PositionY - 1] >> 4 != color)
-            {
-                check(InputBoard, PositionX - 1, PositionY - 1);
-                Output.Add(new int[2] { PositionX - 1, PositionY - 1 });
-            }
+            if (board[new_x, new_y] == 0 || board[new_x, new_y] >> 4 != color) 
+                Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
+
+            new_y = current_y + 1;
+            if (new_y <= 8 && (board[new_x, new_y] == 0 || board[new_x, new_y] >> 4 != color))
+                Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
+
+            new_y = current_y - 1;
+            if (new_y >= 1 && (board[new_x, new_y] == 0 || board[new_x, new_y] >> 4 != color))
+                Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
         }
-        if (PositionX + 1 <= 8)
+        new_x += 2;
+        if (new_x <= 8)
         {
-            if (InputBoard[PositionX + 1, PositionY] == 0 || InputBoard[PositionX + 1, PositionY] >> 4 != color)
-            {
-                check(InputBoard, PositionX + 1, PositionY);
-                Output.Add(new int[2] { PositionX + 1, PositionY });
-            }
-            if (PositionY + 1 <= 8 && InputBoard[PositionX + 1, PositionY + 1] == 0 || PositionY + 1 <= 8 && InputBoard[PositionX + 1, PositionY + 1] >> 4 != color)
-            {
-                check(InputBoard, PositionX + 1, PositionY + 1);
-                Output.Add(new int[2] { PositionX + 1, PositionY + 1 });
-            }
-            if (PositionY - 1 >= 1 && InputBoard[PositionX + 1, PositionY - 1] == 0 || PositionY - 1 >= 1 && InputBoard[PositionX + 1, PositionY - 1] >> 4 != color)
-            {
-                check(InputBoard, PositionX + 1, PositionY - 1);
-                Output.Add(new int[2] { PositionX + 1, PositionY - 1 });
-            }
+            new_y = current_y;
+            if (board[new_x, new_y] == 0 || board[new_x, new_y] >> 4 != color)
+                Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
+
+            new_y = current_y + 1;
+            if (new_y <= 8 && (board[new_x, new_y] == 0 || board[new_x, new_y] >> 4 != color))
+                Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
+
+            new_y = current_y - 1;
+            if (new_y >= 1 && (board[new_x, new_y] == 0 || board[new_x, new_y] >> 4 != color))
+                Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
         }
 
-        if (PositionY + 1 <= 8 && InputBoard[PositionX, PositionY + 1] == 0 || PositionY + 1 <= 8 && InputBoard[PositionX, PositionY + 1] >> 4 != color)
-        {
-            check(InputBoard, PositionX, PositionY + 1);
-            Output.Add(new int[2] { PositionX, PositionY + 1 });
-        }
-        if (PositionY - 1 >= 1 && InputBoard[PositionX, PositionY - 1] == 0|| PositionY - 1 >= 1 && InputBoard[PositionX, PositionY - 1] >> 4 != color)
-        {
-            check(InputBoard, PositionX, PositionY - 1);
-            Output.Add(new int[2] { PositionX, PositionY - 1 });
-        }
+        new_x = current_x;
+        new_y = current_y + 1;
+        if (new_y <= 8 && (board[new_x, new_y] == 0 || board[new_x, new_y] >> 4 != color))
+            Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
+
+        new_y = current_y - 1;
+        if (new_y >= 1 && (board[new_x, new_y] == 0 || board[new_x, new_y] >> 4 != color))
+            Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
 
         return Output;
     }
-    public List<int[]> PawnMoove(byte[,] InputBoard, int PositionX, int PositionY, byte color)
+    public List<int[]> pawn_move(List<int[]> Output, byte[,] board, int current_x, int current_y, byte color)
     {
-        List<int[]> Output = new List<int[]>();
-        int colorminus = 1;
+        int colorminus = 2 * color - 1;
+        int new_x = current_x, new_y = current_y + 2 * colorminus;
 
-        if (color == 0)
-            colorminus = -1;
+        if ((board[current_x, current_y] & 0b00001111) == 0b1 && board[new_x, current_y + colorminus] == 0 && board[new_x, new_y] == 0)
+            Output.Add(make_quiet_move(current_x, current_y, new_x, new_y));
 
-        if (InputBoard[PositionX, PositionY] - color * 0b10000 == 0b1 && InputBoard[PositionX, PositionY + colorminus] == 0 && InputBoard[PositionX, PositionY + 2 * colorminus] == 0)
-            Output.Add(new int[2] { PositionX, PositionY + 2 * colorminus });
+        new_y -= colorminus;
+        if (board[new_x, new_y] == 0)
+            Output = make_quiet_pawn_moves(Output, board, current_x, current_y, new_x, new_y);
 
-        if (InputBoard[PositionX, PositionY + colorminus] == 0)
-            Output.Add(new int[2] { PositionX, PositionY + 1 * colorminus });
 
-        if (PositionX + 1 <= 8 && InputBoard[PositionX + 1, PositionY + colorminus] != 0 && InputBoard[PositionX + 1, PositionY + colorminus] >> 4 != color)
+        new_x = current_x + 1;
+        if (new_x <= 8)
         {
-            check(InputBoard, PositionX + 1, PositionY + 1 * colorminus);
-            Output.Add(new int[2] { PositionX + 1, PositionY + 1 * colorminus });
-        }
-        if (PositionX - 1 >= 1 && InputBoard[PositionX - 1, PositionY + colorminus] != 0 && InputBoard[PositionX - 1, PositionY + colorminus] >> 4 != color)
-        {
-            check(InputBoard, PositionX - 1, PositionY + 1 * colorminus);
-            Output.Add(new int[2] { PositionX - 1, PositionY + 1 * colorminus });
+            if (board[new_x, new_y] != 0 && board[new_x, new_y] >> 4 != color)
+                Output = make_normal_pawn_moves(Output, board, current_x, current_y, new_x, new_y);
+
+            else if (current_y == 4 + color && board[new_x, current_y] != 0 && board[new_x, current_y] >> 4 != color && (board[new_x, current_y] & 0b00001111) == 0b00000010)
+                Output.Add(make_non_normal_move(board, current_x, current_y, new_x, new_y, 0));
         }
 
-        //en passent
-        if (PositionX + 1 <= 8 && PositionY == 4 + color && InputBoard[PositionX + 1, PositionY] != 0 && InputBoard[PositionX + 1, PositionY] >> 4 != color && InputBoard[PositionX + 1, PositionY] - (InputBoard[PositionX + 1, PositionY] >> 4) * 0b10000 == 0b00000010)
-            Output.Add(new int[3] { PositionX + 1, PositionY + 1 * colorminus, 0 });
-
-        if (PositionX - 1 >= 1 && PositionY == 4 + color && InputBoard[PositionX - 1, PositionY] != 0 && InputBoard[PositionX - 1, PositionY] >> 4 != color && InputBoard[PositionX - 1, PositionY] - (InputBoard[PositionX - 1, PositionY] >> 4) * 0b10000 == 0b00000010)
-            Output.Add(new int[3] { PositionX - 1, PositionY + 1 * colorminus, 0 });
-        return Output;
-    }
-    public List<int[]> KnightCaptures(byte[,] InputBoard, int PositionX, int PositionY, byte color)
-    {
-        List<int[]> Output = new List<int[]>();
-
-        if (PositionX + 2 <= 8)
+        new_x = current_x - 1;
+        if (new_x >= 1)
         {
-            if (PositionY - 1 >= 1 && InputBoard[PositionX + 2, PositionY - 1] != 0 && (InputBoard[PositionX + 2, PositionY - 1]) >> 4 != color)
-            {
-                check(InputBoard, PositionX + 2, PositionY - 1);
-                Output.Add(new int[2] { PositionX + 2, PositionY - 1 });
-            }
-            if (PositionY + 1 <= 8 && InputBoard[PositionX + 2, PositionY + 1] != 0 && (InputBoard[PositionX + 2, PositionY + 1]) >> 4 != color) 
-            {
-                check(InputBoard, PositionX + 2, PositionY + 1);
-                Output.Add(new int[2] { PositionX + 2, PositionY + 1 });
-            }
+            if (board[new_x, new_y] != 0 && board[new_x, new_y] >> 4 != color)
+                Output = make_normal_pawn_moves(Output, board, current_x, current_y, new_x, new_y);
 
-        }
-        if (PositionX - 2 >= 1)
-        {
-            if (PositionY - 1 >= 1 && InputBoard[PositionX - 2, PositionY - 1] != 0 && (InputBoard[PositionX - 2, PositionY - 1]) >> 4 != color) 
-            {
-                check(InputBoard, PositionX - 2, PositionY - 1);
-                Output.Add(new int[2] { PositionX - 2, PositionY - 1 });
-            }
-            if (PositionY + 1 <= 8 && InputBoard[PositionX - 2, PositionY + 1] != 0 && (InputBoard[PositionX - 2, PositionY + 1]) >> 4 != color) 
-            {
-                check(InputBoard, PositionX - 2, PositionY + 1);
-                Output.Add(new int[2] { PositionX - 2, PositionY + 1 });
-            }
-
-        }
-        if (PositionX + 1 <= 8)
-        {
-            if (PositionY - 2 >= 1 && InputBoard[PositionX + 1, PositionY - 2] != 0 && (InputBoard[PositionX + 1, PositionY - 2]) >> 4 != color) 
-            {
-                check(InputBoard, PositionX + 1, PositionY - 2);
-                Output.Add(new int[2] { PositionX + 1, PositionY - 2 });
-            }
-
-
-            if (PositionY + 2 <= 8 && InputBoard[PositionX + 1, PositionY + 2] != 0 && (InputBoard[PositionX + 1, PositionY + 2]) >> 4 != color)
-            {
-                check(InputBoard, PositionX + 1, PositionY + 2);
-                Output.Add(new int[2] { PositionX + 1, PositionY + 2 });
-            }
-        }
-        if (PositionX - 1 >= 1)
-        {
-            if (PositionY - 2 >= 1 && InputBoard[PositionX - 1, PositionY - 2] != 0 && (InputBoard[PositionX - 1, PositionY - 2]) >> 4 != color) 
-            {
-                check(InputBoard, PositionX - 1, PositionY - 2);
-                Output.Add(new int[2] { PositionX - 1, PositionY - 2 });
-            }
-            if (PositionY + 2 <= 8 && InputBoard[PositionX - 1, PositionY + 2] != 0 && (InputBoard[PositionX - 1, PositionY + 2]) >> 4 != color) 
-            {
-                check(InputBoard, PositionX - 1, PositionY + 2);
-                Output.Add(new int[2] { PositionX - 1, PositionY + 2 });
-            }
+            else if (current_y == 4 + color && board[new_x, current_y] != 0 && board[new_x, current_y] >> 4 != color && (board[new_x, current_y] & 0b00001111) == 0b00000010)
+                Output.Add(make_non_normal_move(board, current_x, current_y, new_x, new_y, 0));
         }
         return Output;
     }
-    public List<int[]> BishopCaptures(byte[,] InputBoard, int PositionX, int PositionY, byte color)
+    public List<int[]> KnightCaptures(List<int[]> Output, byte[,] board, int current_x, int current_y, byte color)
     {
-        List<int[]> Output = new List<int[]>();
+        int new_x = current_x + 2, new_y = 0;
 
-        for (int i = 1; i + PositionX <= 8 && i + PositionY <= 8; i++)
+        if (new_x <= 8)
         {
-            if (InputBoard[PositionX + i, PositionY + i] != 0)
+            new_y = current_y - 1;
+            if (new_y >= 1 && board[new_x, new_y] != 0 && board[new_x, new_y] >> 4 != color)
+                Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
+
+            new_y = current_y + 1;
+            if (new_y <= 8 && board[new_x, new_y] != 0 && board[new_x, new_y] >> 4 != color)
+                Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
+        }
+
+        new_x = current_x - 2;
+        if (new_x >= 1)
+        {
+            new_y = current_y - 1;
+            if (new_y >= 1 && board[new_x, new_y] != 0 && board[new_x, new_y] >> 4 != color)
+                Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
+
+            new_y = current_y + 1;
+            if (new_y <= 8 && board[new_x, new_y] != 0 && board[new_x, new_y] >> 4 != color)
+                Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
+        }
+
+        new_x = current_x + 1;
+        if (new_x <= 8)
+        {
+            new_y = current_y - 2;
+            if (new_y >= 1 && board[new_x, new_y] != 0 && board[new_x, new_y] >> 4 != color)
+                Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
+
+            new_y = current_y + 2;
+            if (new_y <= 8 && board[new_x, new_y] != 0 && board[new_x, new_y] >> 4 != color)
+                Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
+        }
+
+        new_x = current_x - 1;
+        if (new_x <= 8)
+        {
+            new_y = current_y - 2;
+            if (new_y >= 1 && board[new_x, new_y] != 0 && board[new_x, new_y] >> 4 != color)
+                Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
+
+            new_y = current_y + 2;
+            if (new_y <= 8 && board[new_x, new_y] != 0 && board[new_x, new_y] >> 4 != color)
+                Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
+        }
+        return Output;
+    }
+    public List<int[]> BishopCaptures(List<int[]> Output, byte[,] board, int current_x, int current_y, byte color)
+    {
+        int new_x = 0, new_y = 0;
+        for (int i = 1; i + current_x <= 8 && i + current_y <= 8; i++)
+        {
+            new_x = current_x + i;
+            new_y = current_y + i;
+
+            if (board[new_x, new_y] != 0)
             {
-                if (InputBoard[PositionX + i, PositionY + i] >> 4 != color)
+                if (board[new_x, new_y] >> 4 != color)
                 {
-                    check(InputBoard, PositionX + i, PositionY + i);
-                    Output.Add(new int[2] { PositionX + i, PositionY + i });
+                    Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
                     break;
                 }
                 else
-                {
                     break;
-                }
             }
         }
 
-        for (int i = 1; PositionX - i >= 1 && PositionY - i >= 1; i++)
+        for (int i = 1; current_x - i >= 1 && current_y - i >= 1; i++)
         {
-            if (InputBoard[PositionX - i, PositionY - i] != 0)
+            new_x = current_x - i;
+            new_y = current_y - i;
+
+            if (board[new_x, new_y] != 0)
             {
-                if (InputBoard[PositionX - i, PositionY - i] >> 4 != color)
+                if (board[new_x, new_y] >> 4 != color)
                 {
-                    check(InputBoard, PositionX - i, PositionY - i);
-                    Output.Add(new int[2] { PositionX - i, PositionY - i });
+                    Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
                     break;
                 }
                 else
-                {
                     break;
-                }
             }
         }
 
-        for (int i = 1; PositionX - i >= 1 && i + PositionY <= 8; i++)
+        for (int i = 1; current_x - i >= 1 && i + current_y <= 8; i++)
         {
-            if (InputBoard[PositionX - i, PositionY + i] != 0)
+            new_x = current_x - i;
+            new_y = current_y + i;
+
+            if (board[new_x, new_y] != 0)
             {
-                if (InputBoard[PositionX - i, PositionY + i] >> 4 != color)
+                if (board[new_x, new_y] >> 4 != color)
                 {
-                    check(InputBoard, PositionX - i, PositionY + i);
-                    Output.Add(new int[2] { PositionX - i, PositionY + i });
+                    Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
                     break;
                 }
                 else
-                {
                     break;
-                }
             }
         }
 
-        for (int i = 1; i + PositionX <= 8 && PositionY - i >= 1; i++)
+        for (int i = 1; i + current_x <= 8 && current_y - i >= 1; i++)
         {
-            if (InputBoard[PositionX + i, PositionY - i] != 0)
+            new_x = current_x + i;
+            new_y = current_y - i;
+
+            if (board[new_x, new_y] != 0)
             {
-                if (InputBoard[PositionX + i, PositionY - i] >> 4 != color)
+                if (board[new_x, new_y] >> 4 != color)
                 {
-                    check(InputBoard, PositionX + i, PositionY - i);
-                    Output.Add(new int[2] { PositionX + i, PositionY - i });
+                    Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
                     break;
                 }
                 else
-                {
                     break;
-                }
             }
         }
 
         return Output;
     }
-    public List<int[]> RookCaptures(byte[,] InputBoard, int PositionX, int PositionY, byte color)
+    public List<int[]> RookCaptures(List<int[]> Output, byte[,] board, int current_x, int current_y, byte color)
     {
-        List<int[]> Output = new List<int[]>();
-
-        for (int i = PositionX + 1; i <= 8; i++)
+        for (int i = current_x + 1; i <= 8; i++)
         {
-            if (InputBoard[i, PositionY] != 0)
+            if (board[i, current_y] != 0)
             {
-                if (InputBoard[i, PositionY] >> 4 != color)
+                if (board[i, current_y] >> 4 != color)
                 {
-                    check(InputBoard, i, PositionY);
-                    Output.Add(new int[2] { i, PositionY });
+                    Output.Add(make_normal_move(board, current_x, current_y, i, current_y));
                     break;
                 }
                 else
-                {
                     break;
-                }
             }
         }
 
-        for (int i = PositionX - 1; i >= 1; i--)
+        for (int i = current_x - 1; i >= 1; i--)
         {
-            if (InputBoard[i, PositionY] != 0)
+            if (board[i, current_y] != 0)
             {
-                if (InputBoard[i, PositionY] >> 4 != color)
+                if (board[i, current_y] >> 4 != color)
                 {
-                    check(InputBoard, i, PositionY);
-                    Output.Add(new int[2] { i, PositionY });
+                    Output.Add(make_normal_move(board, current_x, current_y, i, current_y));
                     break;
                 }
                 else
-                {
                     break;
-                }
             }
         }
 
-        for (int i = PositionY + 1; i <= 8; i++)
+        for (int i = current_y + 1; i <= 8; i++)
         {
-            if (InputBoard[PositionX, i] != 0)
+            if (board[current_x, i] != 0)
             {
-                if (InputBoard[PositionX, i] >> 4 != color)
+                if (board[current_x, i] >> 4 != color)
                 {
-                    check(InputBoard, PositionX, i);
-                    Output.Add(new int[2] { PositionX, i });
+                    Output.Add(make_normal_move(board, current_x, current_y, current_x, i));
                     break;
                 }
                 else
-                {
                     break;
-                }
             }
         }
 
-        for (int i = PositionY - 1; i >= 1; i--)
+        for (int i = current_y - 1; i >= 1; i--)
         {
-            if (InputBoard[PositionX, i] != 0)
+            if (board[current_x, i] != 0)
             {
-                if (InputBoard[PositionX, i] >> 4 != color)
+                if (board[current_x, i] >> 4 != color)
                 {
-                    check(InputBoard, PositionX, i);
-                    Output.Add(new int[2] { PositionX, i });
+                    Output.Add(make_normal_move(board, current_x, current_y, current_x, i));
                     break;
                 }
                 else
-                {
                     break;
-                }
             }
         }
 
         return Output;
 
     }
-    public List<int[]> QueenCaptures(byte[,] InputBoard, int PositionX, int PositionY, byte color)
+    public List<int[]> QueenCaptures(List<int[]> Output, byte[,] board, int current_x, int current_y, byte color)
     {
-        List<int[]> Output = new List<int[]>();
-        for (int i = PositionX + 1; i <= 8; i++)
-        {
-            if (InputBoard[i, PositionY] != 0)
-            {
-                if (InputBoard[i, PositionY] >> 4 != color)
-                {
-                    check(InputBoard, i, PositionY);
-                    Output.Add(new int[2] { i, PositionY });
-                    break;
-                }
-                else
-                {
-                    break;
-                }
-            }
-        }
-
-        for (int i = PositionX - 1; i >= 1; i--)
-        {
-            if (InputBoard[i, PositionY] != 0)
-            {
-                if (InputBoard[i, PositionY] >> 4 != color)
-                {
-                    check(InputBoard, i, PositionY);
-                    Output.Add(new int[2] { i, PositionY });
-                    break;
-                }
-                else
-                {
-                    break;
-                }
-            }
-        }
-
-        for (int i = PositionY + 1; i <= 8; i++)
-        {
-            if (InputBoard[PositionX, i] != 0)
-            {
-                if (InputBoard[PositionX, i] >> 4 != color)
-                {
-                    check(InputBoard, PositionX, i);
-                    Output.Add(new int[2] { PositionX, i });
-                    break;
-                }
-                else
-                {
-                    break;
-                }
-            }
-        }
-
-        for (int i = PositionY - 1; i >= 1; i--)
-        {
-            if (InputBoard[PositionX, i] != 0)
-            {
-                if (InputBoard[PositionX, i] >> 4 != color)
-                {
-                    check(InputBoard, PositionX, i);
-                    Output.Add(new int[2] { PositionX, i });
-                    break;
-                }
-                else
-                {
-                    break;
-                }
-            }
-        }
-
-        for (int i = 1; i + PositionX <= 8 && i + PositionY <= 8; i++)
-        {
-            if (InputBoard[PositionX + i, PositionY + i] != 0)
-            {
-                if (InputBoard[PositionX + i, PositionY + i] >> 4 != color)
-                {
-                    check(InputBoard, PositionX + i, PositionY + i);
-                    Output.Add(new int[2] { PositionX + i, PositionY + i });
-                    break;
-                }
-                else
-                {
-                    break;
-                }
-            }
-        }
-
-        for (int i = 1; PositionX - i >= 1 && PositionY - i >= 1; i++)
-        {
-            if (InputBoard[PositionX - i, PositionY - i] != 0)
-            {
-                if (InputBoard[PositionX - i, PositionY - i] >> 4 != color)
-                {
-                    check(InputBoard, PositionX - i, PositionY - i);
-                    Output.Add(new int[2] { PositionX - i, PositionY - i });
-                    break;
-                }
-                else
-                {
-                    break;
-                }
-            }
-        }
-
-        for (int i = 1; PositionX - i >= 1 && i + PositionY <= 8; i++)
-        {
-            if (InputBoard[PositionX - i, PositionY + i] != 0)
-            {
-                if (InputBoard[PositionX - i, PositionY + i] >> 4 != color)
-                {
-                    check(InputBoard, PositionX - i, PositionY + i);
-                    Output.Add(new int[2] { PositionX - i, PositionY + i });
-                    break;
-                }
-                else
-                {
-                    break;
-                }
-            }
-        }
-
-        for (int i = 1; i + PositionX <= 8 && PositionY - i >= 1; i++)
-        {
-            if (InputBoard[PositionX + i, PositionY - i] != 0)
-            {
-                if (InputBoard[PositionX + i, PositionY - i] >> 4 != color)
-                {
-                    check(InputBoard, PositionX + i, PositionY - i);
-                    Output.Add(new int[2] { PositionX + i, PositionY - i });
-                    break;
-                }
-                else
-                {
-                    break;
-                }
-            }
-        }
+        Output = RookCaptures(Output, board, current_x, current_y, color);
+        Output = BishopCaptures(Output, board, current_x, current_y, color);
         return Output;
     }
-    public List<int[]> KingCaptures(byte[,] InputBoard, int PositionX, int PositionY, byte color)
+    public List<int[]> KingCaptures(List<int[]> Output, byte[,] board, int current_x, int current_y, byte color)
     {
-        List<int[]> Output = new List<int[]>();
-        // normal Mooves
-        if (PositionX - 1 >= 1)
+        int new_x = current_x - 1, new_y;
+
+        if (new_x >= 1)
         {
-            if (InputBoard[PositionX - 1, PositionY] != 0 && InputBoard[PositionX - 1, PositionY] >> 4 != color)
-            {
-                check(InputBoard, PositionX - 1, PositionY);
-                Output.Add(new int[2] { PositionX - 1, PositionY });
-            }
-            if (PositionY + 1 <= 8 && InputBoard[PositionX - 1, PositionY + 1] != 0 && InputBoard[PositionX - 1, PositionY + 1] >> 4 != color)
-            {
-                check(InputBoard, PositionX - 1, PositionY + 1);
-                Output.Add(new int[2] { PositionX - 1, PositionY + 1 });
-            }
-            if (PositionY - 1 >= 1 && InputBoard[PositionX - 1, PositionY - 1] != 0&& InputBoard[PositionX - 1, PositionY - 1] >> 4 != color)
-            {
-                check(InputBoard, PositionX - 1, PositionY - 1);
-                Output.Add(new int[2] { PositionX - 1, PositionY - 1 });
-            }
-        }
-        if (PositionX + 1 <= 8)
-        {
-            if (InputBoard[PositionX + 1, PositionY] != 0 && InputBoard[PositionX + 1, PositionY] >> 4 != color)
-            {
-                check(InputBoard, PositionX + 1, PositionY);
-                Output.Add(new int[2] { PositionX + 1, PositionY });
-            }
-            if (PositionY + 1 <= 8 && InputBoard[PositionX + 1, PositionY + 1] != 0  && InputBoard[PositionX + 1, PositionY + 1] >> 4 != color)
-            {
-                check(InputBoard, PositionX + 1, PositionY + 1);
-                Output.Add(new int[2] { PositionX + 1, PositionY + 1 });
-            }
-            if (PositionY - 1 >= 1 && InputBoard[PositionX + 1, PositionY - 1] != 0  && InputBoard[PositionX + 1, PositionY - 1] >> 4 != color)
-            {
-                check(InputBoard, PositionX + 1, PositionY - 1);
-                Output.Add(new int[2] { PositionX + 1, PositionY - 1 });
-            }
+            if (board[new_x, current_y] != 0 && board[new_x, current_y] >> 4 != color)
+                Output.Add(make_normal_move(board, current_x, current_y, new_x, current_y));
+
+            new_y = current_y + 1;
+            if (new_y <= 8 && board[new_x, new_y] != 0 && board[new_x, new_y] >> 4 != color)
+                Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
+
+            new_y = current_y - 1;
+            if (new_y >= 1 && board[new_x, new_y] != 0 && board[new_x, new_y] >> 4 != color)
+                Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
         }
 
-        if (PositionY + 1 <= 8 && InputBoard[PositionX, PositionY + 1] != 0 && InputBoard[PositionX, PositionY + 1] >> 4 != color)
+        new_x = current_x + 1;
+        if (new_x <= 8)
         {
-            check(InputBoard, PositionX, PositionY + 1);
-            Output.Add(new int[2] { PositionX, PositionY + 1 });
+            if (board[new_x, current_y] != 0 && board[new_x, current_y] >> 4 != color)
+                Output.Add(make_normal_move(board, current_x, current_y, new_x, current_y));
+
+            new_y = current_y + 1;
+            if (new_y <= 8 && board[new_x, new_y] != 0 && board[new_x, new_y] >> 4 != color)
+                Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
+
+            new_y = current_y - 1;
+            if (new_y >= 1 && board[new_x, new_y] != 0 && board[new_x, new_y] >> 4 != color)
+                Output.Add(make_normal_move(board, current_x, current_y, new_x, new_y));
         }
-        if (PositionY - 1 >= 1 && InputBoard[PositionX, PositionY - 1] != 0 && InputBoard[PositionX, PositionY - 1] >> 4 != color)
-        {
-            check(InputBoard, PositionX, PositionY - 1);
-            Output.Add(new int[2] { PositionX, PositionY - 1 });
-        }
+
+        new_y = current_y + 1;
+        if (new_y <= 8 && board[current_x, new_y] != 0 && board[current_x, new_y] >> 4 != color)
+            Output.Add(make_normal_move(board, current_x, current_y, current_x, new_y));
+
+        new_y = current_y - 1;
+        if (new_y >= 1 && board[current_x, new_y] != 0 && board[current_x, new_y] >> 4 != color)
+            Output.Add(make_normal_move(board, current_x, current_y, current_x, new_y));
 
         return Output;
     }
-    public List<int[]> PawnCaptures(byte[,] InputBoard, int PositionX, int PositionY, byte color)
+    public List<int[]> PawnCaptures(List<int[]> Output, byte[,] board, int current_x, int current_y, byte color)
     {
-        List<int[]> Output = new List<int[]>();
-        int colorminus = 1;
+        int colorminus = 2 * color - 1, new_x, new_y = current_y + colorminus;
 
-        if (color == 0)
-            colorminus = -1;
-
-        if (PositionY + colorminus >= 1 && PositionY + colorminus <= 8)
+        new_x = current_x + 1;
+        if (new_x <= 8)
         {
-            if (PositionX + 1 <= 8 && InputBoard[PositionX + 1, PositionY + colorminus] != 0 && InputBoard[PositionX + 1, PositionY + colorminus] >> 4 != color)
-            {
-                check(InputBoard, PositionX + 1, PositionY + 1 * colorminus);
-                Output.Add(new int[2] { PositionX + 1, PositionY + 1 * colorminus });
-            }
-            if (PositionX - 1 >= 1 && InputBoard[PositionX - 1, PositionY + colorminus] != 0 && InputBoard[PositionX - 1, PositionY + colorminus] >> 4 != color)
-            {
-                check(InputBoard, PositionX - 1, PositionY + 1 * colorminus);
-                Output.Add(new int[2] { PositionX - 1, PositionY + 1 * colorminus });
-            }
-        }
-        //en passent
-        if (PositionX + 1 <= 8 && PositionY == 4 + color && InputBoard[PositionX + 1, PositionY] != 0 && InputBoard[PositionX + 1, PositionY] >> 4 != color && InputBoard[PositionX + 1, PositionY] - (InputBoard[PositionX + 1, PositionY] >> 4) * 0b10000 == 0b00000010)
-            Output.Add(new int[3] { PositionX + 1, PositionY + 1 * colorminus, 0 });
+            if (board[new_x, new_y] != 0 && board[new_x, new_y] >> 4 != color)
+                Output = make_normal_pawn_moves(Output, board, current_x, current_y, new_x, new_y);
 
-        if (PositionX - 1 >= 1 && PositionY == 4 + color && InputBoard[PositionX - 1, PositionY] != 0 && InputBoard[PositionX - 1, PositionY] >> 4 != color && InputBoard[PositionX - 1, PositionY] - (InputBoard[PositionX - 1, PositionY] >> 4) * 0b10000 == 0b00000010)
-            Output.Add(new int[3] { PositionX - 1, PositionY + 1 * colorminus, 0 });
+            if (current_y == 4 + color && board[new_x, current_y] != 0 && board[new_x, current_y] >> 4 != color && (board[new_x, current_y] & 0b00001111) == 0b00000010)
+                Output.Add(make_non_normal_move(board, current_x, current_y, new_x, new_y, 0));
+        }
+
+        new_x = current_x - 1;
+        if (new_x >= 1)
+        {
+            if (board[new_x, new_y] != 0 && board[new_x, new_y] >> 4 != color)
+                Output = make_normal_pawn_moves(Output, board, current_x, current_y, new_x, new_y);
+
+            if (current_y == 4 + color && board[new_x, current_y] != 0 && board[new_x, current_y] >> 4 != color && (board[new_x, current_y] & 0b00001111) == 0b00000010)
+                Output.Add(make_non_normal_move(board, current_x, current_y, new_x, new_y, 0));
+        }
+
         return Output;
     }
     public void KnightCheck(byte[,] InputBoard, int PositionX, int PositionY, byte color)
@@ -1858,20 +1488,12 @@ public class MoveGen
     }
     public void PawnCheck(byte[,] InputBoard, int PositionX, int PositionY, byte color)
     {
-        int colorminus = 1;
-        if (color == 0)
-            colorminus = -1;
-        if (PositionY + colorminus >= 1 && PositionY + colorminus <= 8)
-        {
-            if (PositionX + 1 <= 8 && InputBoard[PositionX + 1, PositionY + colorminus] != 0 && InputBoard[PositionX + 1, PositionY + colorminus] >> 4 != color)
-            {
-                check(InputBoard, PositionX + 1, PositionY + 1 * colorminus);
-            }
-            if (PositionX - 1 >= 1 && InputBoard[PositionX - 1, PositionY + colorminus] != 0 && InputBoard[PositionX - 1, PositionY + colorminus] >> 4 != color)
-            {
-                check(InputBoard, PositionX - 1, PositionY + 1 * colorminus);
-            }
-        }
+        int colorminus = 2 * color - 1;
+
+        if (PositionX + 1 <= 8 && InputBoard[PositionX + 1, PositionY + colorminus] != 0 && InputBoard[PositionX + 1, PositionY + colorminus] >> 4 != color)
+            check(InputBoard, PositionX + 1, PositionY + colorminus);
+        if (PositionX - 1 >= 1 && InputBoard[PositionX - 1, PositionY + colorminus] != 0 && InputBoard[PositionX - 1, PositionY + colorminus] >> 4 != color)
+            check(InputBoard, PositionX - 1, PositionY + colorminus);
     }
     public bool IsPositionIllegal(byte[,] InputBoard, byte color, int KingX, int KingY)
     {

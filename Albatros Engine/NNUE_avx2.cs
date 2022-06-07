@@ -39,6 +39,7 @@ class NNUE_avx2
 
         //initkOnes256();
         initPtype();
+
         //initialize the feature vectors
         Features[0] = new List<int>();
         Features[1] = new List<int>();
@@ -47,6 +48,7 @@ class NNUE_avx2
     {
         //load the features for the board into the feature vector
         BoardToHalfP(InputBoard);
+
         //load the featurvector into the accumulator
         acc = RefreshAcc(Transformer, acc, Features, 0);
         acc = RefreshAcc(Transformer, acc, Features, 1);

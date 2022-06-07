@@ -3,6 +3,7 @@ using System.IO;
 using System.Collections.Generic;
 class NNUE
 {
+    standart_chess chess_stuff = new standart_chess();
     Random random = new Random();
     //768 -> 128*2 -> 1
     //feature transformer
@@ -116,11 +117,13 @@ class NNUE
             EvalVector[i] = ConverterOur[i];
             EvalVector[i + HalfkpMatrix.GetLength(1)] = ConverterTheir[i];
         }
+
         for (int i = 0; i < EvalVector.Length; i++)
             EvalVector[i] = ClippedReLU(EvalVector[i]);
 
         Array.Copy(EvalVector, HalfkpMatrixOut, EvalVector.Length);
         HalfkpOutNet = Eval(EvalVector);
+
         // Return the Output as a Relu
         return HalfkpOutNet;
     }
@@ -142,8 +145,10 @@ class NNUE
                 }
             }
         }
+
         return Features;
     }
+
     public void initPtype()
     {
         for (byte i = 0; i < 2; i++)
@@ -236,7 +241,7 @@ class NNUE
     }
     public double ReluDerivative(double Input)
     {
-        if (Input == 0 || Input == 1)
+        if (Input <= 0 || Input >= 1)
             return 0;
         else
             return 1;
@@ -398,7 +403,7 @@ class NNUE
             Cost += CurrentCost;
 
             Cost += CurrentCost;
-            Output = eval.PestoEval(TrainingExample.Board, (byte)color);
+            Output = chess_stuff.convert_millipawn_to_wdl(eval.pesto_eval(TrainingExample.Board, (byte)color));
             CurrentCost = (Value - Output) * (Value - Output);
 
             if (CurrentCost > largest_cost_e)

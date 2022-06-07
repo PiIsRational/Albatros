@@ -6,94 +6,125 @@ using System.Text;
 class Classic_Eval
 {
     PSQT psqt = new PSQT();
-    public float PestoEval(byte[,] InputBoard , byte Color)
+    int[,][,] eval_table = new int[27, 2][,];
+    int[] game_phase = new int[27];
+    public Classic_Eval()
     {
-        float MiddleGameValue = 0;
-        float EndGameValue = 0;
-        float GamePhase = 0;
-        float MiddelGamePhase = 0;
-        float EndGamePhase = 0;
+        init_pesto_eval();
+    }
+    public void update_table(int i, int j, int piece, int phase_val, int mg_eval, int eg_eval, float[,] psqt_mg, float[,] psqt_eg)
+    {
+        //black
+        eval_table[piece, 0][i, j] = -eg_eval - (int)(psqt_eg[ExchangeY(j, 0), i] * 10);
+        eval_table[piece, 1][i, j] = -mg_eval - (int)(psqt_mg[ExchangeY(j, 0), i] * 10);
+        //white
+        eval_table[piece + 16, 0][i, j] = eg_eval + (int)(psqt_eg[ExchangeY(j, 1), i] * 10);
+        eval_table[piece + 16, 1][i, j] = mg_eval + (int)(psqt_mg[ExchangeY(j, 1), i] * 10);
+        //gamephase
+        game_phase[piece] = phase_val;
+        game_phase[piece + 16] = phase_val;
+    }
+    public void init_pesto_eval()
+    {
+        for (int k = 0; k < 11; k++)
+        {
+            eval_table[k, 0] = new int[9, 9];
+            eval_table[k, 1] = new int[9, 9];
+            eval_table[k + 16, 0] = new int[9, 9];
+            eval_table[k + 16, 1] = new int[9, 9];
+            for (int i = 1; i < 9; i++)
+            {
+                for (int j = 1; j < 9; j++)
+                {
+                    switch (k)
+                    {
+                        //PawnStart
+                        case 0b00000001:
+                            update_table(i, j, k, 0, 940, 820, psqt.PawnMG, psqt.PawnEG);
+                            break;
+                        //PawnEnPassent
+                        case 0b00000010:
+                            update_table(i, j, k, 0, 940, 820, psqt.PawnMG, psqt.PawnEG);
+                            break;
+                        //NormalPawn
+                        case 0b00000011:
+                            update_table(i, j, k, 0, 940, 820, psqt.PawnMG, psqt.PawnEG);
+                            break;
+                        //Knight
+                        case 0b00000100:
+                            update_table(i, j, k, 1, 2810, 3370, psqt.KnightMG, psqt.KnightEG);
+                            break;
+                        //Bishop
+                        case 0b00000101:
+                            update_table(i, j, k, 1, 2970, 3650, psqt.BishopMG, psqt.BishopEG);
+                            break;
+                        //Queen
+                        case 0b00001000:
+                            update_table(i, j, k, 4, 9360, 10250, psqt.QueenMG, psqt.QueenEG);
+                            break;
+                        //RookCanCastle
+                        case 0b00001001:
+                            update_table(i, j, k, 2, 5120, 4770, psqt.RookMG, psqt.RookEG);
+                            break;
+                        //Normal Rook
+                        case 0b00001010:
+                            update_table(i, j, k, 2, 5120, 4770, psqt.RookMG, psqt.RookEG);
+                            break;
+                        //King Can Castle
+                        case 0b00000110:
+                            update_table(i, j, k, 0, 0, 0, psqt.KingMG, psqt.KingEG);
+                            break;
+                        //Normal King
+                        case 0b00000111:
+                            update_table(i, j, k, 0, 0, 0, psqt.KingMG, psqt.KingEG);
+                            break;
+                        case 0:
+                            eval_table[k + 16, 0] = null;
+                            eval_table[k + 16, 1] = null;
+                            break;
+                        default:
+                            eval_table[k, 0] = null;
+                            eval_table[k, 1] = null;
+                            eval_table[k + 16, 0] = null;
+                            eval_table[k + 16, 1] = null;
+                            break;
+                    }
+                }
+            }
+        }
+        psqt = null;
+    }
+    public int pesto_eval(byte[,] InputBoard, byte Color)
+    {
+        int MiddleGameValue = 0;
+        int EndGameValue = 0;
+        int GamePhase = 0;
+        int MiddelGamePhase = 0;
+        int EndGamePhase = 0;
         for (int i = 1; i < 9; i++)
         {
             for (int j = 1; j < 9; j++)
             {
-                int currentColor = InputBoard[i, j] >> 4;
-                float ColorMinus = 2 * currentColor - 1;
-                switch (InputBoard[i, j] - (InputBoard[i, j] >> 4) * 0b10000)
-                {
-                    //PawnStart
-                    case 0b00000001:
-                        EndGameValue += ColorMinus * (0.94f + psqt.PawnEG[ExchangeY(j, currentColor), i] / 100);
-                        MiddleGameValue += ColorMinus * (0.82f + psqt.PawnMG[ExchangeY(j, currentColor), i] / 100);
-                        break;
-                    //PawnEnPassent
-                    case 0b00000010:
-                        EndGameValue += ColorMinus * (0.94f + psqt.PawnEG[ExchangeY(j, currentColor), i] / 100);
-                        MiddleGameValue += ColorMinus * (0.82f + psqt.PawnMG[ExchangeY(j, currentColor), i] / 100);
-                        break;
-                    //NormalPawn
-                    case 0b00000011:
-                        EndGameValue += ColorMinus * (0.94f + psqt.PawnEG[ExchangeY(j, currentColor), i] / 100);
-                        MiddleGameValue += ColorMinus * (0.82f + psqt.PawnMG[ExchangeY(j, currentColor), i] / 100);
-                        break;
-                    //Knight
-                    case 0b00000100:
-                        GamePhase += 1;
-                        EndGameValue += ColorMinus * (2.81f + psqt.KnightEG[ExchangeY(j, currentColor), i] / 100);
-                        MiddleGameValue += ColorMinus * (3.37f + psqt.KnightMG[ExchangeY(j, currentColor), i] / 100);
-                        break;
-                    //Bishop
-                    case 0b00000101:
-                        GamePhase += 1;
-                        EndGameValue += ColorMinus * (2.97f + psqt.BishopEG[ExchangeY(j, currentColor), i] / 100);
-                        MiddleGameValue += ColorMinus * (3.65f + psqt.BishopMG[ExchangeY(j, currentColor), i] / 100);
-                        break;
-                    //Queen
-                    case 0b00001000:
-                        GamePhase += 4;
-                        EndGameValue += ColorMinus * (9.36f + psqt.QueenEG[ExchangeY(j, currentColor), i] / 100);
-                        MiddleGameValue += ColorMinus * (10.25f + psqt.QueenMG[ExchangeY(j, currentColor), i] / 100);
-                        break;
-                    //RookCanCastle
-                    case 0b00001001:
-                        GamePhase += 2;
-                        EndGameValue += ColorMinus * (5.12f + psqt.RookEG[ExchangeY(j, currentColor), i] / 100);
-                        MiddleGameValue += ColorMinus * (4.77f + psqt.RookMG[ExchangeY(j, currentColor), i] / 100);
-                        break;
-                    //Normal Rook
-                    case 0b00001010:
-                        GamePhase += 2;
-                        EndGameValue += ColorMinus * (5.12f + psqt.RookEG[ExchangeY(j, currentColor), i] / 100);
-                        MiddleGameValue += ColorMinus * (4.77f + psqt.RookMG[ExchangeY(j, currentColor), i] / 100);
-                        break;
-                    //King Can Castle
-                    case 0b00000110:
-                        EndGameValue += ColorMinus * (psqt.KingEG[ExchangeY(j, currentColor), i] / 100);
-                        MiddleGameValue += ColorMinus * psqt.KingMG[ExchangeY(j, currentColor), i] / 100;
-                        break;
-                    //Normal King
-                    case 0b00000111:
-                        EndGameValue += ColorMinus * psqt.KingEG[ExchangeY(j, currentColor), i] / 100;
-                        MiddleGameValue += ColorMinus * psqt.KingMG[ExchangeY(j, currentColor),i] / 100;
-                        break;
-                }
+                MiddleGameValue += eval_table[InputBoard[i, j], 1][i, j];    
+                EndGameValue += eval_table[InputBoard[i, j], 0][i, j];
+                GamePhase += game_phase[InputBoard[i, j]];
             }
         }
         MiddelGamePhase = Math.Min(GamePhase, 24);
         EndGamePhase = 24 - MiddelGamePhase;
-        return (2 * Color - 1) * LargeSigmoid(((MiddelGamePhase * MiddleGameValue + EndGamePhase * EndGameValue) / 24), 4.2f);
-    }
-    public float LargeSigmoid(float Input , float Size)
-    {
-        return (Input / Size) / (float)Math.Sqrt((Input / Size) * (Input / Size) + 1);
-    }
 
-    public int ExchangeY(int Y ,int Color )
+        return clip_score((2 * Color - 1) * (MiddelGamePhase * MiddleGameValue + EndGamePhase * EndGameValue) / 24);
+    }
+    public int ExchangeY(int Y, int Color)
     {
         if (Color == 0)
             return Y;
         else
             return 9 - Y;
+    }
+    public int clip_score(int score)
+    {
+        return Math.Min(Math.Max(score, -39999), 39999);
     }
 }
 

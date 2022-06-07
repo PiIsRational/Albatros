@@ -20,12 +20,12 @@ class Game
     static string CommandBuffer = "";
 
     //Training Parameters
-    public int depthPly = 4;
+    public int depthPly = 1;
     public int Elo = 100;
-    public float Lambda = 0.5f;
-    public int BufferSize = 140000000;
-    public int batch_size = 1000;
-    public int GameLength = 350;
+    public float Lambda = 0;
+    public int buffer_size = 1000000;
+    public int batch_size = 16384;
+    public int GameLength = 500;
     public string NetName = "ValueNet.nnue";
     public int NodeCount = 10;
     public float learning_rate = 0.01f;
@@ -36,7 +36,7 @@ class Game
 
     //Other Parameters
     public float c_puct = 10;
-    public bool IsPlaying = false;
+    public bool IsPlaying = true;
     public bool NNUE = false;
     public int ThreadCount = 10;
     public int HashSize = 18;
@@ -94,14 +94,8 @@ class Game
                 {
                     switch (Input[2])
                     {
-                        case "-Elo":
-                            try
-                            {
-                                io.SetElo(Convert.ToInt32(Input[3]));
-                            }
-                            catch
-                            {
-                            }
+                        case "-selfplay":
+                            
                             break;
                     }
                 }
@@ -120,7 +114,6 @@ class Game
             }
         }
     }
-
     public byte[,] LoadPositionFromFen(string Fen)
     {
         int CurrentDisplacement = 0;
