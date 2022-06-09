@@ -310,7 +310,7 @@ class AlphaBeta
         bool found_legal_position = false, search_pv = true, gives_check = false, two_fold_repetition = false, is_futile = false , improving = true , full_depth_search = false , fail_low = false , pruning_is_safe = false;
         int[] MoveUndo, BestMove = new int[0];
         int movecount = 0 , fifty_move_rule = MoveGenerator.fifty_move_rule , interesting_move_count , new_depth;
-        int current_score = 0, decrease = 0;
+        int current_score = 0, decrease = 0, improvement = 0;
         Accumulator currentacc = new Accumulator(128);
         pv_out Output = new pv_out(), current_variation = new pv_out();
         Output.value = alpha;
@@ -431,7 +431,8 @@ class AlphaBeta
         node_values[ply] = !in_check ? current_score : illegal_position_value;
 
         //set the improving flag high if the current value is an improvement
-        improving = (ply >= 2 && node_values[ply] - node_values[ply - 2] > 0 || ply < 2) && !in_check;
+        improvement = ply < 2 ? 0 : node_values[ply] - node_values[ply - 2];
+        improving = (improvement > 0 || ply < 2) && !in_check;
 
         /*we should be able to prune branches only in specific cases
          * when we are not in check
@@ -504,8 +505,8 @@ class AlphaBeta
                         {
                             decrease = reduction(depth, movecount, true);
 
-                            if (!improving)
-                                decrease += 1;
+                            //if we are improving or not decrease
+                            decrease -= Math.Max(Math.Min(improvement / 500, 2), -2);
 
                             //if the king is in check and the king moves
                             if (in_check && (board[current_move.move[2], current_move.move[3]] & 0b00001111) >> 1 == 0b11)
@@ -517,11 +518,8 @@ class AlphaBeta
 
                             //normal quiet move
                             else
-                                decrease += (int)Math.Max(Math.Min(current_move.eval / 75, 2), -2);
+                                decrease += (int)Math.Max(Math.Min(current_move.eval / 100, 2), -2);
                         }
-                        //tactical or "interesting" moves
-                        else
-                            decrease = (int)Math.Min(3 - ((current_move.eval % 2000) - 850) / 50, 3);
 
                         int lmr_depth = Math.Max(Math.Min(new_depth, new_depth - decrease), 1);
 
@@ -650,7 +648,7 @@ class AlphaBeta
     public int zero_window_search(byte[,] board, byte color, int depth, int ply, int alpha, int beta, bool in_check, bool NNUE_avx2,long key)
     {
         //define the variables
-        int current_score = 0 , decrease = 0;
+        int current_score = 0 , decrease = 0, improvement = 0;
         byte othercolor = (byte)(1 - color);
         bool found_legal_position = false, gives_check = false, two_fold_repetition = false , full_depth_search = false;
         int movecount = 0 , fifty_move_rule = MoveGenerator.fifty_move_rule , interesting_move_count , new_depth = 0;
@@ -717,7 +715,8 @@ class AlphaBeta
         node_values[ply] = !in_check ? current_score : illegal_position_value;
 
         //set the improving flag high if the current value is an improvement
-        improving = (ply >= 2 && node_values[ply] - node_values[ply - 2] > 0 || ply < 2) && !in_check;
+        improvement = ply < 2 ? 0 : node_values[ply] - node_values[ply - 2];
+        improving = (improvement > 0 || ply < 2) && !in_check;
 
         /*we should be able to prune branches only in specific cases
          * when we are not in check
@@ -764,7 +763,7 @@ class AlphaBeta
                 current_score >= beta &&
                 MoveGenerator.non_pawn_material &&
                 !null_move_pruning[ply - 1] &&
-                (KeyValid != 1 || !entry.fail_high || entry.Score >= beta))
+                (KeyValid != 1 || !entry.fail_low && entry.Score >= beta))
             {
                 int nmp_score = 0;
 
@@ -777,7 +776,7 @@ class AlphaBeta
                  * 3) the larger the delta between the standing pat and beta the more we can reduce
                  */
 
-                int null_move_search_depth = depth - 1 - (2 + Math.Min(3, (int)(current_score - beta) / 4000));
+                int null_move_search_depth = depth - 1 - (3 + depth / 6 + Math.Min(3, (int)(current_score - beta) / 6000));
 
                 //Make null Move
 
@@ -861,8 +860,8 @@ class AlphaBeta
                     {
                         decrease = reduction(depth, movecount, false);
 
-                        if (!improving)
-                            decrease += 1;
+                        //if we are improving or not decrease
+                        decrease -= Math.Max(Math.Min(improvement / 500, 2), -2);
 
                         //if the king is in check and the king moves
                         if (in_check && (board[current_move.move[2], current_move.move[3]] & 0b00001111) >> 1 == 0b11)
@@ -874,10 +873,8 @@ class AlphaBeta
 
                         //normal quiet move
                         else
-                            decrease += (int)Math.Max(Math.Min(current_move.eval / 75, 3), -3);
+                            decrease += (int)Math.Max(Math.Min(current_move.eval / 100, 3), -3);
                     }
-                    else
-                        decrease = (int)Math.Min(3 - ((current_move.eval % 2000) - 850) / 50, 3);
 
                     int lmr_depth = Math.Max(Math.Min(new_depth, new_depth - decrease), 1);
 
@@ -1619,8 +1616,8 @@ class AlphaBeta
         {
             for (int movecount = 0; movecount < 64; movecount++) 
             {
-                if (depth > 3) move_reductions[1, depth, movecount] = (byte)(Math.Log(depth) * Math.Log(movecount) / 2.75 + 0.5);
-                if (depth > 4) move_reductions[0, depth, movecount] = (byte)(Math.Log(depth) * Math.Log(movecount) / 2.75 - 0.3);
+                if (depth > 3) move_reductions[1, depth, movecount] = (byte)(Math.Log(depth) * Math.Log(movecount) / 3 + 0.5);
+                if (depth > 4) move_reductions[0, depth, movecount] = (byte)(Math.Log(depth) * Math.Log(movecount) / 3 - 0.2);
             }
         }
     }
