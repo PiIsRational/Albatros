@@ -11,6 +11,10 @@ Albatros is an open source UCI-compatible chess engine. It is not a complete che
 
 The Albatros chess engine currently features 2 different evaluation functions for chess. The classical, which works with simple piece square tables (PSQT from the chess engine [RofChade](https://rofchade.nl/)). And the NNUE evaluation funtion, which has the format 768 -> 128x2 -> 1. The NNUE needs avx2 to work.
 
+## Play against Albatros
+
+Albatros is hosted on lichess [here](https://lichess.org/@/Albatros_Engine) and runs on my Raspberry Pi.
+
 ## Files
 
 This Distribution of Albatros contains the following files:
