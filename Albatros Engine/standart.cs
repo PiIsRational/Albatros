@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
 
 class standart
 {
@@ -8,6 +7,7 @@ class standart
     {
         if (Arr1 == null || Arr2 == null)
             return false;
+
         if (Arr1.Length != Arr2.Length)
             return false;
 
@@ -24,12 +24,11 @@ class standart
 
         return output;
     }
-    public List<int[]> copy_int_array_list(List<int[]> input_list)
+    public int[] copy_int_array(int[] input)
     {
-        List<int[]> output = new List<int[]>();
+        int[] output = new int[input.Length];
 
-        foreach (int[] element in input_list)
-            output.Add(element);
+        Array.Copy(input, output, input.Length);
 
         return output;
     }
@@ -37,10 +36,17 @@ class standart
     {
         int sign = input < 0 ? -1 : 1;
 
+        if (Math.Abs(input) == 1)
+            return 50;
+
         return (float)Math.Sqrt(input * input / (1 - input * input)) * size * sign;
     }
     public float sigmoid(float input, float size)
     {
         return (input / size) / (float)Math.Sqrt((input / size) * (input / size) + 1);
+    }
+    public double sigmoid_derivative(double input, double size)
+    {
+        return Math.Pow((input / size) * (input / size) + 1, -1.5);
     }
 }
