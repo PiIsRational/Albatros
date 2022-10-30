@@ -371,7 +371,7 @@ class Io
         if (movestogo <= 10 && !movelimit)
             movestogo += 15;
 
-        timeToUse += (long)(timeMe / (movestogo - 1));
+        timeToUse += (long)(timeMe / Math.Max(movestogo - 1, 1));
         movestogo--;
 
 
