@@ -188,7 +188,7 @@ class standart_chess
         for (int i = 0; i < 2; i++)
             squares[i] = (byte)((characters[2 * i] - 97) ^ ((characters[2 * i + 1] - 49) << 3));
 
-        string[] promotions = { "", "0", "n", "b", "r", "q" };
+        string[] promotions = { "", "0", "0", "n", "b", "r", "q" };
         int promotion_value = 0;
         if (characters.Length == 5)
         {
