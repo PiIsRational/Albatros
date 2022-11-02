@@ -30,6 +30,7 @@ This Distribution of Albatros contains the following files:
 The Universal Chess Interface (UCI) is a standard protocol used to communicate with a chess engine, and is the recommended way to do so for typical graphical user interfaces (GUI) or chess tools. Albatros does currently not support the following options, as they are describerd in the [UCI protocoll](https://www.shredderchess.com/download/div/uci.zip):
 
  * go
+   * noodes
    * searchmoves
    * ponder
    * mate
@@ -47,8 +48,8 @@ The Universal Chess Interface (UCI) is a standard protocol used to communicate w
    Toggle between the NNUE and classical evaluation functions. If set to "true",
    the network parameters must be available to load from file (see also EvalFile).
    
- * #### c_puct
-   Changes the exploration parameter of the puct tree.
+ * #### Hash
+   The size of the Transposition Table in Mb
    
 For developers the following non-standard commands might be of interest, they are mainly useful for debugging and training:
 
@@ -63,11 +64,3 @@ For developers the following non-standard commands might be of interest, they ar
     
   * #### Training
     Starts to train the current NNUE net with the current training parameters.
-    
-Specifics about certain commands:
-
-  * #### go depth 
-    Start to search for the best move using the current evaluation function and an alpha beta pruned min max search (like stockfish).
-    
-  * #### go nodes 
-    Start to search for the best move using the current evaluation function and a PUCT tree (like Leela chess zero), that uses the classical evaluation  function as a     predictor.  
