@@ -362,14 +362,14 @@ class standart_chess
 
         if (board.rook_not_moved[3] && board.king_not_moved[1])
             fen_output += "K";
-        if (board.rook_not_moved[2] && board.king_not_moved[1])
+        else if (board.rook_not_moved[2] && board.king_not_moved[1])
             fen_output += "Q";
-        if (board.rook_not_moved[1] && board.king_not_moved[0])
+        else if (board.rook_not_moved[1] && board.king_not_moved[0])
             fen_output += "k";
-        if (board.rook_not_moved[0] && board.king_not_moved[0])
+        else if (board.rook_not_moved[0] && board.king_not_moved[0])
             fen_output += "q";
-        if (!board.rook_not_moved[3] && !board.rook_not_moved[2] && !board.king_not_moved[1] && !board.rook_not_moved[1] && !board.rook_not_moved[0] && !board.king_not_moved[0])
-            fen_output += "- ";
+        else
+            fen_output += "-";
 
         if (board.en_passent_square != byte.MaxValue)
             fen_output += " " + Convert.ToString(Letters[board.en_passent_square % 8]) + Convert.ToString(Numbers[board.en_passent_square / 8]) + " ";
