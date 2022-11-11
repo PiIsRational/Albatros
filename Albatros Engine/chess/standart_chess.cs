@@ -362,13 +362,13 @@ class standart_chess
 
         if (board.rook_not_moved[3] && board.king_not_moved[1])
             fen_output += "K";
-        else if (board.rook_not_moved[2] && board.king_not_moved[1])
+        if (board.rook_not_moved[2] && board.king_not_moved[1])
             fen_output += "Q";
-        else if (board.rook_not_moved[1] && board.king_not_moved[0])
+        if (board.rook_not_moved[1] && board.king_not_moved[0])
             fen_output += "k";
-        else if (board.rook_not_moved[0] && board.king_not_moved[0])
+        if (board.rook_not_moved[0] && board.king_not_moved[0])
             fen_output += "q";
-        else
+        if (((!board.rook_not_moved[3] && !board.rook_not_moved[2]) || !board.king_not_moved[1]) && ((!board.rook_not_moved[1] && !board.rook_not_moved[0]) || !board.king_not_moved[0]))
             fen_output += "-";
 
         if (board.en_passent_square != byte.MaxValue)
