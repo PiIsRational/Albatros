@@ -552,14 +552,17 @@ class movegen
     }
     public position set_rook_moved(position board, byte rook_square, byte rook_color, bool reverse_move_update, reverse_move undo_move)
     {
+        if (undo_move.rook_changes == 255)
+            undo_move.rook_changes = 0;
+
         if (start_rook_square[rook_color, 0] == rook_square && board.rook_not_moved[(rook_color << 1) ^ 0])
         {
-            if (reverse_move_update) undo_move.rook_changes = (byte)((rook_color << 1) ^ 0);
+            if (reverse_move_update) undo_move.rook_changes ^= (byte)(1 << ((rook_color << 1) ^ 0));
             board.rook_not_moved[(rook_color << 1) ^ 0] = false;
         }
         else if (start_rook_square[rook_color, 1] == rook_square && board.rook_not_moved[(rook_color << 1) ^ 1])
         {
-            if (reverse_move_update) undo_move.rook_changes = (byte)((rook_color << 1) ^ 1);
+            if (reverse_move_update) undo_move.rook_changes ^= (byte)(1 << ((rook_color << 1) ^ 1));
             board.rook_not_moved[(rook_color << 1) ^ 1] = false;
         }
 
@@ -573,7 +576,13 @@ class movegen
         if (move.king_changes != byte.MaxValue)
             board.king_not_moved[move.king_changes] = true;
         if (move.rook_changes != byte.MaxValue)
-            board.rook_not_moved[move.rook_changes] = true;
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                if ((move.rook_changes & (byte)(1 << i)) != 0)
+                    board.rook_not_moved[i] = true;
+            }
+        }
 
         //put pieces back were they where
         for (int i = 0; i < move.moved_piece_idx; i++)
