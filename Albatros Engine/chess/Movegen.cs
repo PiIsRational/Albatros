@@ -552,7 +552,7 @@ class movegen
     }
     public position set_rook_moved(position board, byte rook_square, byte rook_color, bool reverse_move_update, reverse_move undo_move)
     {
-        if (undo_move.rook_changes == 255)
+        if (reverse_move_update && undo_move.rook_changes == 255)
             undo_move.rook_changes = 0;
 
         if (start_rook_square[rook_color, 0] == rook_square && board.rook_not_moved[(rook_color << 1) ^ 0])
