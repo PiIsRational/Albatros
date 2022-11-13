@@ -9,7 +9,7 @@ Currently only the PSQT evaluation function is working and usable. The NNUE func
 
 Albatros is an open source UCI-compatible chess engine. It is not a complete chess programm and would require a UCI-compatible graphical user interface (GUI) (ex : Scid, Arena or Shredder) to be used comfortably.
 
-The Albatros chess engine currently features 2 different evaluation functions for chess. The classical, which works with simple piece square tables (PSQT from the chess engine [RofChade](https://rofchade.nl/)). And the NNUE evaluation funtion, which has the format 768 -> 128x2 -> 1. The NNUE needs avx2 to work.
+The Albatros chess engine currently features 2 different evaluation functions for chess. The classical, which works with simple piece square tables (PSQT from the chess engine [RofChade](https://rofchade.nl/)). And the NNUE evaluation funtion, which has the format 768 -> 128x2 -> 1. The NNUE network needs avx2 to work.
 
 ## Play against Albatros
 
@@ -30,7 +30,7 @@ This Distribution of Albatros contains the following files:
 The Universal Chess Interface (UCI) is a standard protocol used to communicate with a chess engine, and is the recommended way to do so for typical graphical user interfaces (GUI) or chess tools. Albatros does currently not support the following options, as they are describerd in the [UCI protocoll](https://www.shredderchess.com/download/div/uci.zip):
 
  * go
-   * noodes
+   * nodes
    * searchmoves
    * ponder
    * mate
