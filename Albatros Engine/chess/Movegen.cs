@@ -221,59 +221,44 @@ class movegen
         int king_x = chess_stuff.get_x_from_square((byte)king_square);
         int king_y = chess_stuff.get_y_from_square((byte)king_square);
 
-        //only special case is castling
-        if (board.boards[othercolor, to] == standart_chess.king && other == standart_chess.castle_or_en_passent)
+        //only special cases
+        if (other == standart_chess.castle_or_en_passent)
         {
-            //find the square on wich the rook landed
-            byte rook_square = (byte)(from + ((from < to) ? 1 : -1));
+            if(board.boards[othercolor, to] == standart_chess.king )
+            { 
+                //find the square on wich the rook landed
+                byte rook_square = (byte)(from + ((from < to) ? 1 : -1));
 
-            int rook_x = chess_stuff.get_x_from_square((byte)rook_square);
-            //calculate the first delta
-            if (king_x == rook_x)
-                check_vector_for_check(board, (byte)king_square, rook_table, king_square - rook_square < 0 ? 2 : 3, (byte)othercolor, standart_chess.rook);
-            else if (king_square - rook_square == king_x - rook_x)
-                check_vector_for_check(board, (byte)king_square, rook_table, king_x - rook_x < 0 ? 0 : 1, (byte)othercolor, standart_chess.rook);
+                int rook_x = chess_stuff.get_x_from_square((byte)rook_square);
+                //calculate the first delta
+                if (king_x == rook_x)
+                    check_vector_for_check(board, (byte)king_square, rook_table, king_square - rook_square < 0 ? 2 : 3, (byte)othercolor, standart_chess.rook);
+                else if (king_square - rook_square == king_x - rook_x)
+                    check_vector_for_check(board, (byte)king_square, rook_table, king_x - rook_x < 0 ? 0 : 1, (byte)othercolor, standart_chess.rook);
 
-            if (illegal_position)
-            {
-                illegal_position = false;
-                return true;
+                if (illegal_position)
+                {
+                    illegal_position = false;
+                    return true;
+                }
+
+                return false;
             }
+            else
+            {
+                int y_dir = (int)((1 - (othercolor << 1)) << 3);
+                byte en_passent_square = (byte)(to + y_dir);
+                byte ep_x = chess_stuff.get_x_from_square(en_passent_square);
 
-            return false;
+                from_check(board, (byte)king_square, (byte)king_x, en_passent_square, ep_x, (byte)othercolor);
+            }
         }
 
         //the rest is normal
 
         //cases at the start square
         int from_x = chess_stuff.get_x_from_square(from);
-
-        if (king_x == from_x)
-        {
-            check_vector_for_check(board, (byte)king_square, rook_table, king_square - from < 0 ? 2 : 3, (byte)othercolor, standart_chess.queen);
-            check_vector_for_check(board, (byte)king_square, rook_table, king_square - from < 0 ? 2 : 3, (byte)othercolor, standart_chess.rook);
-        }
-        else
-        {
-            int delta_a = king_square - from;
-            int delta_b = king_x - from_x;
-
-            if (delta_a == delta_b)
-            {
-                check_vector_for_check(board, (byte)king_square, rook_table, king_x - from_x < 0 ? 0 : 1, (byte)othercolor, standart_chess.rook);
-                check_vector_for_check(board, (byte)king_square, rook_table, king_x - from_x < 0 ? 0 : 1, (byte)othercolor, standart_chess.queen);
-            }
-            else if (delta_a == 9 * delta_b)
-            {
-                check_vector_for_check(board, (byte)king_square, bishop_table, king_x - from_x < 0 ? 0 : 1, (byte)othercolor, standart_chess.bishop);
-                check_vector_for_check(board, (byte)king_square, bishop_table, king_x - from_x < 0 ? 0 : 1, (byte)othercolor, standart_chess.queen);
-            }
-            else if (delta_a == -7 * delta_b)
-            {
-                check_vector_for_check(board, (byte)king_square, bishop_table, king_x - from_x < 0 ? 3 : 2, (byte)othercolor, standart_chess.bishop);
-                check_vector_for_check(board, (byte)king_square, bishop_table, king_x - from_x < 0 ? 3 : 2, (byte)othercolor, standart_chess.queen);
-            }
-        }
+        from_check(board, (byte)king_square, (byte)king_x, from, (byte)from_x, (byte)othercolor);
 
         int to_x = chess_stuff.get_x_from_square(to);
 
@@ -347,6 +332,35 @@ class movegen
         }
 
         return false;
+    }
+    public void from_check(position board,byte king_square, byte king_x, byte from, byte from_x, byte othercolor)
+    {
+        if (king_x == from_x)
+        {
+            check_vector_for_check(board, (byte)king_square, rook_table, king_square - from < 0 ? 2 : 3, (byte)othercolor, standart_chess.queen);
+            check_vector_for_check(board, (byte)king_square, rook_table, king_square - from < 0 ? 2 : 3, (byte)othercolor, standart_chess.rook);
+        }
+        else
+        {
+            int delta_a = king_square - from;
+            int delta_b = king_x - from_x;
+
+            if (delta_a == delta_b)
+            {
+                check_vector_for_check(board, (byte)king_square, rook_table, king_x - from_x < 0 ? 0 : 1, (byte)othercolor, standart_chess.rook);
+                check_vector_for_check(board, (byte)king_square, rook_table, king_x - from_x < 0 ? 0 : 1, (byte)othercolor, standart_chess.queen);
+            }
+            else if (delta_a == 9 * delta_b)
+            {
+                check_vector_for_check(board, (byte)king_square, bishop_table, king_x - from_x < 0 ? 0 : 1, (byte)othercolor, standart_chess.bishop);
+                check_vector_for_check(board, (byte)king_square, bishop_table, king_x - from_x < 0 ? 0 : 1, (byte)othercolor, standart_chess.queen);
+            }
+            else if (delta_a == -7 * delta_b)
+            {
+                check_vector_for_check(board, (byte)king_square, bishop_table, king_x - from_x < 0 ? 3 : 2, (byte)othercolor, standart_chess.bishop);
+                check_vector_for_check(board, (byte)king_square, bishop_table, king_x - from_x < 0 ? 3 : 2, (byte)othercolor, standart_chess.queen);
+            }
+        }
     }
     public bool illegality_check_neccessaray(int move, bool in_check, position board)
     {
