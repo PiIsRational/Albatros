@@ -7,8 +7,8 @@ using System.Windows.Input;
 
 class Game
 {
-    public string StartPosition = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-    public position board = new position();
+    public static string StartPosition = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    public Position board = new Position();
     public static bool quit = false;
     public bool Playing = false;
     public Training training;

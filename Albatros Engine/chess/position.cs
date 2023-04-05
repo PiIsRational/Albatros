@@ -1,7 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
-class position
+
+class Position
 {
     //has every piece on it
     public byte[] board = new byte[64];
@@ -30,15 +29,13 @@ class position
     //it is castle[color, king/queenside]
     public bool[] rook_not_moved = new bool[4];
     public bool[] king_not_moved = new bool[2];
-    public position()
+    public Position()
     {
         int[] list_init = new int[] { 0, 8, 10, 10, 10, 9, 1 };
         for (int i = 0; i < 2; i++)
         {
             for (int j = 1; j < list_init.Length; j++)
-            {
                 piece_square_lists[(i << 3) ^ j] = new byte[list_init[j]];
-            }
         }
     }
     public void reset()
@@ -49,9 +46,9 @@ class position
         king_not_moved = new bool[2];
         rook_not_moved = new bool[4];
     }
-    public position copy()
+    public Position copy()
     {
-        position output = new position();
+        Position output = new Position();
         Array.Copy(board, output.board, board.Length);
         Array.Copy(boards, output.boards, boards.Length);
         Array.Copy(idx_board, output.idx_board, idx_board.Length);

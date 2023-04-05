@@ -88,9 +88,9 @@ class Treesearch
     }*/
     public void SetNet(string File)
     {
-        ValueNet.LoadOldNetFile(File);
+        ValueNet.LoadNetFile(File);
     }
-    public MCTSimOutput MonteCarloTreeSim(position board, int NodeCount, bool NewTree, bool WeightedRandom, bool Random, bool NNUE, float c_puct, bool alpha_beta, int depth, bool opening, int[] movelist, reverse_move undo_move)
+    public MCTSimOutput MonteCarloTreeSim(Position board, int NodeCount, bool NewTree, bool WeightedRandom, bool Random, bool NNUE, float c_puct, bool alpha_beta, int depth, bool opening, int[] movelist, ReverseMove undo_move)
     {
         MCTSimOutput Output = new MCTSimOutput();
         alpha_beta_output ab_tree_out = new alpha_beta_output();
@@ -762,7 +762,7 @@ class MCTSimOutput
 {
     public bool is_quiet = false;
     public bool draw = false;
-    public position Position;
+    public Position Position;
     public float eval;
 }
 class BranchThreadInput

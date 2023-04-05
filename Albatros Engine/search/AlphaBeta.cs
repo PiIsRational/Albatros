@@ -16,8 +16,8 @@ class AlphaBeta
 
     standart stuff = new standart();
     standart_chess chess_stuff = new standart_chess();
-    public NNUE_avx2 ValueNet;
-    public movegen MoveGenerator = new movegen();
+    public NNUE_avx2 valueNet;
+    public movegen moveGenerator = new movegen();
     public Classic_Eval eval = new Classic_Eval();
     public Move_Ordering_Heuristics move_order = new Move_Ordering_Heuristics();
     Random random = new Random(59675943);
@@ -37,13 +37,13 @@ class AlphaBeta
         HashTable = new byte[HashSize * 62500, 16];
         //init_reductions(0, 0, 5, 4, 3, 3, -0.2, 0.5);
         reduction_b();
-        ValueNet = new NNUE_avx2(true);
+        valueNet = new NNUE_avx2(true);
     }
     public void Stop()
     {
         stop = true;
     }
-    public int TimedAlphaBeta(long Milliseconds, position InputBoard, bool NNUE_avx2, bool change_time)
+    public int TimedAlphaBeta(long Milliseconds, Position InputBoard, bool NNUE_avx2, bool change_time)
     {
         time_to_use = Milliseconds;
         Thread timer = new Thread(ThreadTimer);
@@ -69,24 +69,22 @@ class AlphaBeta
         }
         Stop();
     }
-    public int iterative_deepening(position board, int depth, bool NNUE_avx2, bool change_time)
+    public int iterative_deepening(Position board, int depth, bool useNNUE, bool change_time)
     {
         //initialize the variables
         move_order.reset_movesort();
         int[] movelist = new int[218];
-        reverse_move undo_move = new reverse_move();
+        ReverseMove undo_move = new ReverseMove();
         stop = false;
         byte othercolor = (byte)(board.color ^ 1);
         List<int[]> last_best_moves = new List<int[]>();
-        bool search_pv = true, in_check = MoveGenerator.check(board, false), gives_check = false;
+        bool search_pv = true, in_check = moveGenerator.check(board, false), gives_check = false;
         int Output = 0, new_depth = 0;
-        movelist = MoveGenerator.legal_move_generator(board, in_check, undo_move, movelist);
-        int movelist_length = MoveGenerator.move_idx;
+        movelist = moveGenerator.legal_move_generator(board, in_check, undo_move, movelist);
+        int movelist_length = moveGenerator.move_idx;
         pv_out current_variation = new pv_out(), pv = new pv_out();
-        int alpha = -illegal_position_value, delta_a = 0, delta_b = 0, window_a = 0, window_b = 0, last_best = 0, last_last_best = 0, current_score = 0;
+        int alpha = -illegal_position_value, delta_a = 0, delta_b = 0, window_a = 0, window_b = 0, last_best = 0, last_last_best = 0, currentScore = 0;
         bool pruning_is_safe = false;
-        Accumulator currentacc = null;
-        if (NNUE_avx2) currentacc = new Accumulator(16);
         move_and_eval_list move_list = new move_and_eval_list();
         time_acces.WaitOne();
         long theoretical_time_usage = time_to_use;
@@ -98,28 +96,27 @@ class AlphaBeta
         sw.Start();
         sw.Start();
 
-        if (NNUE_avx2)
+        if (useNNUE)
         {
             //the the accumulator position to the starting position
-            ValueNet.set_acc_from_position(board);
+            valueNet.set_acc_from_position(board);
 
             //copy the accumulator for the current position
-            currentacc = chess_stuff.acc_copy(ValueNet.acc);
-            current_score = ValueNet.AccToOutput(ValueNet.acc, board.color);
+            currentScore = valueNet.AccToOutput(valueNet.acc, board.color);
         }
         else
-            current_score = eval.pesto_eval(board);
+            currentScore = eval.pesto_eval(board);
 
-        pruning_is_safe = !in_check && MoveGenerator.non_pawn_material;
+        pruning_is_safe = !in_check && moveGenerator.non_pawn_material;
 
-        node_values[0] = !in_check ? current_score : illegal_position_value;
+        node_values[0] = !in_check ? currentScore : illegal_position_value;
 
         for (int current_depth = 1; current_depth <= depth; current_depth++)
         {
             depth_acces.WaitOne();
             root_depth = current_depth;
             depth_acces.Release();
-            node_values[0] = !in_check ? (IsvalidEntry(key) == 1 ? GetInfoFromEntry(key).Score : current_score) : illegal_position_value;
+            node_values[0] = !in_check ? (IsvalidEntry(key) == 1 ? GetInfoFromEntry(key).Score : currentScore) : illegal_position_value;
 
             if (current_depth >= 4 && Math.Abs(last_last_best) < mate_value)
             {
@@ -152,17 +149,17 @@ class AlphaBeta
                     move_order.add_current_move(current_move.move, board, 0);
 
                     //play the move
-                    board = make_move(board, current_move.move, NNUE_avx2, undo_move);
+                    board = make_move(board, current_move.move, useNNUE, undo_move);
 
                     //get the hash key
                     ulong new_key = hash.update_position_hash_after_move(board, undo_move, key);
 
                     //calculate if the current move gives check
-                    gives_check = MoveGenerator.fast_check(board, current_move.move);
+                    gives_check = moveGenerator.fast_check(board, current_move.move);
 
                     //find if the current position is a terminal position
                     //determining the mate value 2 => not a terminal position , 0 => draw , 1 => mate for white , -1 => mate for black
-                    int matingValue = MoveGenerator.is_mate(board, gives_check, new reverse_move(), new int[214]);
+                    int matingValue = moveGenerator.is_mate(board, gives_check, new ReverseMove(), new int[214]);
 
                     new_depth = current_depth - 1;
 
@@ -178,7 +175,7 @@ class AlphaBeta
                         //if the current depth is 1 perform a quiescent search
                         if (new_depth <= 0)
                         {
-                            current_variation.value = -quiescence_search(board, -window_b, -alpha, NNUE_avx2, 0, 1, new_key, gives_check);
+                            current_variation.value = -quiescence_search(board, -window_b, -alpha, useNNUE, 0, 1, new_key, gives_check);
 
                             current_variation.principalVariation.Add(current_move.move);
                         }
@@ -188,17 +185,17 @@ class AlphaBeta
                             //perform a pv search
                             if (search_pv)
                             {
-                                current_variation = principal_variation_search(board, new_depth, 1, -window_b, -alpha, gives_check, NNUE_avx2, new_key);
+                                current_variation = principal_variation_search(board, new_depth, 1, -window_b, -alpha, gives_check, useNNUE, new_key);
                                 current_variation.value = -current_variation.value;
                                 current_variation.principalVariation.Insert(0, current_move.move);
                             }
                             else
                             {
-                                current_variation.value = -zero_window_search(board, new_depth, 1, -(alpha + 1), -alpha, gives_check, NNUE_avx2, new_key);
+                                current_variation.value = -zero_window_search(board, new_depth, 1, -(alpha + 1), -alpha, gives_check, useNNUE, new_key);
 
                                 if (current_variation.value > alpha && current_variation.value < window_b)
                                 {
-                                    current_variation = principal_variation_search(board, new_depth, 1, -window_b, -alpha, gives_check, NNUE_avx2, new_key);
+                                    current_variation = principal_variation_search(board, new_depth, 1, -window_b, -alpha, gives_check, useNNUE, new_key);
                                     current_variation.value = -current_variation.value;
                                     current_variation.principalVariation.Insert(0, current_move.move);
                                 }
@@ -207,7 +204,7 @@ class AlphaBeta
                     }
 
                     //undo the move
-                    board = unmake_move(board, undo_move, currentacc, NNUE_avx2);
+                    board = unmake_move(board, undo_move, useNNUE);
 
                     if (alpha < current_variation.value)
                     {
@@ -294,16 +291,14 @@ class AlphaBeta
         //return the best move
         return Output;
     }
-    public pv_out principal_variation_search(position board, int depth, int ply, int alpha, int beta, bool in_check, bool NNUE_avx2, ulong key)
+    public pv_out principal_variation_search(Position board, int depth, int ply, int alpha, int beta, bool in_check, bool NNUE_avx2, ulong key)
     {
         //define the variables
         bool search_pv = true, gives_check = false, two_fold_repetition = false, improving = true, full_depth_search = false, fail_low = false, pruning_is_safe = false;
         int BestMove = -1;
-        reverse_move undo_move = new reverse_move();
+        ReverseMove undo_move = new ReverseMove();
         int movecount = 0, interesting_move_count, new_depth;
         int static_score = -illegal_position_value, score = -illegal_position_value, decrease = 0, improvement = 0;
-        Accumulator currentacc = null;
-        if (NNUE_avx2) currentacc = new Accumulator(16);
         pv_out Output = new pv_out(), current_variation;
         Output.value = alpha;
         TTableEntry entry = new TTableEntry(0, 0, 0, false, false, false);
@@ -357,18 +352,16 @@ class AlphaBeta
             }
         }
 
-        int[] moves = MoveGenerator.legal_move_generator(board, in_check, undo_move, new int[214]);
-        int movelist_length = MoveGenerator.move_idx;
+        int[] moves = moveGenerator.legal_move_generator(board, in_check, undo_move, new int[214]);
+        int movelist_length = moveGenerator.move_idx;
         int curr_node_count = Nodecount;
-        //copy the accumulator for the current position
-        currentacc = chess_stuff.acc_copy(ValueNet.acc);
 
         AddPositionToLookups(key);
 
         if (!in_check)
         {
             if (NNUE_avx2)
-                static_score = ValueNet.AccToOutput(ValueNet.acc, board.color);
+                static_score = valueNet.AccToOutput(valueNet.acc, board.color);
             else
                 static_score = eval.pesto_eval(board);
         }
@@ -398,7 +391,7 @@ class AlphaBeta
 
         pruning_is_safe = !in_check && root_depth > 3 &&
                 chess_stuff.non_mate_window(alpha, beta) &&
-                MoveGenerator.non_pawn_material;
+                moveGenerator.non_pawn_material;
 
         while (move_list.movelist_length > 0)
         {
@@ -440,7 +433,7 @@ class AlphaBeta
             ulong new_key = hash.update_position_hash_after_move(board, undo_move, key);
 
             //calculate if the current move gives check
-            gives_check = MoveGenerator.fast_check(board, current_move.move);
+            gives_check = moveGenerator.fast_check(board, current_move.move);
 
             //set the new depth
             new_depth = depth - 1;
@@ -521,7 +514,7 @@ class AlphaBeta
             }
 
             //undo the move
-            board = unmake_move(board, undo_move, currentacc, NNUE_avx2);
+            board = unmake_move(board, undo_move, NNUE_avx2);
             played_moves[played_move_idx] = current_move.move;
             played_move_idx++;
 
@@ -594,17 +587,15 @@ class AlphaBeta
             return Output;
         }
     }
-    public int zero_window_search(position board, int depth, int ply, int alpha, int beta, bool in_check, bool NNUE_avx2, ulong key)
+    public int zero_window_search(Position board, int depth, int ply, int alpha, int beta, bool in_check, bool NNUE_avx2, ulong key)
     {
         //define the variables
         int current_score = 0, static_score = -illegal_position_value, score = -illegal_position_value, decrease = 0, improvement = 0;
         byte othercolor = (byte)(board.color ^ 1);
         bool gives_check = false, two_fold_repetition = false, full_depth_search = false;
         int movecount = 0, interesting_move_count, new_depth = 0;
-        reverse_move undo_move = new reverse_move();
+        ReverseMove undo_move = new ReverseMove();
         bool improving = false, pruning_is_safe = false;
-        Accumulator currentacc = null;
-        if (NNUE_avx2) currentacc = new Accumulator(16);
         TTableEntry entry = new TTableEntry(0, 0, 0, false, false, false);
         move_and_eval_list move_list = new move_and_eval_list();
         int[] played_moves = new int[214];
@@ -647,16 +638,13 @@ class AlphaBeta
             }
         }
 
-        int[] moves = MoveGenerator.legal_move_generator(board, in_check, undo_move, new int[214]);
-        int movelist_length = MoveGenerator.move_idx;
-
-        //copy the accumulator for the current position
-        currentacc = chess_stuff.acc_copy(ValueNet.acc);
+        int[] moves = moveGenerator.legal_move_generator(board, in_check, undo_move, new int[214]);
+        int movelist_length = moveGenerator.move_idx;
 
         if (!in_check)
         {
             if (NNUE_avx2)
-                static_score = ValueNet.AccToOutput(ValueNet.acc, board.color);
+                static_score = valueNet.AccToOutput(valueNet.acc, board.color);
             else
                 static_score = eval.pesto_eval(board);
         }
@@ -682,7 +670,7 @@ class AlphaBeta
 
         pruning_is_safe = !in_check && root_depth > 3 &&
             chess_stuff.non_mate_window(alpha, beta) &&
-            MoveGenerator.non_pawn_material;
+            moveGenerator.non_pawn_material;
 
         if (pruning_is_safe)
         {
@@ -754,7 +742,7 @@ class AlphaBeta
                     null_move_pruning[ply] = false;
                 }
 
-                board = MoveGenerator.unmake_move(board, undo_move);
+                board = moveGenerator.unmake_move(board, undo_move);
 
                 /*if the new score is better
                  *and the next position is not illegal
@@ -810,7 +798,7 @@ class AlphaBeta
             ulong new_key = hash.update_position_hash_after_move(board, undo_move, key);
 
             //calculate if the current move gives check
-            gives_check = MoveGenerator.fast_check(board, current_move.move);
+            gives_check = moveGenerator.fast_check(board, current_move.move);
 
             //set the new depth
             new_depth = depth - 1;
@@ -877,7 +865,7 @@ class AlphaBeta
             }
 
             //undo the move
-            board = unmake_move(board, undo_move, currentacc, NNUE_avx2);
+            board = unmake_move(board, undo_move, NNUE_avx2);
 
             played_moves[played_move_idx] = current_move.move;
             played_move_idx++;
@@ -926,7 +914,7 @@ class AlphaBeta
         }
 
     }
-    public int quiescence_search(position board, int alpha, int beta, bool NNUE_avx2, int depth, int ply, ulong key, bool in_check)
+    public int quiescence_search(Position board, int alpha, int beta, bool NNUE_avx2, int depth, int ply, ulong key, bool in_check)
     {
         if (stop)
             return 0;
@@ -945,12 +933,10 @@ class AlphaBeta
         byte othercolor = (byte)(board.color ^ 1);
         bool fail_low = true, gives_check;
         int[] moves;
-        Accumulator currentacc = null;
-        if (NNUE_avx2) currentacc = new Accumulator(16);
         move_and_eval_list move_list = new move_and_eval_list();
         TTableEntry entry = new TTableEntry(0, 0, 0, false, false, false);
         int KeyValid = IsvalidEntry(key);
-        reverse_move undo_move = new reverse_move();
+        ReverseMove undo_move = new ReverseMove();
 
         if (KeyValid > -2) 
         {
@@ -973,23 +959,20 @@ class AlphaBeta
             }
         }
 
-        //copy the accumulator for the current position
-        currentacc = chess_stuff.acc_copy(ValueNet.acc);
-
         //if we are in check look for  other moves
         if (in_check)
-            moves = MoveGenerator.legal_move_generator(board, in_check, undo_move, new int[214]);
+            moves = moveGenerator.legal_move_generator(board, in_check, undo_move, new int[214]);
         //else just look for captures
         else
-            moves = MoveGenerator.legal_capture_generator(board, in_check, undo_move, new int[100]);
+            moves = moveGenerator.legal_capture_generator(board, in_check, undo_move, new int[100]);
 
-        int movelist_length = MoveGenerator.move_idx;
+        int movelist_length = moveGenerator.move_idx;
 
         //if we are in check standing pat is no allowed because we search all moves and not only captures
         if (!in_check)
         {
             if (NNUE_avx2)
-                standing_pat = ValueNet.AccToOutput(ValueNet.acc, board.color);
+                standing_pat = valueNet.AccToOutput(valueNet.acc, board.color);
             else
                 standing_pat = eval.pesto_eval(board);
         }
@@ -1025,7 +1008,7 @@ class AlphaBeta
         {
             movepick current_move = move_order.pick_next_move(move_list);
 
-            if (MoveGenerator.non_pawn_material && !in_check && current_move.eval / 3 + standing_pat + 2000 < alpha)
+            if (moveGenerator.non_pawn_material && !in_check && current_move.eval / 3 + standing_pat + 2000 < alpha)
                 break;
 
             move_count++;
@@ -1036,13 +1019,13 @@ class AlphaBeta
             ulong new_key = hash.update_position_hash_after_move(board, undo_move, key);
 
             //calculate if the current move gives check
-            gives_check = MoveGenerator.fast_check(board, current_move.move);
+            gives_check = moveGenerator.fast_check(board, current_move.move);
 
             //calls itself recursively
             current_score = -quiescence_search(board, -beta, -alpha, NNUE_avx2, depth + 1, ply + 1, new_key, gives_check);
 
             //undo the move
-            board = unmake_move(board, undo_move, currentacc, NNUE_avx2);
+            board = unmake_move(board, undo_move, NNUE_avx2);
 
             //if the current score is not 2 the position is not illegal and therefore we have found a legal move
             if (move_count == 0) BestMove = current_move.move;
@@ -1070,25 +1053,23 @@ class AlphaBeta
         //return the best score
         return alpha;
     }
-    public alpha_beta_output selfplay_iterative_deepening(position board, int depth, bool NNUE_avx2)
+    public alpha_beta_output selfplay_iterative_deepening(Position board, int depth, bool NNUE_avx2)
     {
         //initialize the variables
         move_order.reset_movesort();
         int[] movelist = new int[218];
-        reverse_move undo_move = new reverse_move();
+        ReverseMove undo_move = new ReverseMove();
         stop = false;
         bool position_is_quiet = true;
         byte othercolor = (byte)(board.color ^ 1);
         List<int[]> last_best_moves = new List<int[]>();
-        bool search_pv = true, in_check = MoveGenerator.check(board, false), gives_check = false;
+        bool search_pv = true, in_check = moveGenerator.check(board, false), gives_check = false;
         int new_depth = 0;
-        movelist = MoveGenerator.legal_move_generator(board, in_check, undo_move, movelist);
-        int movelist_length = MoveGenerator.move_idx;
+        movelist = moveGenerator.legal_move_generator(board, in_check, undo_move, movelist);
+        int movelist_length = moveGenerator.move_idx;
         pv_out current_variation = new pv_out(), pv = new pv_out();
         int alpha = -illegal_position_value, delta_a = 0, delta_b = 0, window_a = 0, window_b = 0, last_best = 0, last_last_best = 0, current_score = 0;
         bool pruning_is_safe = false;
-        Accumulator currentacc = null;
-        if (NNUE_avx2) currentacc = new Accumulator(16);
         move_and_eval_list move_list = new move_and_eval_list();
         alpha_beta_output Output = new alpha_beta_output();
         time_acces.WaitOne();
@@ -1104,16 +1085,13 @@ class AlphaBeta
         if (NNUE_avx2)
         {
             //the the accumulator position to the starting position
-            ValueNet.set_acc_from_position(board);
-
-            //copy the accumulator for the current position
-            currentacc = chess_stuff.acc_copy(ValueNet.acc);
-            current_score = ValueNet.AccToOutput(ValueNet.acc, board.color);
+            valueNet.set_acc_from_position(board);
+            current_score = valueNet.AccToOutput(valueNet.acc, board.color);
         }
         else
             current_score = eval.pesto_eval(board);
 
-        pruning_is_safe = !in_check && MoveGenerator.non_pawn_material;
+        pruning_is_safe = !in_check && moveGenerator.non_pawn_material;
 
         node_values[0] = !in_check ? current_score : illegal_position_value;
 
@@ -1160,11 +1138,11 @@ class AlphaBeta
                     ulong new_key = hash.update_position_hash_after_move(board, undo_move, key);
 
                     //calculate if the current move gives check
-                    gives_check = MoveGenerator.fast_check(board, current_move.move);
+                    gives_check = moveGenerator.fast_check(board, current_move.move);
 
                     //find if the current position is a terminal position
                     //determining the mate value 2 => not a terminal position , 0 => draw , 1 => mate for white , -1 => mate for black
-                    int matingValue = MoveGenerator.is_mate(board, in_check, new reverse_move(), new int[214]);
+                    int matingValue = moveGenerator.is_mate(board, in_check, new ReverseMove(), new int[214]);
 
                     new_depth = current_depth - 1;
 
@@ -1202,7 +1180,7 @@ class AlphaBeta
                                 if (stop)
                                 {
                                     //undo the move
-                                    board = unmake_move(board, undo_move, currentacc, NNUE_avx2);
+                                    board = unmake_move(board, undo_move, NNUE_avx2);
                                     break;
                                 }
 
@@ -1217,7 +1195,7 @@ class AlphaBeta
                     }
 
                     //undo the move
-                    board = unmake_move(board, undo_move, currentacc, NNUE_avx2);
+                    board = unmake_move(board, undo_move, NNUE_avx2);
 
                     //determine if the current move is better than the currently best move only if it is 
                     if (alpha < current_variation.value)
@@ -1279,7 +1257,7 @@ class AlphaBeta
 
         return Output;
     }
-    public position make_null_move(position board, reverse_move undo_move)
+    public Position make_null_move(Position board, ReverseMove undo_move)
     {
         //change the color
         board.color ^= 1;
@@ -1298,23 +1276,23 @@ class AlphaBeta
 
         return board;
     }
-    public position make_move(position board, int move, bool use_nnue, reverse_move undo_move)
+    public Position make_move(Position board, int move, bool useNNUE, ReverseMove inverseMove)
     { 
         //play the move
-        board = MoveGenerator.make_move(board, move, true, undo_move);
+        board = moveGenerator.make_move(board, move, true, inverseMove);
 
         //play the move in the accumulator
-        if (use_nnue) ValueNet.update_acc_from_move(board, undo_move);
+        if (useNNUE) valueNet.updateAccFromMove(board, inverseMove, false);
 
         return board;
     }
-    public position unmake_move(position board, reverse_move inverse_move, Accumulator acc, bool use_nnue)
+    public Position unmake_move(Position board, ReverseMove inverseMove, bool useNNUE)
     {
-        //undo the current move
-        board = MoveGenerator.unmake_move(board, inverse_move);
-
         //copy the old accumulator back in the real accumulator
-        if (use_nnue) ValueNet.acc = chess_stuff.acc_copy(acc);
+        if (useNNUE) valueNet.updateAccFromMove(board, inverseMove, true);
+
+        //undo the current move
+        board = moveGenerator.unmake_move(board, inverseMove);
 
         return board;
     }
@@ -1437,7 +1415,7 @@ class AlphaBeta
         }
         return count;
     }
-    public position PlayGameFromMoves(position board, int[] moves)
+    public Position PlayGameFromMoves(Position board, int[] moves)
     {
         board.fifty_move_rule = 0;
         move_counter = 0;
@@ -1453,8 +1431,8 @@ class AlphaBeta
             byte other = (byte)(move >> 12);
             if (other == 0)
             {
-                pseudolegal_movelist = MoveGenerator.generate_movelist(board, pseudolegal_movelist);
-                int movelist_length = MoveGenerator.move_idx;
+                pseudolegal_movelist = moveGenerator.generate_movelist(board, pseudolegal_movelist);
+                int movelist_length = moveGenerator.move_idx;
                 for (int j = 0; j < movelist_length; j++)
                     if ((pseudolegal_movelist[j] & 0b0000111111111111) == move)
                         move = pseudolegal_movelist[j];
@@ -1466,9 +1444,9 @@ class AlphaBeta
 
         return board;
     }
-    public position play_move(position board, int Move, bool use_reverse_move, reverse_move undo_move)
+    public Position play_move(Position board, int Move, bool use_reverse_move, ReverseMove undo_move)
     {
-        board = MoveGenerator.make_move(board, Move, use_reverse_move, undo_move);
+        board = moveGenerator.make_move(board, Move, use_reverse_move, undo_move);
 
         if (board.fifty_move_rule == 0)
             reset_lookups();

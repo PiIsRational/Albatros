@@ -43,7 +43,7 @@ class Move_Ordering_Heuristics
         //reset killer moves
         killer_moves = new int[2, byte.MaxValue + 1];
     }
-    public move_and_eval_list evaluate_moves(position board, int[] moves, int movelist_length, int ply, bool q_search, int tt_move, move_and_eval_list output)
+    public move_and_eval_list evaluate_moves(Position board, int[] moves, int movelist_length, int ply, bool q_search, int tt_move, move_and_eval_list output)
     {
         float current_move_value;
         int last_move_to = int.MaxValue, move_to_follow_to = int.MaxValue;
@@ -98,7 +98,7 @@ class Move_Ordering_Heuristics
 
         return output;
     }
-    public float score_move(int move, int tt_move, position board, int ply, int last_move_to, int last_move_piece, int move_to_follow_to, int move_to_follow_piece)
+    public float score_move(int move, int tt_move, Position board, int ply, int last_move_to, int last_move_piece, int move_to_follow_to, int move_to_follow_piece)
     {
         float current_piece_value = 0;
 
@@ -179,12 +179,12 @@ class Move_Ordering_Heuristics
             (ply - 2 < 0 || followup_and_counter_histories[board.color, 1, move_to_follow_piece, move_to_follow_to] == null ? 0 :
             followup_and_counter_histories[board.color, 1, move_to_follow_piece, move_to_follow_to][board.boards[board.color, from], to])*/;
     }
-    public void update_counter_moves(position board, int last_move_to, int last_move_piece, int move, int ply, bool[] null_move_pruning)
+    public void update_counter_moves(Position board, int last_move_to, int last_move_piece, int move, int ply, bool[] null_move_pruning)
     {
         if (!null_move_pruning[ply - 1] && last_move_to != int.MaxValue)
             counter_moves[last_move_piece, last_move_to] = move + 1;
     }
-    public void add_current_move(int move, position board, int ply)
+    public void add_current_move(int move, Position board, int ply)
     {
         byte from = (byte)(move & 0b0000000000111111);
         byte to = (byte)((move & 0b0000111111000000) >> 6);
@@ -202,7 +202,7 @@ class Move_Ordering_Heuristics
             killer_moves[0, ply] = move + 1;
         }
     }
-    public unsafe void update_history_move(position board, int move, int last_move_to, int last_move_piece, int move_to_follow_to, int move_to_follow_piece, float bonus, int ply)
+    public unsafe void update_history_move(Position board, int move, int last_move_to, int last_move_piece, int move_to_follow_to, int move_to_follow_piece, float bonus, int ply)
     {
         byte from = (byte)(move & 0b0000000000111111);
         byte to = (byte)((move & 0b0000111111000000) >> 6);
@@ -232,7 +232,7 @@ class Move_Ordering_Heuristics
             }
         }
     }
-    public void update_histories(position board, int bestmove, int[] played_moves, int current_move_idx, bool[] null_move_pruning, int depth, int ply, bool fail_high)
+    public void update_histories(Position board, int bestmove, int[] played_moves, int current_move_idx, bool[] null_move_pruning, int depth, int ply, bool fail_high)
     {
         float bonus = -Math.Min((float)(depth * depth) / 10, 40);
 
@@ -257,7 +257,7 @@ class Move_Ordering_Heuristics
                 update_chistory_move(board, played_moves[i], bonus);
         }
     }
-    public unsafe void update_chistory_move(position board, int move, float bonus)
+    public unsafe void update_chistory_move(Position board, int move, float bonus)
     {
         byte from = (byte)(move & 0b0000000000111111);
         byte to = (byte)((move & 0b0000111111000000) >> 6);

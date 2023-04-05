@@ -3,85 +3,104 @@ using System.Collections.Generic;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 using System.IO;
-using System.Diagnostics;
+using System.Globalization;
 
 class NNUE_avx2
 {
     //input into the feature transformer
-    public List<int>[] Features = new List<int>[2];
+    public List<int>[] features = new List<int>[2];
+
     //output of the Feature transformers
-    public Accumulator acc = new Accumulator(16);
+    public Accumulator acc = new Accumulator(TRANSFORMER_OUT_SIZE);
+
     //acc gone trough the relu layer
-    public short[] accReluOut = new short[32];
+    public short[] accReluOut = new short[2 * TRANSFORMER_OUT_SIZE];
+
     //Network Output
-    long NetOutput = 0;
+    long netOutput = 0;
+
     //feature transformer
-    FeatureTransformer Transformer = new FeatureTransformer(768, 16);
-    const int transformaer_out_size = 16;
+    FeatureTransformer transformer = new FeatureTransformer(768, TRANSFORMER_OUT_SIZE);
+    public const int TRANSFORMER_OUT_SIZE = 512;
     //All the other Layers
-    LinearLayer Output = new LinearLayer(32, 1);
+    LinearLayer output = new LinearLayer(2 * TRANSFORMER_OUT_SIZE, 1);
     //other stuff
     Vector256<int> kOnes256 = new Vector256<int>();
-    short[] initKOnes256 = new short[16];
-    int weight_scaling = 4096;
-    int activation_scaling = 32767;
+    short[] initKOnes256 = new short[TRANSFORMER_OUT_SIZE];
+
+    // weights are between 2 and -2 ~ 2^9 and -2^9
+    const int weightScaling = 1024;
+    const int maxWeightSize = 2048;
+    // activations between 4 and -4 2^15 and -2^15
+    const int activationScaling = 8192;
+
+
     //returns the piecetype of the halfkp encoding
     //piecetype[0] is for black and piecetype[1] is for white
-    int[][] PieceType = new int[2][];
+    private static int[][] pieceEncoding = new int[2][];
     //Log2 of weigtscale
-    byte Log2WeightScale = 12;
+    const byte log2WeightScale = 10;
     standart stuff = new standart();
+
+    const int register_width = 8;
+    //Size of the Feature Transformer Output size (16) divided by the register width (8)
+    const int NumberofChunks = TRANSFORMER_OUT_SIZE / register_width;
+
+    Vector256<int>[] registers = new Vector256<int>[NumberofChunks];
+
     public NNUE_avx2(bool LoadNet)
     {
-        initTransformer();
-        initOutput();
-
-        if (LoadNet && File.Exists("ValueNet.nnue"))
-            LoadOldNetFile("ValueNet.nnue");
+        InitTransformer();
+        InitOutput();
 
         //initkOnes256();
         initPtype();
 
         //initialize the feature vectors
-        Features[0] = new List<int>();
-        Features[1] = new List<int>();
+        features[0] = new List<int>();
+        features[1] = new List<int>();
+
+        if (LoadNet && File.Exists("ValueNet.nnue"))
+            LoadNetFile("ValueNet.nnue");
+
+        if (LoadNet && File.Exists("floats net.nnue"))
+            LoadOldNetFile("floats net.nnue");
     }
-    public void set_acc_from_position(position InputBoard)
+
+    public void set_acc_from_position(Position inputBoard)
     {
         //load the features for the board into the feature vector
-        Features = BoardToHalfP(InputBoard);
+        features = BoardToHalfP(inputBoard);
 
         //load the feature vector into the accumulator
-        acc = RefreshAcc(Transformer, acc, Features, 0);
-        acc = RefreshAcc(Transformer, acc, Features, 1);
+        acc = RefreshAcc(transformer, acc, features, 0);
+        acc = RefreshAcc(transformer, acc, features, 1);
     }
+
     //initialize the four Layers
-    public void initTransformer()
+    public void InitTransformer()
     {
         //Weights
-        for (int i = 0; i < Transformer.weight.GetLength(0); i++)
+        for (int i = 0; i < transformer.weight.GetLength(0); i++)
         {
-            for (int j = 0; j < Transformer.weight.GetLength(1); j++)
-            {
-                Transformer.weight[i, j] = 1;
-            }
+            for (int j = 0; j < transformer.weight.GetLength(1); j++)
+                transformer.weight[i, j] = 1;
         }
         //Biases
-        for (int i = 0; i < Transformer.bias.Length; i++)
-        {
-            Transformer.bias[i] = 1;
-        }
+        for (int i = 0; i < transformer.bias.Length; i++)
+            transformer.bias[i] = 1;
     }
-    public void initOutput()
+
+    public void InitOutput()
     {
-        for (int i = 0; i < Output.Input_size; i++)
-        {
-            Output.weight[i] = 1;
-        }
-        Output.bias[0] = 1;
+        for (int i = 0; i < output.Input_size; i++)
+            output.weight[i] = 1;
+
+        output.bias[0] = 1;
     }
+
     //inittialize the piecetype array
-    public List<int>[] BoardToHalfP(position board)
+    public List<int>[] BoardToHalfP(Position board)
     {
         List<int>[] Features = new List<int>[2];
         for (int color = 0; color <= 1; color++)
@@ -90,8 +109,8 @@ class NNUE_avx2
 
             for (int square = 0; square < 64; square++)
             {
-                if (PieceType[color][board.board[square]] > -1)
-                    Features[color].Add(PieceType[color][board.board[square]] + square ^ (color == 1 ? 0 : 56));
+                if (pieceEncoding[color][board.board[square]] > -1)
+                    Features[color].Add(pieceEncoding[color][board.board[square]] + square ^ (color == 1 ? 0 : 56));
             }
         }
 
@@ -100,109 +119,72 @@ class NNUE_avx2
 
     public void initPtype()
     {
-        for (byte i = 0; i < 2; i++)
+        for (byte color = 0; color < 2; color++)
         {
-            PieceType[i] = new int[17];
-            for (int j = 0; j < 17; j++)
+            pieceEncoding[color] = new int[15];
+            for (int piece = 0; piece < 15; piece++)
             {
-                switch (j)
+                if (piece == 0 || piece == 7 || piece == 8)
+                    pieceEncoding[color][piece] = -1;
+                else
                 {
-                    case standart_chess.pawn | 0b0000:
-                        PieceType[i][j] = ChangeType(6, i);
-                        break;
-                    case standart_chess.knight | 0b0000:
-                        PieceType[i][j] = ChangeType(7, i);
-                        break;
-                    case  standart_chess.bishop | 0b0000:
-                        PieceType[i][j] = ChangeType(8, i);
-                        break;
-                    case standart_chess.rook | 0b0000:
-                        PieceType[i][j] = ChangeType(9, i);
-                        break;
-                    case standart_chess.queen | 0b0000:
-                        PieceType[i][j] = ChangeType(10, i);
-                        break;
-                    case standart_chess.king | 0b0000:
-                        PieceType[i][j] = ChangeType(11, i);
-                        break;
-                    case standart_chess.pawn | 0b1000:
-                        PieceType[i][j] = ChangeType(0, i);
-                        break;
-                    case standart_chess.knight | 0b1000:
-                        PieceType[i][j] = ChangeType(1, i);
-                        break;
-                    case standart_chess.bishop | 0b1000:
-                        PieceType[i][j] = ChangeType(2, i);
-                        break;
-                    case standart_chess.rook | 0b1000:
-                        PieceType[i][j] = ChangeType(3, i);
-                        break;
-                    case standart_chess.queen | 0b1000:
-                        PieceType[i][j] = ChangeType(4, i);
-                        break;
-                    case standart_chess.king | 0b1000:
-                        PieceType[i][j] = ChangeType(5, i);
-                        break;
-                    default:
-                        PieceType[i][j] = -1;
-                        break;
+                    int pieceType = piece - (piece < 7 ? 1 : 3);
+                    pieceEncoding[color][piece] = ChangeType(pieceType, color);
                 }
             }
         }
     }
+
     public int ChangeType(int piecetype, byte color)
     {
-        if (color == 0)
-        {
-            //Black Piece
-            if (piecetype - 5 > 0)
-                return (piecetype -= 6) * 64;
-
-            return (piecetype += 6) * 64;
-        }
-
-        return piecetype * 64;
+        if (color == 0) return piecetype * 64;
+        return (piecetype + (piecetype > 5 ? -6 : 6)) * 64;
     }
+
     //takes in the accumulator and gives back the position value
-    public int AccToOutput(Accumulator acc , byte color)
+    public int AccToOutput(Accumulator acc, byte color)
     {
         //add clipped relu to accumulator
-        accReluOut = crelu32(32, accReluOut, acc.ReturnSide(color), acc.ReturnSide((byte)(1 - color)));
+        accReluOut = crelu32(accReluOut, acc.ReturnSide(color), acc.ReturnSide((byte)(1 - color)));
+
         //perform matrix multiplication with Output layer
-        NetOutput = calculate_output_value(Output, accReluOut, NetOutput);
+        netOutput = CalculateOutputValue(output, accReluOut);
+
         //return the Netoutput scaled back and as an integer
-        return (int)((NetOutput * 1000) / (weight_scaling * activation_scaling));
+        return (int)(netOutput * 1000 / (weightScaling * activationScaling));
     }
-    public void update_acc_from_move(position board, reverse_move Move)
+
+    public void updateAccFromMove(Position board, ReverseMove move, bool invert)
     {
-        List<int>[] FeaturesToAdd = new List<int>[2];
-        List<int>[] FeaturestoRemove = new List<int>[2];
-        byte removed_piece_color = (byte)(Move.removed_piece_idx != 0 ? (Move.removed_pieces[0, 1] >> 3) : board.color);
+        List<int>[] featuresToAdd = new List<int>[2];
+        List<int>[] featuresToRemove = new List<int>[2];
+
+        byte removed_piece_color = (byte)(move.removed_piece_idx != 0 ? (move.removed_pieces[0, 1] >> 3) : board.color);
 
         for (int color = 0; color < 2; color++)
         {
-            FeaturesToAdd[color] = new List<int>();
-            FeaturestoRemove[color] = new List<int>();
+            featuresToAdd[color] = new List<int>();
+            featuresToRemove[color] = new List<int>();
 
-            for (int i = 0; i < Move.removed_piece_idx; i++)
-                FeaturestoRemove[color].Add(PieceType[color][Move.removed_pieces[i, 1]] + Move.removed_pieces[i, 0] ^ (color == 1 ? 0 : 56));
+            for (int i = 0; i < move.removed_piece_idx; i++)
+                featuresToRemove[color].Add(pieceEncoding[color][move.removed_pieces[i, 1]] + move.removed_pieces[i, 0] ^ (color == 1 ? 0 : 56));
 
-            for (int i = 0; i < Move.moved_piece_idx; i++)
+            for (int i = 0; i < move.moved_piece_idx; i++)
             {
-                FeaturesToAdd[color].Add(PieceType[color][board.board[Move.moved_pieces[i, 1]]] + Move.moved_pieces[i, 1] ^ (color == 1 ? 0 : 56));
-                if (removed_piece_color == board.color) FeaturestoRemove[color].Add(PieceType[color][board.board[Move.moved_pieces[i, 1]]] + Move.moved_pieces[i, 0] ^ (color == 1 ? 0 : 56));
+                featuresToAdd[color].Add(pieceEncoding[color][board.board[move.moved_pieces[i, 1]]] + move.moved_pieces[i, 1] ^ (color == 1 ? 0 : 56));
+                if (removed_piece_color == board.color) featuresToRemove[color].Add(pieceEncoding[color][board.board[move.moved_pieces[i, 1]]] + move.moved_pieces[i, 0] ^ (color == 1 ? 0 : 56));
             }
 
-            acc = UpdateAcc(Transformer, acc, FeaturesToAdd, FeaturestoRemove, (byte)color);
-
+            if (invert) acc = UpdateAcc(transformer, acc, featuresToRemove, featuresToAdd, (byte)color);
+            else acc = UpdateAcc(transformer, acc, featuresToAdd, featuresToRemove, (byte)color); 
         }
     }
     //calculate accumulator values from start
-    unsafe public Accumulator RefreshAcc(FeatureTransformer transformer, Accumulator acc, List<int>[] Features, byte color)
+    unsafe public Accumulator RefreshAcc(FeatureTransformer transformer, Accumulator acc, List<int>[] features, byte color)
     {
         const int register_width = 8;
-        //Size of the Feature Transformer Output size (16) divided by the register width (8)
-        const int NumberofChunks = transformaer_out_size / register_width;
+        //Size of the Feature Transformer Output size divided by the register width
+        const int NumberofChunks = TRANSFORMER_OUT_SIZE / register_width;
         //Generate the avx2 registers
         Vector256<int>[] registers = new Vector256<int>[NumberofChunks];
 
@@ -218,7 +200,7 @@ class NNUE_avx2
         }
 
         //Add the weights
-        foreach(int Place in Features[color])
+        foreach(int Place in features[color])
         {
             for (int i = 0; i < NumberofChunks; i++)
             {
@@ -244,14 +226,8 @@ class NNUE_avx2
         return acc;
     }
     //just update the accumulator values
-    unsafe public Accumulator UpdateAcc(FeatureTransformer transformer, Accumulator acc, List<int>[] AddedFeatures, List<int>[] RemovedFeatures, byte color)
+    unsafe public Accumulator UpdateAcc(FeatureTransformer transformer, Accumulator acc, List<int>[] addedFeatures, List<int>[] removedFeatures, byte color)
     {
-        const int register_width = 8;
-        //Size of the Feature Transformer Output size (16) divided by the register width (8)
-        const int NumberofChunks = transformaer_out_size / register_width;
-        //Generate the avx2 registers
-        Vector256<int>[] registers = new Vector256<int>[NumberofChunks];
-
         //Load the old accumulator into the registers
         for (int i = 0; i < NumberofChunks; i++)
         {
@@ -264,7 +240,7 @@ class NNUE_avx2
         }
 
         //Remove the old features 
-        foreach (int Place in RemovedFeatures[color])
+        foreach (int Place in removedFeatures[color])
         {
             for (int i = 0; i < NumberofChunks; i++)
             {
@@ -278,7 +254,7 @@ class NNUE_avx2
         }
 
         //Add the new features
-        foreach (int Place in AddedFeatures[color])
+        foreach (int Place in addedFeatures[color])
         {
             for (int i = 0; i < NumberofChunks; i++)
             {
@@ -304,6 +280,7 @@ class NNUE_avx2
 
         return acc;
     }
+
     //do the Matrix multplication for the linear layers
     /*
     unsafe int[] LinearLayer(LinearLayer layer, short[] Input, int[] Output)
@@ -373,6 +350,7 @@ class NNUE_avx2
         return Output;
 
     }
+
     public Vector128<int> m256_haddx4(Vector256<int> sum0 , Vector256<int>sum1 , Vector256<int>sum2 , Vector256<int> sum3, Vector128<int> Bias)
     {
         sum0 = Avx2.HorizontalAdd(sum0, sum1);
@@ -385,6 +363,7 @@ class NNUE_avx2
 
         return Avx2.Add(Avx2.Add(sum128lo, sum128hi), Bias);
     }
+
     unsafe public void initkOnes256()
     {
         for (int i = 0; i < 16; i++)
@@ -408,48 +387,44 @@ class NNUE_avx2
         return Avx2.Add(source, product0);
     }
     */
-    unsafe long calculate_output_value(LinearLayer layer, short[] Input, long Output)
+    unsafe long CalculateOutputValue(LinearLayer layer, short[] input)
     {
         const int register_width = 16;
-        int num_in_chunks = Input.Length / register_width;
+        int num_in_chunks = input.Length / register_width;
         Vector256<short> In;
         Vector256<short> layer_matrix;
-        Output = 0;
+        Vector256<int> accumulator = new Vector256<int>();
+        netOutput = 0;
 
-        int[] intermediate_array = new int[register_width / 2];
+        int[] intermediateArray = new int[register_width / 2];
 
         for (int i = 0; i < num_in_chunks; i++)
         {
-
-            fixed (short* currentAddress = &Input[register_width * i])
-            {
+            fixed (short* currentAddress = &input[register_width * i])
                 In = Avx2.LoadVector256(currentAddress);
-            }
 
             fixed (short* currentAddress = &layer.weight[register_width * i])
-            {
                 layer_matrix = Avx2.LoadVector256(currentAddress);
-            }
 
-            Vector256<int> out_vector = Avx2.MultiplyAddAdjacent(In, layer_matrix);
 
-            fixed (int* currentAddress = &intermediate_array[0])
-            {
-                Avx2.Store(currentAddress, out_vector);
-            }
-
-            foreach (int value in intermediate_array)
-                Output += value;
+            accumulator = Avx2.Add(accumulator, Avx2.MultiplyAddAdjacent(In, layer_matrix));
         }
 
-        return (Output + layer.bias[0]);
+        fixed (int* currentAddress = &intermediateArray[0])
+            Avx2.Store(currentAddress, accumulator);
+
+        foreach (int value in intermediateArray)
+            netOutput += value;
+
+        return netOutput + layer.bias[0];
     }
+
     //clipped relu for the accumulator output
-    unsafe public byte[] crelu16(int size , byte[] Output , short[] InputA , short[] InputB)
+    unsafe public byte[] crelu16(int size, byte[] Output, short[] InputA, short[] InputB)
     {
         const int in_register_width = 256 / 16;
         const int out_register_width = 256 / 8;
-        int num_out_chunks = size / ( 2 * out_register_width);
+        int num_out_chunks = size / (2 * out_register_width);
 
         Vector256<sbyte> zero = new Vector256<sbyte>();
         byte control = 0b11011000;
@@ -460,8 +435,8 @@ class NNUE_avx2
             Vector256<short> in0, in1;
             fixed (short* currentPointer0 = &InputA[in_register_width * (i * 2 + 0)], currentPointer1 = &InputA[in_register_width * (i * 2 + 1)]) 
             {
-                in0 = Avx2.ShiftRightArithmetic(Avx2.LoadVector256(currentPointer0), Log2WeightScale);
-                in1 = Avx2.ShiftRightArithmetic(Avx2.LoadVector256(currentPointer1), Log2WeightScale);
+                in0 = Avx2.ShiftRightArithmetic(Avx2.LoadVector256(currentPointer0), log2WeightScale);
+                in1 = Avx2.ShiftRightArithmetic(Avx2.LoadVector256(currentPointer1), log2WeightScale);
             }
 
             Vector256<byte> resultA = Avx2.Permute4x64(Avx2.Max(Avx2.PackSignedSaturate(in0, in1), zero).AsInt64(), control).AsByte();
@@ -470,8 +445,8 @@ class NNUE_avx2
             Vector256<short> in2, in3;
             fixed (short* currentPointer2 = &InputB[in_register_width * (i * 2 + 0)], currentPointer3 = &InputB[in_register_width * (i * 2 + 1)])
             {
-                in2 = Avx2.ShiftRightArithmetic(Avx2.LoadVector256(currentPointer2), Log2WeightScale);
-                in3 = Avx2.ShiftRightArithmetic(Avx2.LoadVector256(currentPointer3), Log2WeightScale);
+                in2 = Avx2.ShiftRightArithmetic(Avx2.LoadVector256(currentPointer2), log2WeightScale);
+                in3 = Avx2.ShiftRightArithmetic(Avx2.LoadVector256(currentPointer3), log2WeightScale);
             }
 
             Vector256<byte> resultB = Avx2.Permute4x64(Avx2.Max(Avx2.PackSignedSaturate(in2, in3), zero).AsInt64(), control).AsByte();
@@ -485,12 +460,20 @@ class NNUE_avx2
 
         return Output;
     }
-    //clipped relu for the linear layer Outputs
-    unsafe public short[] crelu32(int size, short[] Output, int[] InputA , int[] InputB)
+
+    /// <summary>
+    /// clipped relu for the linear layer Outputs 
+    /// clamps the input values between 0 and the maximal activation size (4)
+    /// </summary>
+    /// <param name="Output">the vector to output</param>
+    /// <param name="InputA">the first input</param>
+    /// <param name="InputB">the second input</param>
+    /// <returns>the output vector containing the right values</returns>
+    unsafe public short[] crelu32(short[] Output, int[] InputA, int[] InputB)
     {
         const int in_register_width = 256 / 32;
         const int out_register_width = 256 / 16;
-        int num_out_chunks = size / (2 * out_register_width);
+        int num_out_chunks = Output.Length / (2 * out_register_width);
         byte control = 0b11011000;
 
         Vector256<short> zero = new Vector256<short>();
@@ -499,21 +482,17 @@ class NNUE_avx2
         {
             Vector256<short> in0;
             fixed (int* PointerA = &InputA[in_register_width * (i * 2 + 0)], PointerB = &InputA[in_register_width * (i * 2 + 1)]) 
-            {
-                in0 = Avx2.PackSignedSaturate(Avx2.ShiftRightArithmetic(Avx2.LoadVector256(PointerA), Log2WeightScale), Avx2.ShiftRightArithmetic(Avx2.LoadVector256(PointerB), Log2WeightScale));
-            }
+                in0 = Avx2.PackSignedSaturate(Avx2.ShiftRightArithmetic(Avx2.LoadVector256(PointerA), log2WeightScale), Avx2.ShiftRightArithmetic(Avx2.LoadVector256(PointerB), log2WeightScale));
 
             Vector256<short> resultA = Avx2.Permute4x64(Avx2.Max(in0, zero).AsInt64(), control).AsInt16();
 
             Vector256<short> in1;
             fixed (int* PointerA = &InputB[in_register_width * (i * 2 + 0)], PointerB = &InputB[in_register_width * (i * 2 + 1)])
-            {
-                in1 = Avx2.PackSignedSaturate(Avx2.ShiftRightArithmetic(Avx2.LoadVector256(PointerA), Log2WeightScale), Avx2.ShiftRightArithmetic(Avx2.LoadVector256(PointerB), Log2WeightScale));
-            }
+                in1 = Avx2.PackSignedSaturate(Avx2.ShiftRightArithmetic(Avx2.LoadVector256(PointerA), log2WeightScale), Avx2.ShiftRightArithmetic(Avx2.LoadVector256(PointerB), log2WeightScale));
 
             Vector256<short> resultB = Avx2.Permute4x64(Avx2.Max(in1, zero).AsInt64(), control).AsInt16();
 
-            fixed (short* PointerA = &Output[i * out_register_width] , PointerB = &Output[i * out_register_width + (size / 2)])
+            fixed (short* PointerA = &Output[i * out_register_width] , PointerB = &Output[i * out_register_width + (Output.Length / 2)])
             {
                 Avx2.Store(PointerA, resultA);
                 Avx2.Store(PointerB, resultB);
@@ -522,41 +501,82 @@ class NNUE_avx2
 
         return Output;
     }
+
     public void LoadOldNetFile(string filename)
+    {
+        NumberFormatInfo nfi = new NumberFormatInfo();
+        nfi.NumberDecimalSeparator = ".";
+
+        StreamReader sr = new StreamReader(filename);
+        string[] floats = sr.ReadToEnd().Split(' ');
+        int index = 0;
+
+        for (int i = 0; i < output.weight.Length; i++)
+        {
+            output.weight[i] = MaxMinWeight(Convert.ToSingle(floats[index], nfi) * weightScaling);
+            index++;
+        }
+
+        for (int i = 0; i < output.bias.Length; i++)
+        {
+            output.bias[i] = MaxMinWeight(Convert.ToSingle(floats[index], nfi) * weightScaling) * activationScaling;
+            index++;
+        }
+
+        for (int i = 0; i < transformer.weight.GetLength(1); i++)
+        {
+            for (int j = 0; j < transformer.weight.GetLength(0); j++)
+            {
+                transformer.weight[j, i] = MaxMinWeight(Convert.ToSingle(floats[index], nfi) * weightScaling) * activationScaling;
+
+                index++;
+            }
+        }
+
+        for (int i = 0; i < transformer.bias.Length; i++)
+        {
+            transformer.bias[i] = MaxMinWeight(Convert.ToSingle(floats[index], nfi) * weightScaling) * activationScaling;
+            index++;
+        }
+
+        sr.Close();
+    }
+
+    public void LoadNetFile(string filename)
     {
         StreamReader sr = new StreamReader(filename);
 
         //Weights
 
         //Output
-        load_layer_weights(Output, sr);
+        load_layer_weights(output, sr);
 
         //Biases
 
         //Output
-        load_layer_bias(Output, sr);
+        load_layer_bias(output, sr);
 
         //Transformer
-        for (int i = 0; i < Transformer.weight.GetLength(0); i++)
+        for (int i = 0; i < transformer.weight.GetLength(0); i++)
         {
-            for (int j = 0; j < Transformer.weight.GetLength(1); j++)
+            for (int j = 0; j < transformer.weight.GetLength(1); j++)
             {
                 byte[] arr = new byte[4];
                 for (int k = 0; k < arr.Length; k++)
                     arr[k] = (byte)sr.Read();
 
-                Transformer.weight[i, j] = BitConverter.ToInt32(arr);
+                transformer.weight[i, j] = BitConverter.ToInt32(arr);
             }
         }
 
         //Transformer bias
-        for (int i = 0; i < Transformer.bias.Length; i++)
+        for (int i = 0; i < transformer.bias.Length; i++)
         {
             byte[] arr = new byte[4];
             for (int k = 0; k < arr.Length; k++)
                 arr[k] = (byte)sr.Read();
 
-            Transformer.bias[i] = BitConverter.ToInt32(arr);
+            transformer.bias[i] = BitConverter.ToInt32(arr);
         }
 
         sr.Close();
@@ -583,13 +603,15 @@ class NNUE_avx2
             layer.bias[i] = BitConverter.ToInt32(arr);
         }
     }
-    public float MaxMinInt(float Input)
+
+    public short MaxMinWeight(float input)
     {
-        return (float)Math.Max(int.MinValue, Math.Min(int.MaxValue, Math.Round(Input, 0)));
-    }
-    public float MaxMinShort(float Input)
-    {
-        return (float)Math.Max(short.MinValue, Math.Min(short.MaxValue, Math.Round(Input, 0)));
+        if (input >= maxWeightSize)
+            return maxWeightSize;
+        if (input <= -maxWeightSize)
+            return - maxWeightSize;
+
+        return Convert.ToInt16(input);
     }
 }
 class Accumulator
@@ -614,7 +636,7 @@ class LinearLayer
     public short[] weight;
     public int[] bias;
     public int Input_size = 0, Output_size = 0;
-    public LinearLayer(int ColumnSize , int RowSize)
+    public LinearLayer(int ColumnSize, int RowSize)
     {
         Input_size = ColumnSize;
         Output_size = RowSize;
@@ -626,7 +648,7 @@ class FeatureTransformer
 {
     public int[,] weight;
     public int[] bias;
-    public FeatureTransformer(int ColumnSize , int RowSize)
+    public FeatureTransformer(int ColumnSize, int RowSize)
     {
         weight = new int[ColumnSize, RowSize];
         bias = new int[RowSize];

@@ -320,7 +320,7 @@ class Io
         }
         return output;
     }
-    public int[] PlanMoveTime(string[] Command, position board, bool NNUE , bool USE_MCTS)
+    public int[] PlanMoveTime(string[] Command, Position board, bool NNUE , bool USE_MCTS)
     {
         int wtime = 0, btime = 0, winc = 0, binc = 0;
         int timeMe = 0, TimeEnemy = 0, Meinc = 0, Enemyinc = 0;
@@ -395,34 +395,34 @@ class Io
         game.Playing = false;
         treesearch.CurrentTree = null;
         AlphaBetaSearch.HashTable = new byte[game.HashSize * 62500, 16];
-        game.board = chess_stuff.LoadPositionFromFen(game.board, game.StartPosition);
+        game.board = chess_stuff.LoadPositionFromFen(game.board, Game.StartPosition);
     }
     public void reset_board()
     {
         AlphaBetaSearch.time_to_use = 0;
         AlphaBetaSearch.HashTable = new byte[game.HashSize * 62500, 16];
-        game.board = chess_stuff.LoadPositionFromFen(game.board, game.StartPosition);
+        game.board = chess_stuff.LoadPositionFromFen(game.board, Game.StartPosition);
     }
-    public void perft_out(int depth, position board)
+    public void perft_out(int depth, Position board)
     {
         Stopwatch sw = new Stopwatch();
         sw.Start();
-        bool in_check = AlphaBetaSearch.MoveGenerator.check(board, false);
-        reverse_move move_undo = new reverse_move();
+        bool in_check = AlphaBetaSearch.moveGenerator.check(board, false);
+        ReverseMove move_undo = new ReverseMove();
         //instantiate the movelist
         int[][] movelist = new int[depth][];
         for (int i = 0; i < depth; i++)
             movelist[i] = new int[218];
-        movelist[depth - 1] = AlphaBetaSearch.MoveGenerator.legal_move_generator(board, in_check, move_undo, movelist[depth - 1]);
-        int movelist_length = AlphaBetaSearch.MoveGenerator.move_idx;
+        movelist[depth - 1] = AlphaBetaSearch.moveGenerator.legal_move_generator(board, in_check, move_undo, movelist[depth - 1]);
+        int movelist_length = AlphaBetaSearch.moveGenerator.move_idx;
         long score = 0, counter = 0;
         for (int i = 0; i < movelist_length; i++)
         {
-            board = AlphaBetaSearch.MoveGenerator.make_move(board, movelist[depth - 1][i], true, move_undo);
-            if (!AlphaBetaSearch.MoveGenerator.illegal_position)
+            board = AlphaBetaSearch.moveGenerator.make_move(board, movelist[depth - 1][i], true, move_undo);
+            if (!AlphaBetaSearch.moveGenerator.illegal_position)
             {
                 if (depth - 1 != 0)
-                    score = perft(board, depth - 1, AlphaBetaSearch.MoveGenerator.fast_check(board, movelist[depth - 1][i]), movelist);
+                    score = perft(board, depth - 1, AlphaBetaSearch.moveGenerator.fast_check(board, movelist[depth - 1][i]), movelist);
                 else
                     score = 1;
 
@@ -431,22 +431,22 @@ class Io
                 counter += score;
             }
             else
-                AlphaBetaSearch.MoveGenerator.illegal_position = false;
-            board = AlphaBetaSearch.MoveGenerator.unmake_move(board, move_undo);
+                AlphaBetaSearch.moveGenerator.illegal_position = false;
+            board = AlphaBetaSearch.moveGenerator.unmake_move(board, move_undo);
         }
         Console.WriteLine("{0} nodes explored in {1} millisecondseconds", counter, sw.ElapsedMilliseconds);
         if (stop)
             stop = false;
     }
-    public long perft(position board, int depth, bool in_check, int[][] movelist)
+    public long perft(Position board, int depth, bool in_check, int[][] movelist)
     {
         if (stop)
             return 0;
 
-        reverse_move move_undo = new reverse_move();
-        movelist[depth - 1] = AlphaBetaSearch.MoveGenerator.legal_move_generator(board, in_check, move_undo, movelist[depth - 1]);
+        ReverseMove move_undo = new ReverseMove();
+        movelist[depth - 1] = AlphaBetaSearch.moveGenerator.legal_move_generator(board, in_check, move_undo, movelist[depth - 1]);
 
-        int movelist_length = AlphaBetaSearch.MoveGenerator.move_idx;
+        int movelist_length = AlphaBetaSearch.moveGenerator.move_idx;
 
         if (depth == 1)
             return movelist_length;
@@ -455,13 +455,13 @@ class Io
 
         for (int i = 0; i < movelist_length; i++)
         {
-            board = AlphaBetaSearch.MoveGenerator.make_move(board, movelist[depth - 1][i], true, move_undo);
+            board = AlphaBetaSearch.moveGenerator.make_move(board, movelist[depth - 1][i], true, move_undo);
 
-            if (!AlphaBetaSearch.MoveGenerator.illegal_position)
-                counter += perft(board, depth - 1, AlphaBetaSearch.MoveGenerator.fast_check(board, movelist[depth - 1][i]), movelist);
+            if (!AlphaBetaSearch.moveGenerator.illegal_position)
+                counter += perft(board, depth - 1, AlphaBetaSearch.moveGenerator.fast_check(board, movelist[depth - 1][i]), movelist);
             else
-                AlphaBetaSearch.MoveGenerator.illegal_position = false;
-            board = AlphaBetaSearch.MoveGenerator.unmake_move(board, move_undo);
+                AlphaBetaSearch.moveGenerator.illegal_position = false;
+            board = AlphaBetaSearch.moveGenerator.unmake_move(board, move_undo);
         }
 
         return counter;
@@ -479,7 +479,7 @@ class Io
 
         Console.WriteLine(Output);
     }
-    public void print_board_and_info(position board)
+    public void print_board_and_info(Position board)
     {
         chess_stuff.display_board(board);
         Console.WriteLine();
@@ -500,7 +500,7 @@ class Io
         }
         return Output;
     }
-    public position PlayGameFromCommand(string[] Commands , bool TreeUpdate)
+    public Position PlayGameFromCommand(string[] Commands , bool TreeUpdate)
     {
         int[] PlayingMoves = new int[Commands.Length];
 
@@ -527,7 +527,7 @@ class Io
             Output += ",00";
         return Sign + Output;
     }
-    public void ReturnEvaluation(position board)
+    public void ReturnEvaluation(Position board)
     {
         if (board.color == 0)
             Console.WriteLine("\nNNUE network contributions (Black to move)\n");
@@ -535,8 +535,8 @@ class Io
             Console.WriteLine("\nNNUE network contributions (White to move)\n");
         float Value = 0;
 
-        AlphaBetaSearch.ValueNet.set_acc_from_position(board);
-        Value = ((float)AlphaBetaSearch.ValueNet.AccToOutput(AlphaBetaSearch.ValueNet.acc, (byte)(board.color)) / 1000);
+        AlphaBetaSearch.valueNet.set_acc_from_position(board);
+        Value = ((float)AlphaBetaSearch.valueNet.AccToOutput(AlphaBetaSearch.valueNet.acc, (byte)(board.color)) / 1000);
 
         Console.WriteLine("NNUE evaluation                  {0} (white side)", ReturnNumber((float)Value));
 

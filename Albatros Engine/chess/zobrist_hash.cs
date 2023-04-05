@@ -37,7 +37,7 @@ class zobrist_hash
         random.NextBytes(bytes);
         return BitConverter.ToUInt64(bytes);
     }
-    public ulong hash_position(position board)
+    public ulong hash_position(Position board)
     {
         ulong output;
 
@@ -74,7 +74,7 @@ class zobrist_hash
 
         return output;
     }
-    public ulong update_position_hash_after_move(position board, reverse_move unmake_move, ulong hash)
+    public ulong update_position_hash_after_move(Position board, ReverseMove unmake_move, ulong hash)
     {
         if (unmake_move.king_changes != byte.MaxValue || unmake_move.rook_changes != byte.MaxValue)
             return hash_position(board);
@@ -105,7 +105,7 @@ class zobrist_hash
 
         return hash;
     }
-    public ulong update_null_move_hash(ulong hash, reverse_move unmake_move)
+    public ulong update_null_move_hash(ulong hash, ReverseMove unmake_move)
     {
         //change the color
         hash ^= white_to_play;

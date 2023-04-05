@@ -298,7 +298,6 @@ class NNUE
             FileContent = "";
         }
         //StartMatrixBias
-
         if (UseBackup)
         {
             for (int j = 0; j < HalfkpMatrixBias.Length; j++)

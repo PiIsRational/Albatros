@@ -34,7 +34,7 @@ class standart_chess
     public const int max_depth = 256;
 
     standart stuff = new standart();
-    public position LoadPositionFromFen(position board, string Fen)
+    public Position LoadPositionFromFen(Position board, string Fen)
     {
         board.reset();
         int CurrentDisplacement = 0;
@@ -159,7 +159,7 @@ class standart_chess
 
         return board;
     }
-    public position add_piece_to_position(position input, byte square, byte piece)
+    public Position add_piece_to_position(Position input, byte square, byte piece)
     {
         input.board[square] = piece;
         input.boards[get_piece_color(piece), square] = (byte)(piece & 0b00000111);
@@ -207,7 +207,7 @@ class standart_chess
     {
         return (short)(from ^ (to << 6) ^ (extra << 12));
     }
-    public void display_board(position input)
+    public void display_board(Position input)
     {
         string spacer = "+---+---+---+---+---+---+---+---+";
         string backrow = "  a   b   c   d   e   f   g   h";
@@ -291,7 +291,7 @@ class standart_chess
     {
         return (byte)((piece & 0b000001000) >> 3);
     }
-    public string generate_fen_from_position(position board)
+    public string generate_fen_from_position(Position board)
     {
         string fen_output = "";
         int square_count = 0;
@@ -380,7 +380,7 @@ class standart_chess
 
         return fen_output;
     }
-    public bool is_capture(int move, position board)
+    public bool is_capture(int move, Position board)
     {
         /*if we go to an occupied square it is a capture 
          * or if the move is special,
@@ -393,7 +393,7 @@ class standart_chess
 
         return false;
     }
-    public bool is_en_passent(int move , position board)
+    public bool is_en_passent(int move , Position board)
     {
         /*if the move is special
          * if it is not a promotion
@@ -421,7 +421,7 @@ class standart_chess
             return input / mate_value;
         return stuff.sigmoid((float)input / 1000, 4.2f);
     }
-    public Accumulator acc_copy(Accumulator input)
+    public Accumulator accCopy(Accumulator input)
     {
         Accumulator ouput = new Accumulator(input.Acc[0].Length);
 
@@ -430,7 +430,7 @@ class standart_chess
 
         return ouput;
     }
-    public bool is_castelling(int move , position board)
+    public bool is_castelling(int move , Position board)
     {
         byte other = (byte)(move >> 12);
         byte from = (byte)(move & 0b0000000000111111);

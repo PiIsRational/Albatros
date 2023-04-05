@@ -36,7 +36,7 @@ class movegen
         init_rook_move();
         init_king_move();
     }
-    public int is_mate(position board, bool in_check, reverse_move undo_move, int[] movelist)
+    public int is_mate(Position board, bool in_check, ReverseMove undo_move, int[] movelist)
     {
         //generate pseudolegal_movelist
         movelist = generate_movelist(board, movelist);
@@ -78,7 +78,7 @@ class movegen
         else
             return 0;
     }
-    public int[] generate_movelist(position board, int[] movelist)
+    public int[] generate_movelist(Position board, int[] movelist)
     {
         move_idx = 0;
         non_pawn_material = false;
@@ -119,7 +119,7 @@ class movegen
         }
         return movelist;
     }
-    public int[] generate_capture_list(position board, int[] movelist)
+    public int[] generate_capture_list(Position board, int[] movelist)
     {
         move_idx = 0;
         //loop through each piece with the current color
@@ -154,7 +154,7 @@ class movegen
         }
         return movelist;
     }
-    public int[] legal_move_generator(position board, bool in_check, reverse_move undo_move, int[] movelist)
+    public int[] legal_move_generator(Position board, bool in_check, ReverseMove undo_move, int[] movelist)
     {
         //generate pseudolegal_movelist
         int[] first_movelist = generate_movelist(board, movelist);
@@ -181,7 +181,7 @@ class movegen
         }
         return first_movelist;
     }
-    public int[] legal_capture_generator(position board, bool in_check, reverse_move undo_move, int[] movelist)
+    public int[] legal_capture_generator(Position board, bool in_check, ReverseMove undo_move, int[] movelist)
     {
         //generate pseudolegal_movelist
         int[] first_movelist = generate_capture_list(board, movelist);
@@ -209,7 +209,7 @@ class movegen
 
         return first_movelist;
     }
-    public bool fast_check(position board, int move)
+    public bool fast_check(Position board, int move)
     {
         byte other = (byte)(move >> 12);
         byte from = (byte)(move & 0b0000000000111111);
@@ -333,7 +333,7 @@ class movegen
 
         return false;
     }
-    public void from_check(position board,byte king_square, byte king_x, byte from, byte from_x, byte othercolor)
+    public void from_check(Position board,byte king_square, byte king_x, byte from, byte from_x, byte othercolor)
     {
         if (king_x == from_x)
         {
@@ -362,7 +362,7 @@ class movegen
             }
         }
     }
-    public bool illegality_check_neccessaray(int move, bool in_check, position board)
+    public bool illegality_check_neccessaray(int move, bool in_check, Position board)
     {
         int from = move & 0b0000000000111111;
         if (in_check || board.boards[board.color, from] == standart_chess.king)
@@ -384,7 +384,7 @@ class movegen
 
         return false;
     }
-    public bool check(position board, bool illegality_check)
+    public bool check(Position board, bool illegality_check)
     {
         //find king 
         byte othercolor = illegality_check ? board.color : (byte)(board.color ^ 1);
@@ -494,7 +494,7 @@ class movegen
         }
         return false;
     }
-    public position make_move(position board, int move, bool generate_reverse_move, reverse_move undo_move)
+    public Position make_move(Position board, int move, bool generate_reverse_move, ReverseMove undo_move)
     {
         byte other = (byte)(move >> 12);
         byte from = (byte)(move & 0b0000000000111111);
@@ -564,7 +564,7 @@ class movegen
 
         return board;
     }
-    public position set_rook_moved(position board, byte rook_square, byte rook_color, bool reverse_move_update, reverse_move undo_move)
+    public Position set_rook_moved(Position board, byte rook_square, byte rook_color, bool reverse_move_update, ReverseMove undo_move)
     {
         if (reverse_move_update && undo_move.rook_changes == 255)
             undo_move.rook_changes = 0;
@@ -582,7 +582,7 @@ class movegen
 
         return board;
     }
-    public position unmake_move(position board, reverse_move move)
+    public Position unmake_move(Position board, ReverseMove move)
     {
         board.color = (byte)(board.color ^ 1);
         board.en_passent_square = move.en_passent;
@@ -627,7 +627,7 @@ class movegen
 
         return board;
     }
-    public bool check_representation_continuity(position position)
+    public bool check_representation_continuity(Position position)
     {
         //continuity on the index board
         for (int i = 0; i < position.idx_board.Length; i++)
@@ -643,7 +643,7 @@ class movegen
 
         return true;
     }
-    public position pawn_execute_move(position board, byte from, byte to, byte other, bool use_reverse_move, reverse_move undo_move)
+    public Position pawn_execute_move(Position board, byte from, byte to, byte other, bool use_reverse_move, ReverseMove undo_move)
     {
         if (other != standart_chess.no_promotion)
         {
@@ -705,7 +705,7 @@ class movegen
         }
         return normal_piece_execute_move(board, from, to, use_reverse_move, undo_move);
     }
-    public position exchange_pieces(position board, byte square, byte new_piece)
+    public Position exchange_pieces(Position board, byte square, byte new_piece)
     {
         if (board.board[square] != standart_chess.no_piece) board = remove_piece_from_list(board, board.board[square], square);
         board = add_piece_to_list(board, new_piece, square);
@@ -714,7 +714,7 @@ class movegen
 
         return board;
     }
-    public position king_execute_move(position board, byte from, byte to, byte other, bool reverse_move_update, reverse_move undo_move)
+    public Position king_execute_move(Position board, byte from, byte to, byte other, bool reverse_move_update, ReverseMove undo_move)
     {
         if (board.king_not_moved[board.color])
         {
@@ -754,7 +754,7 @@ class movegen
 
         return normal_piece_execute_move(board, from, to, reverse_move_update, undo_move);
     }
-    public bool rook_consistency(position board)
+    public bool rook_consistency(Position board)
     {
         byte othercolor = (byte)(board.color ^ 1);
 
@@ -766,7 +766,7 @@ class movegen
 
         return true;
     }
-    public position normal_piece_execute_move(position board, byte from, byte to, bool reverse_move_update, reverse_move undo_move)
+    public Position normal_piece_execute_move(Position board, byte from, byte to, bool reverse_move_update, ReverseMove undo_move)
     {
         if (reverse_move_update)
         {
@@ -806,7 +806,7 @@ class movegen
 
         return board;
     }
-    public position remove_piece_from_list(position board, byte piecetype, byte square)
+    public Position remove_piece_from_list(Position board, byte piecetype, byte square)
     {
         board.piececount[piecetype]--;
         board.piece_square_lists[piecetype][board.idx_board[square]] = board.piece_square_lists[piecetype][board.piececount[piecetype]];
@@ -814,7 +814,7 @@ class movegen
         board.idx_board[square] = standart_chess.no_square;
         return board;
     }
-    public position add_piece_to_list(position board, byte piecetype, byte square)
+    public Position add_piece_to_list(Position board, byte piecetype, byte square)
     {
         board.piece_square_lists[piecetype][board.piececount[piecetype]] = square;
         board.idx_board[square] = board.piececount[piecetype];
@@ -844,7 +844,7 @@ class movegen
 
         return movelist;
     }
-    public int[] pawn_move(int[] movelist, position board, byte square)
+    public int[] pawn_move(int[] movelist, Position board, byte square)
     {
         int y_dir = (2 * board.color - 1) * iny;
         byte x = chess_stuff.get_x_from_square(square);
@@ -884,7 +884,7 @@ class movegen
 
         return movelist;
     }
-    public int[] pawn_capture(int[] movelist, position board, byte square)
+    public int[] pawn_capture(int[] movelist, Position board, byte square)
     {
         int y_dir = (2 * board.color - 1) * iny;
         byte x = chess_stuff.get_x_from_square(square);
@@ -970,7 +970,7 @@ class movegen
             }
         }
     }
-    public int[] knight_move(int[] movelist, position board, byte square)
+    public int[] knight_move(int[] movelist, Position board, byte square)
     {
         byte[] possible_squares = knight_table[square];
         for (int i = 0; i < possible_squares.Length; i++)
@@ -985,7 +985,7 @@ class movegen
         }
         return movelist;
     }
-    public int[] knight_capture(int[] movelist, position board, byte square)
+    public int[] knight_capture(int[] movelist, Position board, byte square)
     {
         byte[] possible_squares = knight_table[square];
         for (int i = 0; i < possible_squares.Length; i++)
@@ -1000,7 +1000,7 @@ class movegen
         }
         return movelist;
     }
-    public int[] king_move(int[] movelist, position board, byte square)
+    public int[] king_move(int[] movelist, Position board, byte square)
     {
         //normal moves
         byte[] possible_squares = king_table[square];
@@ -1034,7 +1034,7 @@ class movegen
 
         return movelist;
     }
-    public int[] king_capture(int[] movelist, position board, byte square)
+    public int[] king_capture(int[] movelist, Position board, byte square)
     {
         //normal moves
         byte[] possible_squares = king_table[square];
@@ -1050,7 +1050,7 @@ class movegen
 
         return movelist;
     }
-    public int[] sliding_piece_move(int[] movelist, position board, byte square, byte[,][] array)
+    public int[] sliding_piece_move(int[] movelist, Position board, byte square, byte[,][] array)
     {
         for (int i = 0; i < 4; i++)
         {
@@ -1080,7 +1080,7 @@ class movegen
 
         return movelist;
     }
-    public int[] sliding_piece_capture(int[] movelist, position board, byte square, byte[,][] array)
+    public int[] sliding_piece_capture(int[] movelist, Position board, byte square, byte[,][] array)
     {
         for (int i = 0; i < 4; i++)
         {
@@ -1104,7 +1104,7 @@ class movegen
 
         return movelist;
     }
-    public void check_vector_for_check(position board, byte square, byte[,][] array, int direction, byte piece_color, byte piece)
+    public void check_vector_for_check(Position board, byte square, byte[,][] array, int direction, byte piece_color, byte piece)
     {
         byte[] possible_squares = array[square, direction];
 
@@ -1251,7 +1251,7 @@ class movegen
         }
     }
 }
-class reverse_move
+class ReverseMove
 {
     public byte en_passent = byte.MaxValue, fifty_move_rule = 0, king_changes = byte.MaxValue, rook_changes = byte.MaxValue, moved_piece_idx = 0, removed_piece_idx = 0;
     public int[,] moved_pieces = new int[2, 2], removed_pieces = new int[2, 2];

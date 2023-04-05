@@ -28,7 +28,7 @@ class Training
     public int GameNumber = 1;
     string CurrentNetName = "ValueNet.nnue", logFile = "";
     public Thread[] Playing;
-    position StartingPosition = new position();
+    Position StartingPosition = new Position();
     public int gameLength;
     int WinWhite = 0, WinBlack = 0, AmountofGames = 0, FinishedGames = 0, nodeCount, TrainingSteps = 0, PlayingLength = 0, TournamentValues = 0, TournamentGameAmount = 0, gamecounter = 0, bufferSize = 0;
     public int Currentphase = 0;
@@ -55,7 +55,7 @@ class Training
 
     int ThreadFinished = 0;
 
-    public Training(position Position, string EvalFileName, int BufferSize, int GameLength, int NodeCount, float LearningCoefficient, int ThreadAmount, float Momentum, int batch_size, float WinToEvalCoefficient, bool Play, string LogFile , int depthPly)
+    public Training(Position Position, string EvalFileName, int BufferSize, int GameLength, int NodeCount, float LearningCoefficient, int ThreadAmount, float Momentum, int batch_size, float WinToEvalCoefficient, bool Play, string LogFile , int depthPly)
     {
         //Set the starting Position
         StartingPosition = Position;
@@ -662,17 +662,17 @@ class Training
         TrainingPosition Position = new TrainingPosition();
         bool NewStart = true;
         bool Work = true;
-        position Board = new position();
+        Position Board = new Position();
         int Length = 0;
         int drawn_positions = 0;
         semaphoreEveryone.WaitOne();
         int GameLength = gameLength;
         int NodeCount = nodeCount;
         int depthPly = depthply;
-        position StartBoard = new position();
+        Position StartBoard = new Position();
         StartBoard = StartingPosition.copy();
         ulong key = treesearch.alphaBeta.hash.hash_position(StartBoard);
-        reverse_move undo_move = new reverse_move();
+        ReverseMove undo_move = new ReverseMove();
         int[] movelist = new int[214];
         semaphoreEveryone.Release();
 

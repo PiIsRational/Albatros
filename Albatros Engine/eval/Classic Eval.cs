@@ -69,7 +69,7 @@ class Classic_Eval
         }
         psqt = null;
     }
-    public int pesto_eval(position board)
+    public int pesto_eval(Position board)
     {
         int MiddleGameValue = 0;
         int EndGameValue = 0;
