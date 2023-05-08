@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Threading;
-using System.Collections.Generic;
-using System.IO;
-using System.Windows.Input;
 
 
 class Game
@@ -36,7 +33,7 @@ class Game
     //Other Parameters
     public float c_puct = 10;
     public bool IsPlaying = false;
-    public bool NNUE = false;
+    public bool NNUE = true;
     public int ThreadCount = 5;
     public int HashSize = 18;
     public bool USE_MCTS = false;
