@@ -26,9 +26,9 @@ class movegen
     standart_chess chess_stuff = new standart_chess();
     int[,] start_rook_square = new int[2, 2] { { 56, 63 }, { 0, 7 } };
     public bool illegal_position = false;
-    public bool non_pawn_material = false;
+    public bool nonPawnMaterial = false;
     bool reset_fifty_move_counter = false;
-    public int move_idx = 0;
+    public int moveIdx = 0;
     public movegen()
     {
         init_knight_move();
@@ -42,7 +42,7 @@ class movegen
         movelist = generate_movelist(board, movelist);
 
         //loop through each move
-        for (int i = 0; i < move_idx; i++)
+        for (int i = 0; i < moveIdx; i++)
         {
             if (illegality_check_neccessaray(movelist[i], in_check, board))
             {
@@ -52,8 +52,8 @@ class movegen
                 //look if the position is illegal
                 if (check(board, true))
                 {
-                    move_idx--;
-                    movelist[i] = movelist[move_idx];
+                    moveIdx--;
+                    movelist[i] = movelist[moveIdx];
                     i--;
                 }
                 else
@@ -80,8 +80,8 @@ class movegen
     }
     public int[] generate_movelist(Position board, int[] movelist)
     {
-        move_idx = 0;
-        non_pawn_material = false;
+        moveIdx = 0;
+        nonPawnMaterial = false;
         //loop through each piece with the current color
         for (byte i = 0; i < 64; i++)
         {
@@ -95,23 +95,23 @@ class movegen
                         movelist = pawn_move(movelist, board, i);
                         break;
                     case standart_chess.knight:
-                        non_pawn_material = true;
+                        nonPawnMaterial = true;
                         movelist = knight_move(movelist, board, i);
                         break;
                     case standart_chess.bishop:
-                        non_pawn_material = true;
+                        nonPawnMaterial = true;
                         movelist = sliding_piece_move(movelist, board, i, bishop_table);
                         break;
                     case standart_chess.rook:
-                        non_pawn_material = true;
+                        nonPawnMaterial = true;
                         movelist = sliding_piece_move(movelist, board, i, rook_table);
                         break;
                     case standart_chess.queen:
-                        non_pawn_material = true;
+                        nonPawnMaterial = true;
                         movelist = sliding_piece_move(sliding_piece_move(movelist, board, i, bishop_table), board, i, rook_table);
                         break;
                     case standart_chess.king:
-                        non_pawn_material = true;
+                        nonPawnMaterial = true;
                         movelist = king_move(movelist, board, i);
                         break;
                 }
@@ -121,7 +121,7 @@ class movegen
     }
     public int[] generate_capture_list(Position board, int[] movelist)
     {
-        move_idx = 0;
+        moveIdx = 0;
         //loop through each piece with the current color
         for (byte i = 0; i < 64; i++)
         {
@@ -154,13 +154,13 @@ class movegen
         }
         return movelist;
     }
-    public int[] legal_move_generator(Position board, bool in_check, ReverseMove undo_move, int[] movelist)
+    public int[] LegalMoveGenerator(Position board, bool in_check, ReverseMove undo_move, int[] movelist)
     {
         //generate pseudolegal_movelist
         int[] first_movelist = generate_movelist(board, movelist);
         
         //loop through each move
-        for (int i = 0; i < move_idx; i++)
+        for (int i = 0; i < moveIdx; i++)
         {
             if (illegality_check_neccessaray(first_movelist[i], in_check, board))
             {
@@ -170,8 +170,8 @@ class movegen
                 //look if the position is illegal
                 if (check(board, true))
                 {
-                    move_idx--;
-                    first_movelist[i] = first_movelist[move_idx];
+                    moveIdx--;
+                    first_movelist[i] = first_movelist[moveIdx];
                     i--;
                 }
 
@@ -181,13 +181,13 @@ class movegen
         }
         return first_movelist;
     }
-    public int[] legal_capture_generator(Position board, bool in_check, ReverseMove undo_move, int[] movelist)
+    public int[] LegalCaptureGenerator(Position board, bool in_check, ReverseMove undo_move, int[] movelist)
     {
         //generate pseudolegal_movelist
         int[] first_movelist = generate_capture_list(board, movelist);
 
         //loop through each move
-        for (int i = 0; i < move_idx; i++)
+        for (int i = 0; i < moveIdx; i++)
         {
             if (illegality_check_neccessaray(first_movelist[i], in_check, board))
             {
@@ -197,8 +197,8 @@ class movegen
                 //look if the position is illegal
                 if (check(board, true))
                 {
-                    move_idx--;
-                    first_movelist[i] = first_movelist[move_idx];
+                    moveIdx--;
+                    first_movelist[i] = first_movelist[moveIdx];
                     i--;
                 }
 
@@ -508,12 +508,12 @@ class movegen
             undo_move.king_changes = byte.MaxValue;
             undo_move.moved_piece_idx = 0;
             undo_move.removed_piece_idx = 0;
-            undo_move.fifty_move_rule = (byte)board.fifty_move_rule;
+            undo_move.fifty_move_rule = (byte)board.fiftyMoveRule;
             undo_move.en_passent = board.en_passent_square;
         }
 
         //look for en passent
-        if (board.en_passent_square != standart_chess.no_square && other != standart_chess.double_pawn_move)
+        if (board.en_passent_square != standart_chess.no_square && other != standart_chess.doublePawnMove)
             ep_legal = true;
 
         //reset rook has moved for castling
@@ -538,15 +538,15 @@ class movegen
         switch (piece)
         {
             case standart_chess.pawn:
-                board.fifty_move_rule = 0;
+                board.fiftyMoveRule = 0;
                 board = pawn_execute_move(board, from, to, other, generate_reverse_move, undo_move);
                 break;
             case standart_chess.king:
-                board.fifty_move_rule++;
+                board.fiftyMoveRule++;
                 board = king_execute_move(board, from, to, other, generate_reverse_move, undo_move);
                 break;
             default:
-                board.fifty_move_rule++;
+                board.fiftyMoveRule++;
                 board = normal_piece_execute_move(board, from, to, generate_reverse_move, undo_move);
                 break;
         }
@@ -556,7 +556,7 @@ class movegen
 
         if (reset_fifty_move_counter)
         {
-            board.fifty_move_rule = 0;
+            board.fiftyMoveRule = 0;
             reset_fifty_move_counter = false;
         }
 
@@ -586,7 +586,7 @@ class movegen
     {
         board.color = (byte)(board.color ^ 1);
         board.en_passent_square = move.en_passent;
-        board.fifty_move_rule = move.fifty_move_rule;
+        board.fiftyMoveRule = move.fifty_move_rule;
         if (move.king_changes != byte.MaxValue)
             board.king_not_moved[move.king_changes] = true;
         if (move.rook_changes != byte.MaxValue)
@@ -649,7 +649,7 @@ class movegen
         {
             switch (other)
             {
-                case standart_chess.double_pawn_move:
+                case standart_chess.doublePawnMove:
                     board.en_passent_square = (byte)((from + to) / 2);
                     break;
                 case standart_chess.castle_or_en_passent:
@@ -832,14 +832,14 @@ class movegen
         {
             for (byte i = standart_chess.knight_promotion; i < standart_chess.queen_promotion + 1; i++)
             {
-                movelist[move_idx] = move_x_to_y(from, to, i);
-                move_idx++;
+                movelist[moveIdx] = move_x_to_y(from, to, i);
+                moveIdx++;
             }
         }
         else
         {
-            movelist[move_idx] = move_x_to_y(from, to, 0);
-            move_idx++;
+            movelist[moveIdx] = move_x_to_y(from, to, 0);
+            moveIdx++;
         }
 
         return movelist;
@@ -861,8 +861,8 @@ class movegen
             //double move
             if (y + 5 * board.color == 6 && board.board[new_square + y_dir] == standart_chess.no_piece)
             {
-                movelist[move_idx] = move_x_to_y(square, (byte)(new_square + y_dir), standart_chess.double_pawn_move);
-                move_idx++;
+                movelist[moveIdx] = move_x_to_y(square, (byte)(new_square + y_dir), standart_chess.doublePawnMove);
+                moveIdx++;
             }
         }
 
@@ -878,8 +878,8 @@ class movegen
             y + y_dir / iny == chess_stuff.get_y_from_square(board.en_passent_square) &&
             Math.Abs(chess_stuff.get_x_from_square(board.en_passent_square) - x) == 1)
         {
-            movelist[move_idx] = move_x_to_y(square, board.en_passent_square, standart_chess.castle_or_en_passent);
-            move_idx++;
+            movelist[moveIdx] = move_x_to_y(square, board.en_passent_square, standart_chess.castle_or_en_passent);
+            moveIdx++;
         }
 
         return movelist;
@@ -905,8 +905,8 @@ class movegen
             y + y_dir / iny == chess_stuff.get_y_from_square(board.en_passent_square) &&
             Math.Abs(chess_stuff.get_x_from_square(board.en_passent_square) - x) == 1)
         {
-            movelist[move_idx] = move_x_to_y(square, board.en_passent_square, standart_chess.castle_or_en_passent);
-            move_idx++;
+            movelist[moveIdx] = move_x_to_y(square, board.en_passent_square, standart_chess.castle_or_en_passent);
+            moveIdx++;
         }
 
         return movelist;
@@ -979,8 +979,8 @@ class movegen
 
             if (board.boards[board.color, new_square] == standart_chess.no_piece)
             {
-                movelist[move_idx] = move_x_to_y(square, new_square, standart_chess.no_promotion);
-                move_idx++;
+                movelist[moveIdx] = move_x_to_y(square, new_square, standart_chess.no_promotion);
+                moveIdx++;
             }
         }
         return movelist;
@@ -994,8 +994,8 @@ class movegen
 
             if (board.boards[board.color ^ 1, new_square] != standart_chess.no_piece)
             {
-                movelist[move_idx] = move_x_to_y(square, new_square, standart_chess.no_promotion);
-                move_idx++;
+                movelist[moveIdx] = move_x_to_y(square, new_square, standart_chess.no_promotion);
+                moveIdx++;
             }
         }
         return movelist;
@@ -1009,8 +1009,8 @@ class movegen
             byte new_square = possible_squares[i];
             if (board.boards[board.color, new_square] == standart_chess.no_piece)
             {
-                movelist[move_idx] = move_x_to_y(square, new_square, standart_chess.no_promotion);
-                move_idx++;
+                movelist[moveIdx] = move_x_to_y(square, new_square, standart_chess.no_promotion);
+                moveIdx++;
             }
         }
 
@@ -1021,14 +1021,14 @@ class movegen
             //queenside castling
             if (board.rook_not_moved[(board.color << 1) ^ 0] && board.board[square - 1] == standart_chess.no_piece && board.board[square - 2] == standart_chess.no_piece && board.board[square - 3] == standart_chess.no_piece)
             {
-                movelist[move_idx] = move_x_to_y(square, (byte)(square - 2), standart_chess.castle_or_en_passent);
-                move_idx++;
+                movelist[moveIdx] = move_x_to_y(square, (byte)(square - 2), standart_chess.castle_or_en_passent);
+                moveIdx++;
             }
             //kingside castling
             if (board.rook_not_moved[(board.color << 1) ^ 1] && board.board[square + 1] == standart_chess.no_piece && board.board[square + 2] == standart_chess.no_piece)
             {
-                movelist[move_idx] = move_x_to_y(square, (byte)(square + 2), standart_chess.castle_or_en_passent);
-                move_idx++;
+                movelist[moveIdx] = move_x_to_y(square, (byte)(square + 2), standart_chess.castle_or_en_passent);
+                moveIdx++;
             }
         }
 
@@ -1043,8 +1043,8 @@ class movegen
             byte new_square = possible_squares[i];
             if (board.boards[board.color ^ 1, new_square] != standart_chess.no_piece)
             {
-                movelist[move_idx] = move_x_to_y(square, new_square, standart_chess.no_promotion);
-                move_idx++;
+                movelist[moveIdx] = move_x_to_y(square, new_square, standart_chess.no_promotion);
+                moveIdx++;
             }
         }
 
@@ -1062,15 +1062,15 @@ class movegen
 
                 if (board.board[new_square] == standart_chess.no_piece)
                 {
-                    movelist[move_idx] = move_x_to_y(square, new_square, standart_chess.no_promotion);
-                    move_idx++;
+                    movelist[moveIdx] = move_x_to_y(square, new_square, standart_chess.no_promotion);
+                    moveIdx++;
                 }
                 else
                 {
                     if (board.boards[board.color, new_square] == standart_chess.no_piece)
                     {
-                        movelist[move_idx] = move_x_to_y(square, new_square, standart_chess.no_promotion);
-                        move_idx++;
+                        movelist[moveIdx] = move_x_to_y(square, new_square, standart_chess.no_promotion);
+                        moveIdx++;
                     }
 
                     break;
@@ -1094,8 +1094,8 @@ class movegen
                 { 
                 if (board.boards[board.color ^ 1, new_square] != standart_chess.no_piece)
                 {
-                    movelist[move_idx] = move_x_to_y(square, new_square, standart_chess.no_promotion);
-                    move_idx++;
+                    movelist[moveIdx] = move_x_to_y(square, new_square, standart_chess.no_promotion);
+                    moveIdx++;
                 }
                     break;
                 }

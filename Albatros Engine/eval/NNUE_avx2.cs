@@ -21,32 +21,33 @@ class NNUE_avx2
 
     //feature transformer
     FeatureTransformer transformer = new FeatureTransformer(768, TRANSFORMER_OUT_SIZE);
-    public const int TRANSFORMER_OUT_SIZE = 512;
+    public const int TRANSFORMER_OUT_SIZE = 256;
     //All the other Layers
     LinearLayer output = new LinearLayer(2 * TRANSFORMER_OUT_SIZE, 1);
     //other stuff
     Vector256<int> kOnes256 = new Vector256<int>();
     short[] initKOnes256 = new short[TRANSFORMER_OUT_SIZE];
 
-    // weights are between 2 and -2 ~ 2^9 and -2^9
-    const int weightScaling = 1024;
-    const int maxWeightSize = 2048;
-    // activations between 4 and -4 2^15 and -2^15
-    const int activationScaling = 8192;
+    // weights are between 2 and -2 (2^9 and -2^9)
+    const int WEIGHT_SCALING = 1024;
+    const int MAX_WEIGHT_SIZE = 2048;
 
+    // activations between 4 and -4 (2^15 and -2^15)
+    const int ACTIVATION_SCALING = 8192;
 
     //returns the piecetype of the halfkp encoding
     //piecetype[0] is for black and piecetype[1] is for white
     private static int[][] pieceEncoding = new int[2][];
+
     //Log2 of weigtscale
     const byte log2WeightScale = 10;
     standart stuff = new standart();
 
-    const int register_width = 8;
+    const int REGISTER_WIDTH = 8;
     //Size of the Feature Transformer Output size (16) divided by the register width (8)
-    const int NumberofChunks = TRANSFORMER_OUT_SIZE / register_width;
+    const int NUMBER_OF_CHUNKS = TRANSFORMER_OUT_SIZE / REGISTER_WIDTH;
 
-    Vector256<int>[] registers = new Vector256<int>[NumberofChunks];
+    Vector256<int>[] registers = new Vector256<int>[NUMBER_OF_CHUNKS];
 
     public NNUE_avx2(bool LoadNet)
     {
@@ -151,7 +152,7 @@ class NNUE_avx2
         netOutput = CalculateOutputValue(output, accReluOut);
 
         //return the Netoutput scaled back and as an integer
-        return (int)(netOutput * 1000 / (weightScaling * activationScaling));
+        return (int)(netOutput * 1000 / (WEIGHT_SCALING * ACTIVATION_SCALING));
     }
 
     public void updateAccFromMove(Position board, ReverseMove move, bool invert)
@@ -182,17 +183,16 @@ class NNUE_avx2
     //calculate accumulator values from start
     unsafe public Accumulator RefreshAcc(FeatureTransformer transformer, Accumulator acc, List<int>[] features, byte color)
     {
-        const int register_width = 8;
         //Size of the Feature Transformer Output size divided by the register width
-        const int NumberofChunks = TRANSFORMER_OUT_SIZE / register_width;
+        const int CHUNK_COUNT = TRANSFORMER_OUT_SIZE / REGISTER_WIDTH;
         //Generate the avx2 registers
-        Vector256<int>[] registers = new Vector256<int>[NumberofChunks];
+        Vector256<int>[] registers = new Vector256<int>[CHUNK_COUNT];
 
         //Load the bias into the registers
-        for (int i = 0; i < NumberofChunks; i++)
+        for (int i = 0; i < CHUNK_COUNT; i++)
         {
             //get the address of the bias
-            fixed (int* currentAddress = &transformer.bias[i * register_width]) 
+            fixed (int* currentAddress = &transformer.bias[i * REGISTER_WIDTH]) 
             {
                 //load this part of the register with the data of the address
                 registers[i] = Avx2.LoadVector256(currentAddress);
@@ -200,12 +200,12 @@ class NNUE_avx2
         }
 
         //Add the weights
-        foreach(int Place in features[color])
+        foreach(int place in features[color])
         {
-            for (int i = 0; i < NumberofChunks; i++)
+            for (int i = 0; i < CHUNK_COUNT; i++)
             {
                 //get the address of the weights
-                fixed (int* currentAddress = &transformer.weight[Place, i * register_width]) 
+                fixed (int* currentAddress = &transformer.weight[place, i * REGISTER_WIDTH]) 
                 {
                     //add the weights withe the register
                     registers[i] = Avx2.Add(registers[i], Avx2.LoadVector256(currentAddress));
@@ -214,10 +214,10 @@ class NNUE_avx2
         }
 
         //store the registers into the accumulator
-        for (int i = 0; i < NumberofChunks; i++)
+        for (int i = 0; i < CHUNK_COUNT; i++)
         {
             //get the address of the accumulator
-            fixed (int* currentAddress = &acc.Acc[color][i * register_width]) 
+            fixed (int* currentAddress = &acc.Acc[color][i * REGISTER_WIDTH]) 
             {
                 //store the register ath this address
                 Avx2.Store(currentAddress, registers[i]);
@@ -229,10 +229,10 @@ class NNUE_avx2
     unsafe public Accumulator UpdateAcc(FeatureTransformer transformer, Accumulator acc, List<int>[] addedFeatures, List<int>[] removedFeatures, byte color)
     {
         //Load the old accumulator into the registers
-        for (int i = 0; i < NumberofChunks; i++)
+        for (int i = 0; i < NUMBER_OF_CHUNKS; i++)
         {
             //get the address of the accumulator
-            fixed (int* currentAddress = &acc.Acc[color][i * register_width])
+            fixed (int* currentAddress = &acc.Acc[color][i * REGISTER_WIDTH])
             {
                 //load this part of the register with the data of the address
                 registers[i] = Avx2.LoadVector256(currentAddress);
@@ -242,10 +242,10 @@ class NNUE_avx2
         //Remove the old features 
         foreach (int Place in removedFeatures[color])
         {
-            for (int i = 0; i < NumberofChunks; i++)
+            for (int i = 0; i < NUMBER_OF_CHUNKS; i++)
             {
                 //get the address of the weights
-                fixed (int* currentAddress = &transformer.weight[Place, i * register_width])
+                fixed (int* currentAddress = &transformer.weight[Place, i * REGISTER_WIDTH])
                 {
                     //add the weights withe the register
                     registers[i] = Avx2.Subtract(registers[i], Avx2.LoadVector256(currentAddress));
@@ -256,10 +256,10 @@ class NNUE_avx2
         //Add the new features
         foreach (int Place in addedFeatures[color])
         {
-            for (int i = 0; i < NumberofChunks; i++)
+            for (int i = 0; i < NUMBER_OF_CHUNKS; i++)
             {
                 //get the address of the weights
-                fixed (int* currentAddress = &transformer.weight[Place, i * register_width])
+                fixed (int* currentAddress = &transformer.weight[Place, i * REGISTER_WIDTH])
                 {
                     //add the weights withe the register
                     registers[i] = Avx2.Add(registers[i], Avx2.LoadVector256(currentAddress));
@@ -268,10 +268,10 @@ class NNUE_avx2
         }
 
         //store the registers into the accumulator
-        for (int i = 0; i < NumberofChunks; i++)
+        for (int i = 0; i < NUMBER_OF_CHUNKS; i++)
         {
             //get the address of the accumulator
-            fixed (int* currentAddress = &acc.Acc[color][i * register_width])
+            fixed (int* currentAddress = &acc.Acc[color][i * REGISTER_WIDTH])
             {
                 //store the register ath this address
                 Avx2.Store(currentAddress, registers[i]);
@@ -513,13 +513,13 @@ class NNUE_avx2
 
         for (int i = 0; i < output.weight.Length; i++)
         {
-            output.weight[i] = MaxMinWeight(Convert.ToSingle(floats[index], nfi) * weightScaling);
+            output.weight[i] = MaxMinWeight(Convert.ToSingle(floats[index], nfi) * WEIGHT_SCALING);
             index++;
         }
 
         for (int i = 0; i < output.bias.Length; i++)
         {
-            output.bias[i] = MaxMinWeight(Convert.ToSingle(floats[index], nfi) * weightScaling) * activationScaling;
+            output.bias[i] = MaxMinWeight(Convert.ToSingle(floats[index], nfi) * WEIGHT_SCALING) * ACTIVATION_SCALING;
             index++;
         }
 
@@ -527,15 +527,14 @@ class NNUE_avx2
         {
             for (int j = 0; j < transformer.weight.GetLength(0); j++)
             {
-                transformer.weight[j, i] = MaxMinWeight(Convert.ToSingle(floats[index], nfi) * weightScaling) * activationScaling;
-
+                transformer.weight[j, i] = MaxMinWeight(Convert.ToSingle(floats[index], nfi) * WEIGHT_SCALING) * ACTIVATION_SCALING;
                 index++;
             }
         }
 
         for (int i = 0; i < transformer.bias.Length; i++)
         {
-            transformer.bias[i] = MaxMinWeight(Convert.ToSingle(floats[index], nfi) * weightScaling) * activationScaling;
+            transformer.bias[i] = MaxMinWeight(Convert.ToSingle(floats[index], nfi) * WEIGHT_SCALING) * ACTIVATION_SCALING;
             index++;
         }
 
@@ -606,10 +605,10 @@ class NNUE_avx2
 
     public short MaxMinWeight(float input)
     {
-        if (input >= maxWeightSize)
-            return maxWeightSize;
-        if (input <= -maxWeightSize)
-            return - maxWeightSize;
+        if (input >= MAX_WEIGHT_SIZE)
+            return MAX_WEIGHT_SIZE;
+        if (input <= -MAX_WEIGHT_SIZE)
+            return -MAX_WEIGHT_SIZE;
 
         return Convert.ToInt16(input);
     }

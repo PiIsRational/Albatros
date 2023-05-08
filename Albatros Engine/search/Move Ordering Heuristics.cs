@@ -17,19 +17,19 @@ class Move_Ordering_Heuristics
     //indexing goes [history type, color, piecetype previous move, to previous move][piectype current move, to current move]
     float[,,,][,] followup_and_counter_histories = new float[2, 2, 7, 64][,];
     //indexing goes [piecetype previous move, to previous move] = counter move
-    int[,] counter_moves = new int[15, 64];
-    public int tactical_move_counter = 0;
+    int[,] counterMoves = new int[15, 64];
+    public int tacticalMoveCounter = 0;
     public int[,] current_move = new int[byte.MaxValue + 1, 2];
     standart_chess chess_stuff = new standart_chess();
     public Move_Ordering_Heuristics()
     {
         initMVV();
-        reset_movesort();
+        resetMovesort();
     }
-    public void reset_movesort()
+    public void resetMovesort()
     {
         //reset counter moves
-        counter_moves = new int[15, 64];
+        counterMoves = new int[15, 64];
 
         //reset history 
         history = new float[2, 64, 64];
@@ -43,14 +43,14 @@ class Move_Ordering_Heuristics
         //reset killer moves
         killer_moves = new int[2, byte.MaxValue + 1];
     }
-    public move_and_eval_list evaluate_moves(Position board, int[] moves, int movelist_length, int ply, bool q_search, int tt_move, move_and_eval_list output)
+    public MoveList EvaluateMoves(Position board, int[] moves, int movelist_length, int ply, bool q_search, int tt_move, MoveList output)
     {
         float current_move_value;
         int last_move_to = int.MaxValue, move_to_follow_to = int.MaxValue;
         int last_move_piece = int.MaxValue, move_to_follow_piece = int.MaxValue;
         output.movelist = moves;
         output.eval_list = new float[movelist_length];
-        tactical_move_counter = 0;
+        tacticalMoveCounter = 0;
 
         if (ply - 1 >= 0)
         {
@@ -71,16 +71,16 @@ class Move_Ordering_Heuristics
             output.eval_list[i] = current_move_value;
         }
 
-        output.movelist_length = movelist_length;
+        output.Length = movelist_length;
 
         return output;
     }
-    public movepick pick_next_move(move_and_eval_list movelist)
+    public Movepick PickNextMove(MoveList movelist)
     {
         int best_place = 0;
         float best_score = -20000;
 
-        for (int i = 0; i < movelist.movelist_length; i++) 
+        for (int i = 0; i < movelist.Length; i++) 
         {
             if (movelist.eval_list[i] > best_score)
             {
@@ -89,23 +89,23 @@ class Move_Ordering_Heuristics
             }
         }
 
-        movepick output = new movepick();
-        movelist.movelist_length--;
+        Movepick output = new Movepick();
+        movelist.Length--;
         output.move = movelist.movelist[best_place];
-        movelist.movelist[best_place] = movelist.movelist[movelist.movelist_length];
+        movelist.movelist[best_place] = movelist.movelist[movelist.Length];
         output.eval = movelist.eval_list[best_place];
-        movelist.eval_list[best_place] = movelist.eval_list[movelist.movelist_length];
+        movelist.eval_list[best_place] = movelist.eval_list[movelist.Length];
 
         return output;
     }
     public float score_move(int move, int tt_move, Position board, int ply, int last_move_to, int last_move_piece, int move_to_follow_to, int move_to_follow_piece)
     {
-        float current_piece_value = 0;
+        float currentPieceValue = 0;
 
         //if transposition table move order it first
         if (move == tt_move)
         {
-            tactical_move_counter++;
+            tacticalMoveCounter++;
             return 40000;
         }
 
@@ -114,14 +114,14 @@ class Move_Ordering_Heuristics
         byte to = (byte)((move & 0b0000111111000000) >> 6);
         byte other = (byte)(move >> 12);
 
-        if (other < standart_chess.double_pawn_move)
+        if (other < standart_chess.doublePawnMove)
         {
-            current_piece_value = MVV_array[board.boards[board.color ^ 1, to]];
+            currentPieceValue = MVV_array[board.boards[board.color ^ 1, to]];
 
-            if (current_piece_value != 0)
+            if (currentPieceValue != 0)
             {
-                tactical_move_counter++;
-                return 10000 + current_piece_value + chistory[board.color, board.boards[board.color, from], board.boards[board.color ^ 1, to], to];
+                tacticalMoveCounter++;
+                return 10000 + currentPieceValue + chistory[board.color, board.boards[board.color, from], board.boards[board.color ^ 1, to], to];
             }
         }
         else
@@ -131,30 +131,30 @@ class Move_Ordering_Heuristics
                 // en passent
                 case standart_chess.castle_or_en_passent:
                     if (chess_stuff.is_en_passent(move, board))
-                        current_piece_value = MVV_array[standart_chess.pawn];
+                        currentPieceValue = MVV_array[standart_chess.pawn];
                     break;
                 // Knight promotion
                 case standart_chess.knight_promotion:
-                    current_piece_value = MVV_array[standart_chess.knight];
+                    currentPieceValue = MVV_array[standart_chess.knight];
                     break;
                 // Bishop promotion
                 case standart_chess.bishop_promotion:
-                    current_piece_value = MVV_array[standart_chess.bishop];
+                    currentPieceValue = MVV_array[standart_chess.bishop];
                     break;
                 // Queen promotion
                 case standart_chess.queen_promotion:
-                    current_piece_value = MVV_array[standart_chess.queen];
+                    currentPieceValue = MVV_array[standart_chess.queen];
                     break;
                 // Rook promotion
                 case standart_chess.rook_promotion:
-                    current_piece_value = MVV_array[standart_chess.rook];
+                    currentPieceValue = MVV_array[standart_chess.rook];
                     break;
             }
 
-            if (current_piece_value != 0)
+            if (currentPieceValue != 0)
             {
-                tactical_move_counter++;
-                return 10000 + current_piece_value;
+                tacticalMoveCounter++;
+                return 10000 + currentPieceValue;
             }
         }
 
@@ -165,7 +165,7 @@ class Move_Ordering_Heuristics
             return 5000;
 
         //counter moves
-        if (last_move_to != int.MaxValue && counter_moves[last_move_piece, last_move_to] == move + 1)
+        if (last_move_to != int.MaxValue && counterMoves[last_move_piece, last_move_to] == move + 1)
             return 4000;
 
         /*history moves*/
@@ -182,7 +182,7 @@ class Move_Ordering_Heuristics
     public void update_counter_moves(Position board, int last_move_to, int last_move_piece, int move, int ply, bool[] null_move_pruning)
     {
         if (!null_move_pruning[ply - 1] && last_move_to != int.MaxValue)
-            counter_moves[last_move_piece, last_move_to] = move + 1;
+            counterMoves[last_move_piece, last_move_to] = move + 1;
     }
     public void add_current_move(int move, Position board, int ply)
     {
@@ -263,9 +263,7 @@ class Move_Ordering_Heuristics
         byte to = (byte)((move & 0b0000111111000000) >> 6);
 
         fixed (float* place = &chistory[board.color, board.boards[board.color, from], board.boards[board.color ^ 1, to], to])
-        {
             *place = history_score_update(*place, bonus);
-        }
     }
     public float history_score_update_(float current_score, float margin)
     {
@@ -316,13 +314,13 @@ class Move_Ordering_Heuristics
         return piece_value;
     }
 }
-class move_and_eval_list
+class MoveList
 {
     public int[] movelist;
     public float[] eval_list;
-    public int movelist_length;
+    public int Length;
 }
-class movepick
+class Movepick
 {
     public int move;
     public float eval;

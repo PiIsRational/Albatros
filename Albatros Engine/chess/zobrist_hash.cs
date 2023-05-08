@@ -74,7 +74,7 @@ class zobrist_hash
 
         return output;
     }
-    public ulong update_position_hash_after_move(Position board, ReverseMove unmake_move, ulong hash)
+    public ulong UpdateHashAfterMove(Position board, ReverseMove unmake_move, ulong hash)
     {
         if (unmake_move.king_changes != byte.MaxValue || unmake_move.rook_changes != byte.MaxValue)
             return hash_position(board);

@@ -22,7 +22,7 @@ class standart_chess
 
     //promotions and other stuff
     public const byte no_promotion = 0;
-    public const byte double_pawn_move = 1;
+    public const byte doublePawnMove = 1;
     public const byte castle_or_en_passent = 2;
     public const byte knight_promotion = 3;
     public const byte bishop_promotion = 4;
@@ -376,7 +376,7 @@ class standart_chess
         else
             fen_output += " - ";
 
-        fen_output += board.fifty_move_rule + " 0";
+        fen_output += board.fiftyMoveRule + " 0";
 
         return fen_output;
     }
@@ -407,7 +407,7 @@ class standart_chess
         }
         return false;
     }
-    public bool non_mate_window(int alpha, int beta)
+    public bool NonMateWindow(int alpha, int beta)
     {
         return alpha > -mate_value && beta < mate_value;
     }

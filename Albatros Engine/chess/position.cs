@@ -23,7 +23,7 @@ class Position
     //amount of  pieces in the piece square list indexed by piecetype
     public byte[] piececount = new byte[15];
 
-    public byte fifty_move_rule = 0;
+    public byte fiftyMoveRule = 0;
 
     //if the kings and rooks can castle
     //it is castle[color, king/queenside]
@@ -63,7 +63,7 @@ class Position
             }
         }
         Array.Copy(piececount, output.piececount, piececount.Length);
-        output.fifty_move_rule = fifty_move_rule;
+        output.fiftyMoveRule = fiftyMoveRule;
         Array.Copy(rook_not_moved, output.rook_not_moved, rook_not_moved.Length);
         Array.Copy(king_not_moved, output.king_not_moved, king_not_moved.Length);
         return output;
