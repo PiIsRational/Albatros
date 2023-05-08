@@ -19,14 +19,14 @@ class AlphaBeta
     public NNUE_avx2 valueNet;
     public movegen moveGenerator = new movegen();
     public Classic_Eval eval = new Classic_Eval();
-    public Move_Ordering_Heuristics move_order = new Move_Ordering_Heuristics();
+    public Move_Ordering_Heuristics moveOrder = new Move_Ordering_Heuristics();
     Random random = new Random(59675943);
-    int Nodecount = 0, max_ply = 0, move_counter = 0, root_depth = 1;
+    int nodecount = 0, max_ply = 0, move_counter = 0, root_depth = 1;
     int[,,] move_reductions = new int[2, 64, 64];
     bool[] null_move_pruning = new bool[byte.MaxValue + 1];
-    public const int mate_value = 60000;
-    public const int illegal_position_value = 80000;
-    public const int max_depth = 127;
+    public const int mateValue = 60000;
+    public const int ILLEGAL_POSITION_VALUE = 80000;
+    public const int maxDepth = 127;
 
     int[] node_values = new int[byte.MaxValue + 1];
     public long time_to_use = 0;
@@ -48,7 +48,7 @@ class AlphaBeta
         time_to_use = Milliseconds;
         Thread timer = new Thread(ThreadTimer);
         timer.Start();
-        return iterative_deepening(InputBoard, max_depth, NNUE_avx2, change_time);
+        return iterative_deepening(InputBoard, maxDepth, NNUE_avx2, change_time);
     }
     public void ThreadTimer()
     {
@@ -72,7 +72,7 @@ class AlphaBeta
     public int iterative_deepening(Position board, int depth, bool useNNUE, bool change_time)
     {
         //initialize the variables
-        move_order.reset_movesort();
+        moveOrder.resetMovesort();
         int[] movelist = new int[218];
         ReverseMove undo_move = new ReverseMove();
         stop = false;
@@ -80,12 +80,12 @@ class AlphaBeta
         List<int[]> last_best_moves = new List<int[]>();
         bool search_pv = true, in_check = moveGenerator.check(board, false), gives_check = false;
         int Output = 0, new_depth = 0;
-        movelist = moveGenerator.legal_move_generator(board, in_check, undo_move, movelist);
-        int movelist_length = moveGenerator.move_idx;
-        pv_out current_variation = new pv_out(), pv = new pv_out();
-        int alpha = -illegal_position_value, delta_a = 0, delta_b = 0, window_a = 0, window_b = 0, last_best = 0, last_last_best = 0, currentScore = 0;
+        movelist = moveGenerator.LegalMoveGenerator(board, in_check, undo_move, movelist);
+        int movelist_length = moveGenerator.moveIdx;
+        PvOut current_variation = new PvOut(), pv = new PvOut();
+        int alpha = -ILLEGAL_POSITION_VALUE, delta_a = 0, delta_b = 0, window_a = 0, window_b = 0, last_best = 0, last_last_best = 0, currentScore = 0;
         bool pruning_is_safe = false;
-        move_and_eval_list move_list = new move_and_eval_list();
+        MoveList move_list = new MoveList();
         time_acces.WaitOne();
         long theoretical_time_usage = time_to_use;
         time_acces.Release();
@@ -105,20 +105,20 @@ class AlphaBeta
             currentScore = valueNet.AccToOutput(valueNet.acc, board.color);
         }
         else
-            currentScore = eval.pesto_eval(board);
+            currentScore = eval.PestoEval(board);
 
-        pruning_is_safe = !in_check && moveGenerator.non_pawn_material;
+        pruning_is_safe = !in_check && moveGenerator.nonPawnMaterial;
 
-        node_values[0] = !in_check ? currentScore : illegal_position_value;
+        node_values[0] = !in_check ? currentScore : ILLEGAL_POSITION_VALUE;
 
         for (int current_depth = 1; current_depth <= depth; current_depth++)
         {
             depth_acces.WaitOne();
             root_depth = current_depth;
             depth_acces.Release();
-            node_values[0] = !in_check ? (IsvalidEntry(key) == 1 ? GetInfoFromEntry(key).Score : currentScore) : illegal_position_value;
+            node_values[0] = !in_check ? (IsvalidEntry(key) == 1 ? GetInfoFromEntry(key).score : currentScore) : ILLEGAL_POSITION_VALUE;
 
-            if (current_depth >= 4 && Math.Abs(last_last_best) < mate_value)
+            if (current_depth >= 4 && Math.Abs(last_last_best) < mateValue)
             {
                 //if the current depth is larger then 2 reajust the window
                 delta_a = -125;
@@ -129,8 +129,8 @@ class AlphaBeta
             }
             else
             {
-                window_a = -illegal_position_value;
-                window_b = illegal_position_value;
+                window_a = -ILLEGAL_POSITION_VALUE;
+                window_b = ILLEGAL_POSITION_VALUE;
                 alpha = window_a;
             }
 
@@ -138,21 +138,21 @@ class AlphaBeta
             {
                 search_pv = true;
 
-                move_list = move_order.evaluate_moves(board, stuff.copy_int_array(movelist), movelist_length, 0, false, IsvalidEntry(key) == 1 ? GetInfoFromEntry(key).BestMove : 0, move_list);
-                while (move_list.movelist_length > 0)
+                move_list = moveOrder.EvaluateMoves(board, stuff.copy_int_array(movelist), movelist_length, 0, false, IsvalidEntry(key) == 1 ? GetInfoFromEntry(key).BestMove : 0, move_list);
+                while (move_list.Length > 0)
                 {
 
-                    movepick current_move = move_order.pick_next_move(move_list);
+                    Movepick current_move = moveOrder.PickNextMove(move_list);
                     //Debug.Assert(!stuff.int_array_equal(current_move.move, new int[] { 4, 5, 4, 4 }) || current_depth != 3);
 
-                    current_variation = new pv_out();
-                    move_order.add_current_move(current_move.move, board, 0);
+                    current_variation = new PvOut();
+                    moveOrder.add_current_move(current_move.move, board, 0);
 
                     //play the move
-                    board = make_move(board, current_move.move, useNNUE, undo_move);
+                    board = MakeMove(board, current_move.move, useNNUE, undo_move);
 
                     //get the hash key
-                    ulong new_key = hash.update_position_hash_after_move(board, undo_move, key);
+                    ulong new_key = hash.UpdateHashAfterMove(board, undo_move, key);
 
                     //calculate if the current move gives check
                     gives_check = moveGenerator.fast_check(board, current_move.move);
@@ -167,7 +167,7 @@ class AlphaBeta
                     if (matingValue != 2)
                     {
                         //if the position is a terminal node the value for the node is set to the mating value from the perspective of the current color
-                        current_variation.value = matingValue == 0 ? 0 : mate_value + max_depth;
+                        current_variation.value = matingValue == 0 ? 0 : mateValue + maxDepth;
                         current_variation.principalVariation.Insert(0, current_move.move);
                     }
                     else
@@ -175,7 +175,7 @@ class AlphaBeta
                         //if the current depth is 1 perform a quiescent search
                         if (new_depth <= 0)
                         {
-                            current_variation.value = -quiescence_search(board, -window_b, -alpha, useNNUE, 0, 1, new_key, gives_check);
+                            current_variation.value = -QuiescenceSearch(board, -window_b, -alpha, useNNUE, 0, 1, new_key, gives_check);
 
                             current_variation.principalVariation.Add(current_move.move);
                         }
@@ -204,14 +204,14 @@ class AlphaBeta
                     }
 
                     //undo the move
-                    board = unmake_move(board, undo_move, useNNUE);
+                    board = UnmakeMove(board, undo_move, useNNUE);
 
                     if (alpha < current_variation.value)
                     {
                         if (chess_stuff.is_capture(current_move.move, board))
-                            move_order.update_history_move(board, current_move.move, 0, 0, 0, 0, Math.Min((float)(depth * depth) / 10f, 40), 0);
+                            moveOrder.update_history_move(board, current_move.move, 0, 0, 0, 0, Math.Min((float)(depth * depth) / 10f, 40), 0);
                         else
-                            move_order.update_chistory_move(board, current_move.move, Math.Min((float)(depth * depth) / 10f, 40));
+                            moveOrder.update_chistory_move(board, current_move.move, Math.Min((float)(depth * depth) / 10f, 40));
 
                         alpha = current_variation.value;
                         pv = current_variation;
@@ -263,10 +263,10 @@ class AlphaBeta
             //after a finished search return the main informations 
             if (!stop)
             {
-                if (Math.Abs(alpha) < mate_value)
-                    Console.WriteLine("info depth {2} seldepth {3} nodes {1} nps {4} time {5} score cp {0} pv {6}", alpha / 10, Nodecount, current_depth, current_depth + max_ply, (int)(((float)(Nodecount) * 1000) / (sw.ElapsedMilliseconds > 0 ? (float)sw.ElapsedMilliseconds : 1)), (int)(sw.ElapsedMilliseconds), variation_to_string(pv.principalVariation));
+                if (Math.Abs(alpha) < mateValue)
+                    Console.WriteLine("info depth {2} seldepth {3} nodes {1} nps {4} time {5} score cp {0} pv {6}", alpha / 10, nodecount, current_depth, max_ply + 1, (int)(((float)(nodecount) * 1000) / (sw.ElapsedMilliseconds > 0 ? (float)sw.ElapsedMilliseconds : 1)), (int)(sw.ElapsedMilliseconds), variation_to_string(pv.principalVariation));
                 else
-                    Console.WriteLine("info depth {2} seldepth {3} nodes {1} nps {4} time {5} score mate {0} pv {6}", -(alpha - (alpha / Math.Abs(alpha)) * (max_depth + mate_value + 1)) / 2, Nodecount, current_depth, current_depth + max_ply, (int)(((float)(Nodecount) * 1000) / (sw.ElapsedMilliseconds > 0 ? (float)sw.ElapsedMilliseconds : 1)), (int)(sw.ElapsedMilliseconds), variation_to_string(pv.principalVariation));
+                    Console.WriteLine("info depth {2} seldepth {3} nodes {1} nps {4} time {5} score mate {0} pv {6}", -(alpha - (alpha / Math.Abs(alpha)) * (maxDepth + mateValue + 1)) / 2, nodecount, current_depth, current_depth + max_ply, (int)(((float)(nodecount) * 1000) / (sw.ElapsedMilliseconds > 0 ? (float)sw.ElapsedMilliseconds : 1)), (int)(sw.ElapsedMilliseconds), variation_to_string(pv.principalVariation));
             }
 
             //reset various variables
@@ -282,7 +282,7 @@ class AlphaBeta
         }
 
         //reset the nodecount
-        Nodecount = 0;
+        nodecount = 0;
 
         //stop the stopwatch
         sw.Stop();
@@ -291,22 +291,22 @@ class AlphaBeta
         //return the best move
         return Output;
     }
-    public pv_out principal_variation_search(Position board, int depth, int ply, int alpha, int beta, bool in_check, bool NNUE_avx2, ulong key)
+    public PvOut principal_variation_search(Position board, int depth, int ply, int alpha, int beta, bool in_check, bool NNUE_avx2, ulong key)
     {
         //define the variables
         bool search_pv = true, gives_check = false, two_fold_repetition = false, improving = true, full_depth_search = false, fail_low = false, pruning_is_safe = false;
         int BestMove = -1;
         ReverseMove undo_move = new ReverseMove();
         int movecount = 0, interesting_move_count, new_depth;
-        int static_score = -illegal_position_value, score = -illegal_position_value, decrease = 0, improvement = 0;
-        pv_out Output = new pv_out(), current_variation;
+        int static_score = -ILLEGAL_POSITION_VALUE, score = -ILLEGAL_POSITION_VALUE, decrease = 0, improvement = 0;
+        PvOut Output = new PvOut(), current_variation;
         Output.value = alpha;
         TTableEntry entry = new TTableEntry(0, 0, 0, false, false, false);
-        move_and_eval_list move_list = new move_and_eval_list();
+        MoveList move_list = new MoveList();
         int[] played_moves = new int[214];
         int played_move_idx = 0; 
 
-        if (board.fifty_move_rule == 100 || stop)
+        if (board.fiftyMoveRule == 100 || stop)
         {
             Output.value = 0;
             return Output;
@@ -332,18 +332,18 @@ class AlphaBeta
 
             if (KeyValid == 1)
             {
-                if (Math.Abs(entry.Score) >= mate_value)
-                    entry.Score -= entry.Score / Math.Abs(entry.Score) * ply;
+                if (Math.Abs(entry.score) >= mateValue)
+                    entry.score -= entry.score / Math.Abs(entry.score) * ply;
 
                 //if the position has the right depth return the value of the position
                 if (entry.depth >= depth)
                 {
-                    if (entry.Score >= beta && !entry.fail_low)
+                    if (entry.score >= beta && !entry.failLow)
                     {
                         Output.value = beta;
                         return Output;
                     }
-                    if (entry.Score <= alpha && !entry.fail_high)
+                    if (entry.score <= alpha && !entry.failHigh)
                     {
                         Output.value = alpha;
                         return Output;
@@ -352,9 +352,9 @@ class AlphaBeta
             }
         }
 
-        int[] moves = moveGenerator.legal_move_generator(board, in_check, undo_move, new int[214]);
-        int movelist_length = moveGenerator.move_idx;
-        int curr_node_count = Nodecount;
+        int[] moves = moveGenerator.LegalMoveGenerator(board, in_check, undo_move, new int[214]);
+        int movelist_length = moveGenerator.moveIdx;
+        int curr_node_count = nodecount;
 
         AddPositionToLookups(key);
 
@@ -363,18 +363,18 @@ class AlphaBeta
             if (NNUE_avx2)
                 static_score = valueNet.AccToOutput(valueNet.acc, board.color);
             else
-                static_score = eval.pesto_eval(board);
+                static_score = eval.PestoEval(board);
         }
 
         if (KeyValid == 1)
-            score = entry.Score;
+            score = entry.score;
         else
             score = static_score;
 
         /* update the value in the value array
          * if we are in check do not update the value*/
 
-        node_values[ply] = !in_check ? score : illegal_position_value;
+        node_values[ply] = !in_check ? score : ILLEGAL_POSITION_VALUE;
 
         //set the improving flag high if the current value is an improvement
         improvement = ply < 2 ? 0 : node_values[ply] - node_values[ply - 2];
@@ -386,16 +386,16 @@ class AlphaBeta
          */
 
         //sort the moves
-        move_list = move_order.evaluate_moves(board, moves, movelist_length, ply, false, KeyValid == 1 ? entry.BestMove : BestMove, move_list);
-        interesting_move_count = move_order.tactical_move_counter;
+        move_list = moveOrder.EvaluateMoves(board, moves, movelist_length, ply, false, KeyValid == 1 ? entry.BestMove : BestMove, move_list);
+        interesting_move_count = moveOrder.tacticalMoveCounter;
 
         pruning_is_safe = !in_check && root_depth > 3 &&
-                chess_stuff.non_mate_window(alpha, beta) &&
-                moveGenerator.non_pawn_material;
+                chess_stuff.NonMateWindow(alpha, beta) &&
+                moveGenerator.nonPawnMaterial;
 
-        while (move_list.movelist_length > 0)
+        while (move_list.Length > 0)
         {
-            movepick current_move = move_order.pick_next_move(move_list);
+            Movepick current_move = moveOrder.PickNextMove(move_list);
 
             //find futile moves
             if (movecount > 2 &&
@@ -424,13 +424,13 @@ class AlphaBeta
 
             movecount++;
 
-            current_variation = new pv_out();
-            move_order.add_current_move(current_move.move, board, ply);
+            current_variation = new PvOut();
+            moveOrder.add_current_move(current_move.move, board, ply);
 
             //play the move
-            board = make_move(board, current_move.move, NNUE_avx2, undo_move);
+            board = MakeMove(board, current_move.move, NNUE_avx2, undo_move);
 
-            ulong new_key = hash.update_position_hash_after_move(board, undo_move, key);
+            ulong new_key = hash.UpdateHashAfterMove(board, undo_move, key);
 
             //calculate if the current move gives check
             gives_check = moveGenerator.fast_check(board, current_move.move);
@@ -451,7 +451,7 @@ class AlphaBeta
             //if the current depth is 1 do a quiescent search
             if (new_depth <= 0)
             {
-                current_variation.value = -quiescence_search(board, -beta, -alpha, NNUE_avx2, 0, ply + 1, new_key, gives_check);
+                current_variation.value = -QuiescenceSearch(board, -beta, -alpha, NNUE_avx2, 0, ply + 1, new_key, gives_check);
                 current_variation.principalVariation.Add(current_move.move);
             }
             //else just call the function recursively
@@ -491,7 +491,7 @@ class AlphaBeta
 
                         current_variation.value = -zero_window_search(board, lmr_depth, ply + 1, -(alpha + 1), -alpha, gives_check, NNUE_avx2, new_key);
 
-                        if (current_variation.value > alpha && lmr_depth < new_depth && current_variation.value != illegal_position_value) 
+                        if (current_variation.value > alpha && lmr_depth < new_depth && current_variation.value != ILLEGAL_POSITION_VALUE) 
                             full_depth_search = true;
                     }
                     else
@@ -514,7 +514,7 @@ class AlphaBeta
             }
 
             //undo the move
-            board = unmake_move(board, undo_move, NNUE_avx2);
+            board = UnmakeMove(board, undo_move, NNUE_avx2);
             played_moves[played_move_idx] = current_move.move;
             played_move_idx++;
 
@@ -529,7 +529,7 @@ class AlphaBeta
                 if (alpha >= beta)
                 {
                     //store the killer move history moves and counter moves
-                    move_order.update_histories(board, current_move.move, played_moves, played_move_idx, null_move_pruning, depth, ply, true);
+                    moveOrder.update_histories(board, current_move.move, played_moves, played_move_idx, null_move_pruning, depth, ply, true);
 
                     //add the best move to the hash table if the current depth is greater than the depth of the entry or thre is no entry in the hash table
                     if (!stop && (KeyValid == -2 || entry.depth <= depth))
@@ -543,7 +543,7 @@ class AlphaBeta
                 }
 
                 //store the killer move history moves and counter moves
-                move_order.update_histories(board, current_move.move, played_moves, played_move_idx, null_move_pruning, depth, ply, false);
+                moveOrder.update_histories(board, current_move.move, played_moves, played_move_idx, null_move_pruning, depth, ply, false);
             }
 
         }
@@ -556,8 +556,8 @@ class AlphaBeta
             //mate
             if (in_check)
             {
-                Output.value = -(mate_value + max_depth - ply);
-                AddToTable(0, max_depth, Output.value, key, 0, 0);
+                Output.value = -(mateValue + maxDepth - ply);
+                AddToTable(0, maxDepth, Output.value, key, 0, 0);
                 Output.principalVariation = new List<int>();
                 return Output;
             }
@@ -565,7 +565,7 @@ class AlphaBeta
             else
             {
                 Output.value = 0;
-                AddToTable(0, max_depth, Output.value, key, 0, 0);
+                AddToTable(0, maxDepth, Output.value, key, 0, 0);
                 Output.principalVariation = new List<int>();
                 return Output;
             }
@@ -581,7 +581,7 @@ class AlphaBeta
 
             //add the best move to the hash table if the current depth is greater than the depth of the entry or thre is no entry in the hash table
             if (!stop && (KeyValid == -2 || entry.depth <= depth || !fail_low))
-                AddToTable(BestMove, depth, Math.Abs(alpha) > mate_value ? alpha + Math.Abs(alpha) / alpha * ply : alpha, key, 0, (byte)(fail_low ? 1 : 0));
+                AddToTable(BestMove, depth, Math.Abs(alpha) > mateValue ? alpha + Math.Abs(alpha) / alpha * ply : alpha, key, 0, (byte)(fail_low ? 1 : 0));
 
             //return the best score
             return Output;
@@ -590,18 +590,18 @@ class AlphaBeta
     public int zero_window_search(Position board, int depth, int ply, int alpha, int beta, bool in_check, bool NNUE_avx2, ulong key)
     {
         //define the variables
-        int current_score = 0, static_score = -illegal_position_value, score = -illegal_position_value, decrease = 0, improvement = 0;
+        int current_score = 0, static_score = -ILLEGAL_POSITION_VALUE, score = -ILLEGAL_POSITION_VALUE, decrease = 0, improvement = 0;
         byte othercolor = (byte)(board.color ^ 1);
         bool gives_check = false, two_fold_repetition = false, full_depth_search = false;
         int movecount = 0, interesting_move_count, new_depth = 0;
         ReverseMove undo_move = new ReverseMove();
-        bool improving = false, pruning_is_safe = false;
+        bool improving = false, pruningIsSafe = false;
         TTableEntry entry = new TTableEntry(0, 0, 0, false, false, false);
-        move_and_eval_list move_list = new move_and_eval_list();
+        MoveList move_list = new MoveList();
         int[] played_moves = new int[214];
         int played_move_idx = 0; 
 
-        if (board.fifty_move_rule == 100 || stop)
+        if (board.fiftyMoveRule == 100 || stop)
             return 0;
 
         //threefold repetition
@@ -621,43 +621,43 @@ class AlphaBeta
 
             if (KeyValid == 1)
             {
-                if (Math.Abs(entry.Score) >= mate_value)
-                    entry.Score -= entry.Score / Math.Abs(entry.Score) * ply;
+                if (Math.Abs(entry.score) >= mateValue)
+                    entry.score -= entry.score / Math.Abs(entry.score) * ply;
                 //if the position has the right depth we can use the value of the position
                 if (entry.depth >= depth)
                 {
                     //if the score is larger or equal to beta we can return beta
-                    if (entry.Score >= beta && !entry.fail_low)
+                    if (entry.score >= beta && !entry.failLow)
                         return beta;
                     //else if the score is certain and it is smaller then alpha we have an alpha cutoff
-                    if (entry.Score <= alpha && !entry.fail_high)
+                    if (entry.score <= alpha && !entry.failHigh)
                         return alpha;
                     if (entry.exact)
-                        return entry.Score;
+                        return entry.score;
                 }
             }
         }
 
-        int[] moves = moveGenerator.legal_move_generator(board, in_check, undo_move, new int[214]);
-        int movelist_length = moveGenerator.move_idx;
+        int[] moves = moveGenerator.LegalMoveGenerator(board, in_check, undo_move, new int[214]);
+        int movelist_length = moveGenerator.moveIdx;
 
         if (!in_check)
         {
             if (NNUE_avx2)
                 static_score = valueNet.AccToOutput(valueNet.acc, board.color);
             else
-                static_score = eval.pesto_eval(board);
+                static_score = eval.PestoEval(board);
         }
 
         if (KeyValid == 1)
-            score = entry.Score;
+            score = entry.score;
         else
             score = static_score;
 
         /* update the value in the value array
          * if we are in check do not update the value*/
 
-        node_values[ply] = !in_check ? score : illegal_position_value;
+        node_values[ply] = !in_check ? score : ILLEGAL_POSITION_VALUE;
 
         //set the improving flag high if the current value is an improvement
         improvement = ply < 2 ? 0 : node_values[ply] - node_values[ply - 2];
@@ -668,11 +668,11 @@ class AlphaBeta
          * and when the depth of the root is larger then 3
          */
 
-        pruning_is_safe = !in_check && root_depth > 3 &&
-            chess_stuff.non_mate_window(alpha, beta) &&
-            moveGenerator.non_pawn_material;
+        pruningIsSafe = !in_check && root_depth > 3 &&
+            chess_stuff.NonMateWindow(alpha, beta) &&
+            moveGenerator.nonPawnMaterial;
 
-        if (pruning_is_safe)
+        if (pruningIsSafe)
         {
             /*Razoring
              * 
@@ -683,9 +683,9 @@ class AlphaBeta
 
             if (depth < 4 &&
                 score + razoring_margin(depth, improving) < alpha &&
-                (KeyValid == 1 && !entry.fail_high))
+                (KeyValid == 1 && !entry.failHigh))
             {
-                int test_value = quiescence_search(board, alpha - 1, alpha, NNUE_avx2, 0, ply + 1, key, in_check);
+                int test_value = QuiescenceSearch(board, alpha - 1, alpha, NNUE_avx2, 0, ply + 1, key, in_check);
 
                 if (test_value < alpha)
                     return test_value;
@@ -694,7 +694,7 @@ class AlphaBeta
             //Reverse Futility Pruning
             if (depth < 7 &&
                 score - reverse_futility_pruning_margin(depth) >= beta &&
-                (KeyValid != 1 || !entry.fail_low))
+                (KeyValid != 1 || !entry.failLow))
                 return beta;
 
             /* Null Move Pruning
@@ -709,12 +709,11 @@ class AlphaBeta
              * 
              * else we want to avoid searching two null moves in a row
              */
-
             if (depth >= 3 &&
                 score >= beta &&
                 static_score >= beta &&
                 !null_move_pruning[ply - 1] &&
-                (KeyValid != 1 || !entry.fail_low))
+                (KeyValid != 1 || !entry.failLow))
             {
                 int nmp_score = 0;
 
@@ -730,7 +729,7 @@ class AlphaBeta
                 board = make_null_move(board, undo_move);
 
                 if (null_move_search_depth <= 0)
-                    nmp_score = -quiescence_search(board, -beta, -alpha, NNUE_avx2, 0, ply + 1, hash.update_null_move_hash(key, undo_move), false);
+                    nmp_score = -QuiescenceSearch(board, -beta, -alpha, NNUE_avx2, 0, ply + 1, hash.update_null_move_hash(key, undo_move), false);
                 else
                 {
                     //add the null move search to the table
@@ -755,19 +754,19 @@ class AlphaBeta
         }
 
         //sort the moves
-        move_list = move_order.evaluate_moves(board, moves, movelist_length, ply, false, entry.BestMove, move_list);
-        interesting_move_count = move_order.tactical_move_counter;
+        move_list = moveOrder.EvaluateMoves(board, moves, movelist_length, ply, false, entry.BestMove, move_list);
+        interesting_move_count = moveOrder.tacticalMoveCounter;
 
         AddPositionToLookups(key);
 
-        while (move_list.movelist_length > 0)
+        while (move_list.Length > 0)
         {
-            movepick current_move = move_order.pick_next_move(move_list);
+            Movepick current_move = moveOrder.PickNextMove(move_list);
 
             //find futile moves
             if (movecount > 2 &&
                 current_move.eval < 4000 &&
-                pruning_is_safe &&
+                pruningIsSafe &&
                 depth < 8)
             {
                 //late move pruning
@@ -783,6 +782,7 @@ class AlphaBeta
                     //futility pruning
                     if (static_score + extended_futility_pruning_margin(lmr_depth, true) < alpha)
                         break;
+
                     //history pruning
                     if (current_move.eval < history_pruning_margin(lmr_depth, improving))
                         break;
@@ -790,12 +790,12 @@ class AlphaBeta
 
             }
             movecount++;
-            move_order.add_current_move(current_move.move, board, ply);
+            moveOrder.add_current_move(current_move.move, board, ply);
 
             //play the move
-            board = make_move(board, current_move.move, NNUE_avx2, undo_move);
+            board = MakeMove(board, current_move.move, NNUE_avx2, undo_move);
 
-            ulong new_key = hash.update_position_hash_after_move(board, undo_move, key);
+            ulong new_key = hash.UpdateHashAfterMove(board, undo_move, key);
 
             //calculate if the current move gives check
             gives_check = moveGenerator.fast_check(board, current_move.move);
@@ -815,7 +815,7 @@ class AlphaBeta
 
             //if the current depth is 1 do a quiescent search
             if (new_depth <= 0)
-                current_score = -quiescence_search(board, -beta, -alpha, NNUE_avx2, 0, ply + 1, new_key, gives_check);
+                current_score = -QuiescenceSearch(board, -beta, -alpha, NNUE_avx2, 0, ply + 1, new_key, gives_check);
 
             //else just call the function recursively
             else
@@ -828,14 +828,11 @@ class AlphaBeta
 
                     //if we are improving or not decrease more or less
                     //decrease -= Math.Max(Math.Min(improvement / 500, 2), -2);
+
                     if (!improving) decrease += 1;
 
-                    //if the king is in check and the king moves
-                    /*if (in_check && (board[current_move.move[2], current_move.move[3]] & 0b00001110) == 0b110)
-                        decrease -= 1;
-
                     if (gives_check)
-                        decrease -= 1;*/
+                        decrease -= 1;
 
                     //at least a counter move
                     if (current_move.eval >= 4000)
@@ -865,7 +862,7 @@ class AlphaBeta
             }
 
             //undo the move
-            board = unmake_move(board, undo_move, NNUE_avx2);
+            board = UnmakeMove(board, undo_move, NNUE_avx2);
 
             played_moves[played_move_idx] = current_move.move;
             played_move_idx++;
@@ -874,7 +871,7 @@ class AlphaBeta
             if (current_score >= beta)
             {
                 //store the killer move history moves and counter moves
-                move_order.update_histories(board, current_move.move, played_moves, played_move_idx, null_move_pruning, depth, ply, true);
+                moveOrder.update_histories(board, current_move.move, played_moves, played_move_idx, null_move_pruning, depth, ply, true);
 
                 //add the best move to the hash table if the current depth is greater than the depth of the entry or thre is no entry in the hash table
                 if (!stop && (KeyValid == -2 || entry.depth <= depth))
@@ -894,13 +891,13 @@ class AlphaBeta
             //mate
             if (in_check)
             {
-                AddToTable(0, max_depth, -(mate_value + max_depth - ply), key, 0, 0);
-                return -(mate_value + max_depth - ply);
+                AddToTable(0, maxDepth, -(mateValue + maxDepth - ply), key, 0, 0);
+                return -(mateValue + maxDepth - ply);
             }
             //stalemate
             else
             {
-                AddToTable(0, max_depth, 0, key, 0, 0);
+                AddToTable(0, maxDepth, 0, key, 0, 0);
                 return 0;
             }
         }
@@ -908,13 +905,13 @@ class AlphaBeta
         {
             //add the best move to the hash table if there is no entry in the hash table
             if (!stop && (KeyValid == -2 || entry.depth <= depth))
-                AddToTable(played_moves[0], depth, Math.Abs(alpha) >= mate_value ? alpha + Math.Abs(alpha) / alpha * ply : alpha, key, 0, 1);
+                AddToTable(played_moves[0], depth, Math.Abs(alpha) >= mateValue ? alpha + Math.Abs(alpha) / alpha * ply : alpha, key, 0, 1);
 
             return alpha;
         }
 
     }
-    public int quiescence_search(Position board, int alpha, int beta, bool NNUE_avx2, int depth, int ply, ulong key, bool in_check)
+    public int QuiescenceSearch(Position board, int alpha, int beta, bool NNUE_avx2, int depth, int ply, ulong key, bool inCheck)
     {
         if (stop)
             return 0;
@@ -923,20 +920,20 @@ class AlphaBeta
         if (depth == 0)
         {
             //threefold repetition
-            if (is_in_fast_lookup(key) && repetition_count(key) == 2 || board.fifty_move_rule == 100)
+            if (is_in_fast_lookup(key) && repetition_count(key) == 2 || board.fiftyMoveRule == 100)
                 return 0;
         }
 
         //define the variables
-        Nodecount++;
-        int standing_pat = -illegal_position_value, current_score = 0, BestMove = 0, move_count = 0;
+        nodecount++;
+        int standingPat = -ILLEGAL_POSITION_VALUE, currentScore = 0, BestMove = 0, moveCount = 0;
         byte othercolor = (byte)(board.color ^ 1);
-        bool fail_low = true, gives_check;
+        bool failLow = true, givesCheck;
         int[] moves;
-        move_and_eval_list move_list = new move_and_eval_list();
+        MoveList moveList = new MoveList();
         TTableEntry entry = new TTableEntry(0, 0, 0, false, false, false);
         int KeyValid = IsvalidEntry(key);
-        ReverseMove undo_move = new ReverseMove();
+        ReverseMove undoMove = new ReverseMove();
 
         if (KeyValid > -2) 
         {
@@ -944,57 +941,59 @@ class AlphaBeta
 
             if (KeyValid == 1)
             {
-                if (Math.Abs(entry.Score) >= mate_value)
-                    entry.Score -= entry.Score / Math.Abs(entry.Score) * ply;
+                if (Math.Abs(entry.score) >= mateValue)
+                    entry.score -= entry.score / Math.Abs(entry.score) * ply;
 
                 //if the score is larger or equal to beta we can return beta
-                if (entry.Score >= beta && entry.fail_high)
+                if (entry.score >= beta && entry.failHigh)
                     return beta;
+
                 //else if the score is certain and it is smaller then alpha we have an alpha cutoff
-                if (entry.Score <= alpha && entry.fail_low)
+                if (entry.score <= alpha && entry.failLow)
                     return alpha;
 
                 if (entry.exact)
-                    return entry.Score;
+                    return entry.score;
             }
         }
 
         //if we are in check look for  other moves
-        if (in_check)
-            moves = moveGenerator.legal_move_generator(board, in_check, undo_move, new int[214]);
+        if (inCheck)
+            moves = moveGenerator.LegalMoveGenerator(board, inCheck, undoMove, new int[214]);
         //else just look for captures
         else
-            moves = moveGenerator.legal_capture_generator(board, in_check, undo_move, new int[100]);
+            moves = moveGenerator.LegalCaptureGenerator(board, inCheck, undoMove, new int[100]);
 
-        int movelist_length = moveGenerator.move_idx;
+        int movelistLength = moveGenerator.moveIdx;
 
         //if we are in check standing pat is no allowed because we search all moves and not only captures
-        if (!in_check)
+        if (!inCheck)
         {
             if (NNUE_avx2)
-                standing_pat = valueNet.AccToOutput(valueNet.acc, board.color);
+                standingPat = valueNet.AccToOutput(valueNet.acc, board.color);
             else
-                standing_pat = eval.pesto_eval(board);
+                standingPat = eval.PestoEval(board);
         }
 
         //if the branch is not better then the currently best branch we can prune the other positions
-        if (standing_pat >= beta)
+        if (standingPat >= beta)
             return beta;
 
         //delta pruning
-        if (standing_pat < alpha - 11000 && !in_check)
+        if (standingPat < alpha - 11000 && !inCheck)
             return alpha;
 
-        if (standing_pat > alpha)
-            alpha = standing_pat;
+        if (standingPat > alpha)
+            alpha = standingPat;
 
         //if the position is quiet return the evaluation
-        if (movelist_length == 0)
+        if (movelistLength == 0)
         {
-            max_ply = Math.Max(ply, max_ply);
+            //we count the first
+            max_ply = Math.Max(ply - 1, max_ply);
 
             //if there is no legal move it is checkmate
-            if (in_check) alpha = -(mate_value + max_depth - ply);
+            if (inCheck) alpha = -(mateValue + maxDepth - ply);
 
             AddToTable(0, 0, alpha, key, 0, 0);
 
@@ -1002,45 +1001,45 @@ class AlphaBeta
         }
 
         //sort the moves
-        move_list = move_order.evaluate_moves(board, moves, movelist_length, ply, true, entry.BestMove, move_list);
+        moveList = moveOrder.EvaluateMoves(board, moves, movelistLength, ply, true, entry.BestMove, moveList);
 
-        while (move_list.movelist_length > 0)
+        while (moveList.Length > 0)
         {
-            movepick current_move = move_order.pick_next_move(move_list);
+            Movepick currentMove = moveOrder.PickNextMove(moveList);
 
-            if (moveGenerator.non_pawn_material && !in_check && current_move.eval / 3 + standing_pat + 2000 < alpha)
+            if (moveGenerator.nonPawnMaterial && !inCheck && (currentMove.eval - 10000) / 3 + standingPat + 2000 < alpha)
                 break;
 
-            move_count++;
+            moveCount++;
 
             //play the move
-            board = make_move(board, current_move.move, NNUE_avx2, undo_move);
+            board = MakeMove(board, currentMove.move, NNUE_avx2, undoMove);
 
-            ulong new_key = hash.update_position_hash_after_move(board, undo_move, key);
+            ulong newKey = hash.UpdateHashAfterMove(board, undoMove, key);
 
             //calculate if the current move gives check
-            gives_check = moveGenerator.fast_check(board, current_move.move);
+            givesCheck = moveGenerator.fast_check(board, currentMove.move);
 
             //calls itself recursively
-            current_score = -quiescence_search(board, -beta, -alpha, NNUE_avx2, depth + 1, ply + 1, new_key, gives_check);
+            currentScore = -QuiescenceSearch(board, -beta, -alpha, NNUE_avx2, depth + 1, ply + 1, newKey, givesCheck);
 
             //undo the move
-            board = unmake_move(board, undo_move, NNUE_avx2);
+            board = UnmakeMove(board, undoMove, NNUE_avx2);
 
             //if the current score is not 2 the position is not illegal and therefore we have found a legal move
-            if (move_count == 0) BestMove = current_move.move;
+            if (moveCount == 0) BestMove = currentMove.move;
 
-            if (current_score > alpha)
+            if (currentScore > alpha)
             {
-                fail_low = false;
-                alpha = current_score;
-                BestMove = current_move.move;
+                failLow = false;
+                alpha = currentScore;
+                BestMove = currentMove.move;
 
                 //if the branch is not better then the currently best branch we can prune the other positions
-                if (current_score >= beta)
+                if (currentScore >= beta)
                 {
                     if (!stop && (KeyValid == -2 || entry.depth == 0))
-                        AddToTable(current_move.move, 0, beta, key, 1, 0);
+                        AddToTable(currentMove.move, 0, beta, key, 1, 0);
                     return beta;
                 }
             }
@@ -1048,15 +1047,15 @@ class AlphaBeta
 
         //add the best move to the hash table if the current depth is greater than the depth of the entry or thre is no entry in the hash table
         if (!stop && (KeyValid == -2 || entry.depth == 0))
-            AddToTable(BestMove, 0, alpha, key, 0, (byte)(fail_low ? 1 : 0));
+            AddToTable(BestMove, 0, alpha, key, 0, (byte)(failLow ? 1 : 0));
 
         //return the best score
         return alpha;
     }
-    public alpha_beta_output selfplay_iterative_deepening(Position board, int depth, bool NNUE_avx2)
+    public AlphaBetaOutput selfplay_iterative_deepening(Position board, int depth, bool NNUE_avx2)
     {
         //initialize the variables
-        move_order.reset_movesort();
+        moveOrder.resetMovesort();
         int[] movelist = new int[218];
         ReverseMove undo_move = new ReverseMove();
         stop = false;
@@ -1065,13 +1064,13 @@ class AlphaBeta
         List<int[]> last_best_moves = new List<int[]>();
         bool search_pv = true, in_check = moveGenerator.check(board, false), gives_check = false;
         int new_depth = 0;
-        movelist = moveGenerator.legal_move_generator(board, in_check, undo_move, movelist);
-        int movelist_length = moveGenerator.move_idx;
-        pv_out current_variation = new pv_out(), pv = new pv_out();
-        int alpha = -illegal_position_value, delta_a = 0, delta_b = 0, window_a = 0, window_b = 0, last_best = 0, last_last_best = 0, current_score = 0;
+        movelist = moveGenerator.LegalMoveGenerator(board, in_check, undo_move, movelist);
+        int movelist_length = moveGenerator.moveIdx;
+        PvOut current_variation = new PvOut(), pv = new PvOut();
+        int alpha = -ILLEGAL_POSITION_VALUE, delta_a = 0, delta_b = 0, window_a = 0, window_b = 0, last_best = 0, last_last_best = 0, current_score = 0;
         bool pruning_is_safe = false;
-        move_and_eval_list move_list = new move_and_eval_list();
-        alpha_beta_output Output = new alpha_beta_output();
+        MoveList move_list = new MoveList();
+        AlphaBetaOutput Output = new AlphaBetaOutput();
         time_acces.WaitOne();
         long theoretical_time_usage = time_to_use;
         time_acces.Release();
@@ -1089,20 +1088,20 @@ class AlphaBeta
             current_score = valueNet.AccToOutput(valueNet.acc, board.color);
         }
         else
-            current_score = eval.pesto_eval(board);
+            current_score = eval.PestoEval(board);
 
-        pruning_is_safe = !in_check && moveGenerator.non_pawn_material;
+        pruning_is_safe = !in_check && moveGenerator.nonPawnMaterial;
 
-        node_values[0] = !in_check ? current_score : illegal_position_value;
+        node_values[0] = !in_check ? current_score : ILLEGAL_POSITION_VALUE;
 
         for (int current_depth = 1; current_depth <= depth; current_depth++)
         {
             depth_acces.WaitOne();
             root_depth = current_depth;
             depth_acces.Release();
-            node_values[0] = !in_check ? (IsvalidEntry(key) == 1 ? GetInfoFromEntry(key).Score : current_score) : illegal_position_value;
+            node_values[0] = !in_check ? (IsvalidEntry(key) == 1 ? GetInfoFromEntry(key).score : current_score) : ILLEGAL_POSITION_VALUE;
 
-            if (current_depth >= 4 && Math.Abs(last_last_best) < mate_value)
+            if (current_depth >= 4 && Math.Abs(last_last_best) < mateValue)
             {
                 //if the current depth is larger then 2 reajust the window
                 delta_a = -125;
@@ -1113,8 +1112,8 @@ class AlphaBeta
             }
             else
             {
-                window_a = -illegal_position_value;
-                window_b = illegal_position_value;
+                window_a = -ILLEGAL_POSITION_VALUE;
+                window_b = ILLEGAL_POSITION_VALUE;
                 alpha = window_a;
             }
 
@@ -1122,20 +1121,20 @@ class AlphaBeta
             {
                 search_pv = true;
 
-                move_list = move_order.evaluate_moves(board, stuff.copy_int_array(movelist), movelist_length, 0, false, IsvalidEntry(key) == 1 ? GetInfoFromEntry(key).BestMove : 0, move_list);
-                while (move_list.movelist_length > 0)
+                move_list = moveOrder.EvaluateMoves(board, stuff.copy_int_array(movelist), movelist_length, 0, false, IsvalidEntry(key) == 1 ? GetInfoFromEntry(key).BestMove : 0, move_list);
+                while (move_list.Length > 0)
                 {
-                    movepick current_move = move_order.pick_next_move(move_list);
+                    Movepick current_move = moveOrder.PickNextMove(move_list);
                     //Debug.Assert(!stuff.int_array_equal(current_move.move, new int[] { 4, 5, 4, 4 }) || current_depth != 3);
 
-                    current_variation = new pv_out();
-                    move_order.add_current_move(current_move.move, board, 0);
+                    current_variation = new PvOut();
+                    moveOrder.add_current_move(current_move.move, board, 0);
 
                     //play the move
-                    board = make_move(board, current_move.move, NNUE_avx2, undo_move);
+                    board = MakeMove(board, current_move.move, NNUE_avx2, undo_move);
 
                     //get the hash key
-                    ulong new_key = hash.update_position_hash_after_move(board, undo_move, key);
+                    ulong new_key = hash.UpdateHashAfterMove(board, undo_move, key);
 
                     //calculate if the current move gives check
                     gives_check = moveGenerator.fast_check(board, current_move.move);
@@ -1150,7 +1149,7 @@ class AlphaBeta
                     if (matingValue != 2)
                     {
                         //if the position is a terminal node the value for the node is set to the mating value from the perspective of the current color
-                        current_variation.value = matingValue == 0 ? 0 : mate_value + max_depth;
+                        current_variation.value = matingValue == 0 ? 0 : mateValue + maxDepth;
                         current_variation.principalVariation.Insert(0, current_move.move);
                     }
                     else
@@ -1158,7 +1157,7 @@ class AlphaBeta
                         //if the current depth is 1 perform a quiescent search
                         if (new_depth <= 0)
                         {
-                            current_variation.value = -quiescence_search(board, -window_b, -alpha, NNUE_avx2, 0, 1, new_key, gives_check);
+                            current_variation.value = -QuiescenceSearch(board, -window_b, -alpha, NNUE_avx2, 0, 1, new_key, gives_check);
 
                             current_variation.principalVariation.Add(current_move.move);
                         }
@@ -1180,7 +1179,7 @@ class AlphaBeta
                                 if (stop)
                                 {
                                     //undo the move
-                                    board = unmake_move(board, undo_move, NNUE_avx2);
+                                    board = UnmakeMove(board, undo_move, NNUE_avx2);
                                     break;
                                 }
 
@@ -1195,15 +1194,15 @@ class AlphaBeta
                     }
 
                     //undo the move
-                    board = unmake_move(board, undo_move, NNUE_avx2);
+                    board = UnmakeMove(board, undo_move, NNUE_avx2);
 
                     //determine if the current move is better than the currently best move only if it is 
                     if (alpha < current_variation.value)
                     {
                         if (chess_stuff.is_capture(current_move.move, board))
-                            move_order.update_history_move(board, current_move.move, 0, 0, 0, 0, Math.Min((float)(depth * depth) / 10f, 40), 0);
+                            moveOrder.update_history_move(board, current_move.move, 0, 0, 0, 0, Math.Min((float)(depth * depth) / 10f, 40), 0);
                         else
-                            move_order.update_chistory_move(board, current_move.move, Math.Min((float)(depth * depth) / 10f, 40));
+                            moveOrder.update_chistory_move(board, current_move.move, Math.Min((float)(depth * depth) / 10f, 40));
 
                         alpha = current_variation.value;
                         pv = current_variation;
@@ -1240,7 +1239,7 @@ class AlphaBeta
         }
 
         //reset the nodecount
-        Nodecount = 0;
+        nodecount = 0;
 
         Output.Score = chess_stuff.convert_millipawn_to_wdl(pv.value);
         if (Math.Abs(Output.Score) != 1)
@@ -1253,7 +1252,7 @@ class AlphaBeta
         Output.is_quiet = position_is_quiet;
 
         //reset the nodecount
-        Nodecount = 0;
+        nodecount = 0;
 
         return Output;
     }
@@ -1267,7 +1266,7 @@ class AlphaBeta
         board.en_passent_square = byte.MaxValue;
 
         //fifty move rule
-        undo_move.fifty_move_rule = board.fifty_move_rule;
+        undo_move.fifty_move_rule = board.fiftyMoveRule;
 
         undo_move.moved_piece_idx = 0;
         undo_move.removed_piece_idx = 0;
@@ -1276,7 +1275,7 @@ class AlphaBeta
 
         return board;
     }
-    public Position make_move(Position board, int move, bool useNNUE, ReverseMove inverseMove)
+    public Position MakeMove(Position board, int move, bool useNNUE, ReverseMove inverseMove)
     { 
         //play the move
         board = moveGenerator.make_move(board, move, true, inverseMove);
@@ -1286,7 +1285,7 @@ class AlphaBeta
 
         return board;
     }
-    public Position unmake_move(Position board, ReverseMove inverseMove, bool useNNUE)
+    public Position UnmakeMove(Position board, ReverseMove inverseMove, bool useNNUE)
     {
         //copy the old accumulator back in the real accumulator
         if (useNNUE) valueNet.updateAccFromMove(board, inverseMove, true);
@@ -1417,7 +1416,7 @@ class AlphaBeta
     }
     public Position PlayGameFromMoves(Position board, int[] moves)
     {
-        board.fifty_move_rule = 0;
+        board.fiftyMoveRule = 0;
         move_counter = 0;
         ulong key = 0;
         int[] pseudolegal_movelist = new int[218];
@@ -1432,7 +1431,7 @@ class AlphaBeta
             if (other == 0)
             {
                 pseudolegal_movelist = moveGenerator.generate_movelist(board, pseudolegal_movelist);
-                int movelist_length = moveGenerator.move_idx;
+                int movelist_length = moveGenerator.moveIdx;
                 for (int j = 0; j < movelist_length; j++)
                     if ((pseudolegal_movelist[j] & 0b0000111111111111) == move)
                         move = pseudolegal_movelist[j];
@@ -1448,7 +1447,7 @@ class AlphaBeta
     {
         board = moveGenerator.make_move(board, Move, use_reverse_move, undo_move);
 
-        if (board.fifty_move_rule == 0)
+        if (board.fiftyMoveRule == 0)
             reset_lookups();
 
         ulong key = hash.hash_position(board);
@@ -1511,35 +1510,43 @@ class AlphaBeta
             }
         }
     }
+
     public int razoring_margin(int depth, bool improving)
     {
         return 2000 * (depth * depth + (improving ? 2 : 1));
     }
+
     public int reverse_futility_pruning_margin(int depth)
     {
         return 1200 * depth;
+        //return 600 * depth;
     }
+
     public int extended_futility_pruning_margin(int depth, bool pv_node)
     {
         return 1000 * (depth + (pv_node ? 1 : 0)) + 2000;
     }
+
     public float history_pruning_margin(int lmr_depth, bool improving)
     {
         return -(15 + 20 * lmr_depth * (lmr_depth + (improving ? 1 : 0)));
     }
+
     public int move_pruning(int depth, bool improving)
     {
         int divisor = improving ? 2 : 3;
 
-        return 6 + 18 * depth * depth / divisor;
+        return 2 + 6 * depth * depth / divisor;
     }
+
     public string variation_to_string(List<int> variation)
     {
-        string Output = "";
+        string output = "";
         foreach (int move in variation)
-            Output += chess_stuff.move_to_string(move) + " ";
-        return Output;
+            output += chess_stuff.move_to_string(move) + " ";
+        return output;
     }
+
     public void display_sorting()
     {
         int complete_count = 0;
@@ -1554,35 +1561,27 @@ class AlphaBeta
 class TTableEntry
 {
     public int BestMove;
-    public int Score;
+    public int score;
     public byte depth;
-    public bool fail_high = false, fail_low = false, exact = false;
+    public bool failHigh = false, failLow = false, exact = false;
     public TTableEntry(int Bestmove, int CurrentScore, byte Currentdepth, bool cut_node, bool all_node, bool pv_node)
     {
         BestMove = Bestmove;
-        Score = CurrentScore;
+        score = CurrentScore;
         depth = Currentdepth;
-        fail_high = cut_node;
-        fail_low = all_node;
+        failHigh = cut_node;
+        failLow = all_node;
         exact = pv_node;
     }
 }
-class RepetitionTable
-{
-    public long Key = 0;
-    public RepetitionTable(long key)
-    {
-        Key = key;
-    }
-}
-class alpha_beta_output
+class AlphaBetaOutput
 {
     public bool is_quiet = false;
     public bool draw = false;
     public List<int> movelist = new List<int>();
     public float Score;
 }
-class pv_out
+class PvOut
 {
     public int value = -80000;
     public List<int> principalVariation = new List<int>();
