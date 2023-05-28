@@ -7,7 +7,6 @@ class AlphaBeta
     public zobrist_hash hash = new zobrist_hash();
     Stopwatch sw = new Stopwatch();
     Semaphore time_acces = new Semaphore(1, 1), depth_acces = new Semaphore(1, 1);
-    // StreamWriter stream_writer;
     bool stop = false;
     int[] sorting_counter = new int[300];
 
@@ -20,29 +19,29 @@ class AlphaBeta
     public movegen moveGenerator = new movegen();
     public Classic_Eval eval = new Classic_Eval();
     public Move_Ordering_Heuristics moveOrder = new Move_Ordering_Heuristics();
-    Random random = new Random(59675943);
-    int nodecount = 0, max_ply = 0, move_counter = 0, root_depth = 1;
+    int nodecount = 0, max_ply = 0, move_counter = 0, rootDepth = 1;
     int[,,] move_reductions = new int[2, 64, 64];
     bool[] null_move_pruning = new bool[byte.MaxValue + 1];
     public const int mateValue = 60000;
     public const int ILLEGAL_POSITION_VALUE = 80000;
     public const int maxDepth = 127;
-
     int[] node_values = new int[byte.MaxValue + 1];
     public long time_to_use = 0;
-    public byte[,] HashTable = new byte[0, 0];
+    public byte[,] hashTable = new byte[0, 0];
 
-    public AlphaBeta(int HashSize)
+    public AlphaBeta(int hashSize)
     {
-        HashTable = new byte[HashSize * 62500, 16];
-        //init_reductions(0, 0, 5, 4, 3, 3, -0.2, 0.5);
+        hashTable = new byte[hashSize * 62500, 16];
+        //init_reductions(5, 10, 0, 0, 1, 1, -0.2, 0.5);
         reduction_b();
         valueNet = new NNUE_avx2(true);
     }
+
     public void Stop()
     {
         stop = true;
     }
+
     public int TimedAlphaBeta(long Milliseconds, Position InputBoard, bool NNUE_avx2, bool change_time)
     {
         time_to_use = Milliseconds;
@@ -60,7 +59,7 @@ class AlphaBeta
         {
             Thread.Sleep(1);
             depth_acces.WaitOne();
-            search_depth = root_depth;
+            search_depth = rootDepth;
             depth_acces.Release();
 
             time_acces.WaitOne();
@@ -114,7 +113,7 @@ class AlphaBeta
         for (int current_depth = 1; current_depth <= depth; current_depth++)
         {
             depth_acces.WaitOne();
-            root_depth = current_depth;
+            rootDepth = current_depth;
             depth_acces.Release();
             node_values[0] = !in_check ? (IsvalidEntry(key) == 1 ? GetInfoFromEntry(key).score : currentScore) : ILLEGAL_POSITION_VALUE;
 
@@ -138,7 +137,7 @@ class AlphaBeta
             {
                 search_pv = true;
 
-                move_list = moveOrder.EvaluateMoves(board, stuff.copy_int_array(movelist), movelist_length, 0, false, IsvalidEntry(key) == 1 ? GetInfoFromEntry(key).BestMove : 0, move_list);
+                move_list = moveOrder.EvaluateMoves(board, stuff.copy_int_array(movelist), movelist_length, 0, false, IsvalidEntry(key) == 1 ? GetInfoFromEntry(key).bestMove : 0, move_list);
                 while (move_list.Length > 0)
                 {
 
@@ -248,7 +247,7 @@ class AlphaBeta
                 {
                     //if the timing is already maximal do not change it
                     //else if th bestmove is different to the last best move make the time usage larger
-                    if (theoretical_time_usage * 14 > time_to_use * 10 && Output != GetInfoFromEntry(key).BestMove && theoretical_time_usage < 500)
+                    if (theoretical_time_usage * 14 > time_to_use * 10 && Output != GetInfoFromEntry(key).bestMove && theoretical_time_usage < 500)
                         time_to_use += theoretical_time_usage / 10;
                     //else if it is really low do not change it
                     //else make the time usage smaller
@@ -264,9 +263,9 @@ class AlphaBeta
             if (!stop)
             {
                 if (Math.Abs(alpha) < mateValue)
-                    Console.WriteLine("info depth {2} seldepth {3} nodes {1} nps {4} time {5} score cp {0} pv {6}", alpha / 10, nodecount, current_depth, max_ply + 1, (int)(((float)(nodecount) * 1000) / (sw.ElapsedMilliseconds > 0 ? (float)sw.ElapsedMilliseconds : 1)), (int)(sw.ElapsedMilliseconds), variation_to_string(pv.principalVariation));
+                    Console.WriteLine("info depth {2} seldepth {3} nodes {1} nps {4} time {5} hashfull {7} score cp {0} pv {6}", alpha / 10, nodecount, current_depth, max_ply + 1, (int)(((float)(nodecount) * 1000) / (sw.ElapsedMilliseconds > 0 ? (float)sw.ElapsedMilliseconds : 1)), (int)(sw.ElapsedMilliseconds), variation_to_string(pv.principalVariation), (EntryCount() * 1000) / hashTable.GetLength(0));
                 else
-                    Console.WriteLine("info depth {2} seldepth {3} nodes {1} nps {4} time {5} score mate {0} pv {6}", -(alpha - (alpha / Math.Abs(alpha)) * (maxDepth + mateValue + 1)) / 2, nodecount, current_depth, current_depth + max_ply, (int)(((float)(nodecount) * 1000) / (sw.ElapsedMilliseconds > 0 ? (float)sw.ElapsedMilliseconds : 1)), (int)(sw.ElapsedMilliseconds), variation_to_string(pv.principalVariation));
+                    Console.WriteLine("info depth {2} seldepth {3} nodes {1} nps {4} time {5} hashfull {7} score mate {0} pv {6}", -(alpha - (alpha / Math.Abs(alpha)) * (maxDepth + mateValue + 1)) / 2, nodecount, current_depth, current_depth + max_ply, (int)(((float)(nodecount) * 1000) / (sw.ElapsedMilliseconds > 0 ? (float)sw.ElapsedMilliseconds : 1)), (int)(sw.ElapsedMilliseconds), variation_to_string(pv.principalVariation), (EntryCount() * 1000) / hashTable.GetLength(0));
             }
 
             //reset various variables
@@ -304,7 +303,7 @@ class AlphaBeta
         TTableEntry entry = new TTableEntry(0, 0, 0, false, false, false);
         MoveList move_list = new MoveList();
         int[] played_moves = new int[214];
-        int played_move_idx = 0; 
+        int played_move_idx = 0;
 
         if (board.fiftyMoveRule == 100 || stop)
         {
@@ -386,10 +385,10 @@ class AlphaBeta
          */
 
         //sort the moves
-        move_list = moveOrder.EvaluateMoves(board, moves, movelist_length, ply, false, KeyValid == 1 ? entry.BestMove : BestMove, move_list);
+        move_list = moveOrder.EvaluateMoves(board, moves, movelist_length, ply, false, KeyValid == 1 ? entry.bestMove : BestMove, move_list);
         interesting_move_count = moveOrder.tacticalMoveCounter;
 
-        pruning_is_safe = !in_check && root_depth > 3 &&
+        pruning_is_safe = !in_check && rootDepth > 3 &&
                 chess_stuff.NonMateWindow(alpha, beta) &&
                 moveGenerator.nonPawnMaterial;
 
@@ -404,11 +403,11 @@ class AlphaBeta
                 depth < 8)
             {
                 //late move pruning
-                if (movecount >= move_pruning(depth, improving) - interesting_move_count)
+                if (movecount >= MovePruning(depth, improving) - interesting_move_count)
                     break;
 
                 //if lmr is allowed
-                if (depth > 2 && movecount > interesting_move_count) 
+                if (depth > 2 && movecount > interesting_move_count)
                 {
                     //calculate tthe depth of the late move reduction
                     int lmr_depth = depth - (1 + reduction(depth, movecount - interesting_move_count, true));
@@ -439,7 +438,7 @@ class AlphaBeta
             new_depth = depth - 1;
 
             /*calculate depth extentions*/
-            
+
             //check extention
             if (in_check)
                 new_depth++;
@@ -471,14 +470,7 @@ class AlphaBeta
                         decrease = reduction(new_depth, movecount - interesting_move_count, true);
 
                         //if we are improving or not decrease more or less
-                        //decrease -= Math.Max(Math.Min(improvement / 500, 2), -2);
                         if (!improving) decrease += 1;
-                        //if the king is in check and the king moves
-                        /*if (in_check && (board[current_move.move[2], current_move.move[3]] & 0b00001110) == 0b110)
-                            decrease -= 1;
-
-                        if (gives_check)
-                            decrease -= 1;*/
 
                         //at least a counter move
                         if (current_move.eval >= 4000)
@@ -491,7 +483,7 @@ class AlphaBeta
 
                         current_variation.value = -zero_window_search(board, lmr_depth, ply + 1, -(alpha + 1), -alpha, gives_check, NNUE_avx2, new_key);
 
-                        if (current_variation.value > alpha && lmr_depth < new_depth && current_variation.value != ILLEGAL_POSITION_VALUE) 
+                        if (current_variation.value > alpha && lmr_depth < new_depth && current_variation.value != ILLEGAL_POSITION_VALUE)
                             full_depth_search = true;
                     }
                     else
@@ -599,7 +591,7 @@ class AlphaBeta
         TTableEntry entry = new TTableEntry(0, 0, 0, false, false, false);
         MoveList move_list = new MoveList();
         int[] played_moves = new int[214];
-        int played_move_idx = 0; 
+        int played_move_idx = 0;
 
         if (board.fiftyMoveRule == 100 || stop)
             return 0;
@@ -613,13 +605,13 @@ class AlphaBeta
                 two_fold_repetition = true;
         }
 
-        int KeyValid = IsvalidEntry(key);
+        int keyValid = IsvalidEntry(key);
 
-        if (KeyValid > -2)
+        if (keyValid > -2)
         {
             entry = GetInfoFromEntry(key);
 
-            if (KeyValid == 1)
+            if (keyValid == 1)
             {
                 if (Math.Abs(entry.score) >= mateValue)
                     entry.score -= entry.score / Math.Abs(entry.score) * ply;
@@ -649,7 +641,7 @@ class AlphaBeta
                 static_score = eval.PestoEval(board);
         }
 
-        if (KeyValid == 1)
+        if (keyValid == 1)
             score = entry.score;
         else
             score = static_score;
@@ -668,7 +660,7 @@ class AlphaBeta
          * and when the depth of the root is larger then 3
          */
 
-        pruningIsSafe = !in_check && root_depth > 3 &&
+        pruningIsSafe = !in_check && rootDepth > 3 &&
             chess_stuff.NonMateWindow(alpha, beta) &&
             moveGenerator.nonPawnMaterial;
 
@@ -683,7 +675,7 @@ class AlphaBeta
 
             if (depth < 4 &&
                 score + razoring_margin(depth, improving) < alpha &&
-                (KeyValid == 1 && !entry.failHigh))
+                (keyValid == 1 && !entry.failHigh))
             {
                 int test_value = QuiescenceSearch(board, alpha - 1, alpha, NNUE_avx2, 0, ply + 1, key, in_check);
 
@@ -694,7 +686,7 @@ class AlphaBeta
             //Reverse Futility Pruning
             if (depth < 7 &&
                 score - reverse_futility_pruning_margin(depth) >= beta &&
-                (KeyValid != 1 || !entry.failLow))
+                (keyValid != 1 || !entry.failLow))
                 return beta;
 
             /* Null Move Pruning
@@ -713,20 +705,20 @@ class AlphaBeta
                 score >= beta &&
                 static_score >= beta &&
                 !null_move_pruning[ply - 1] &&
-                (KeyValid != 1 || !entry.failLow))
+                (keyValid != 1 || !entry.failLow))
             {
-                int nmp_score = 0;
+                int nmp_score;
 
                 /* calculate the depth for the null move search:
                  *
-                 * 1) the base depth reduction is 2
+                 * 1) the base depth reduction is 3
                  * 2) else the depth gets reduced by a factor 1/6
                  * 3) the larger the delta between the standing pat and beta the more we can reduce
                  */
 
-                int null_move_search_depth = depth - 1 - (3 + depth / 6 + Math.Min(3, (int)(score - beta) / 650));
-                
-                board = make_null_move(board, undo_move);
+                int null_move_search_depth = depth - 1 - (3 + depth / 6 + Math.Min(3, (score - beta) / 650));
+
+                board = MakeNullMove(board, undo_move);
 
                 if (null_move_search_depth <= 0)
                     nmp_score = -QuiescenceSearch(board, -beta, -alpha, NNUE_avx2, 0, ply + 1, hash.update_null_move_hash(key, undo_move), false);
@@ -754,51 +746,51 @@ class AlphaBeta
         }
 
         //sort the moves
-        move_list = moveOrder.EvaluateMoves(board, moves, movelist_length, ply, false, entry.BestMove, move_list);
+        move_list = moveOrder.EvaluateMoves(board, moves, movelist_length, ply, false, entry.bestMove, move_list);
         interesting_move_count = moveOrder.tacticalMoveCounter;
 
         AddPositionToLookups(key);
 
         while (move_list.Length > 0)
         {
-            Movepick current_move = moveOrder.PickNextMove(move_list);
+            Movepick currentMove = moveOrder.PickNextMove(move_list);
 
             //find futile moves
             if (movecount > 2 &&
-                current_move.eval < 4000 &&
+                currentMove.eval < 4000 &&
                 pruningIsSafe &&
                 depth < 8)
             {
                 //late move pruning
-                if (movecount >= move_pruning(depth, improving) - interesting_move_count)
+                if (movecount >= MovePruning(depth, improving) + interesting_move_count)
                     break;
 
                 //if lmr is allowed
                 if (depth > 2 && movecount > interesting_move_count)
                 {
                     //calculate tthe depth of the late move reduction
-                    int lmr_depth = depth - (1 + reduction(depth, movecount - interesting_move_count, true));
+                    int lmrDepth = depth - (1 + reduction(depth, movecount - interesting_move_count, true));
 
                     //futility pruning
-                    if (static_score + extended_futility_pruning_margin(lmr_depth, true) < alpha)
+                    if (static_score + extended_futility_pruning_margin(lmrDepth, true) < alpha)
                         break;
 
                     //history pruning
-                    if (current_move.eval < history_pruning_margin(lmr_depth, improving))
+                    if (currentMove.eval < history_pruning_margin(lmrDepth, improving))
                         break;
                 }
 
             }
             movecount++;
-            moveOrder.add_current_move(current_move.move, board, ply);
+            moveOrder.add_current_move(currentMove.move, board, ply);
 
             //play the move
-            board = MakeMove(board, current_move.move, NNUE_avx2, undo_move);
+            board = MakeMove(board, currentMove.move, NNUE_avx2, undo_move);
 
             ulong new_key = hash.UpdateHashAfterMove(board, undo_move, key);
 
             //calculate if the current move gives check
-            gives_check = moveGenerator.fast_check(board, current_move.move);
+            gives_check = moveGenerator.fast_check(board, currentMove.move);
 
             //set the new depth
             new_depth = depth - 1;
@@ -808,10 +800,6 @@ class AlphaBeta
             //check extention
             if (in_check)
                 new_depth++;
-
-            //internal iterative reductiond by Ed Schröder
-            else if (depth >= 8 && KeyValid != 1)
-                new_depth--;
 
             //if the current depth is 1 do a quiescent search
             if (new_depth <= 0)
@@ -835,12 +823,12 @@ class AlphaBeta
                         decrease -= 1;
 
                     //at least a counter move
-                    if (current_move.eval >= 4000)
+                    if (currentMove.eval >= 4000)
                         decrease -= 1;
 
                     //normal quiet move reduction
                     else
-                        decrease -= (int)Math.Max(Math.Min(current_move.eval / 500, 2), -2);
+                        decrease -= (int)Math.Max(Math.Min(currentMove.eval / 500, 2), -2);
 
 
                     int lmr_depth = Math.Max(Math.Min(new_depth, new_depth - decrease), 1);
@@ -864,18 +852,18 @@ class AlphaBeta
             //undo the move
             board = UnmakeMove(board, undo_move, NNUE_avx2);
 
-            played_moves[played_move_idx] = current_move.move;
+            played_moves[played_move_idx] = currentMove.move;
             played_move_idx++;
 
             //if the branch is not better then the currently best branch we can prune the other positions
             if (current_score >= beta)
             {
                 //store the killer move history moves and counter moves
-                moveOrder.update_histories(board, current_move.move, played_moves, played_move_idx, null_move_pruning, depth, ply, true);
+                moveOrder.update_histories(board, currentMove.move, played_moves, played_move_idx, null_move_pruning, depth, ply, true);
 
                 //add the best move to the hash table if the current depth is greater than the depth of the entry or thre is no entry in the hash table
-                if (!stop && (KeyValid == -2 || entry.depth <= depth))
-                    AddToTable(current_move.move, depth, beta, key, 1, 0);
+                if (!stop && (keyValid == -2 || entry.depth <= depth))
+                    AddToTable(currentMove.move, depth, beta, key, 1, 0);
 
                 RemovePositionFromLookups(key, !two_fold_repetition);
 
@@ -904,7 +892,7 @@ class AlphaBeta
         else
         {
             //add the best move to the hash table if there is no entry in the hash table
-            if (!stop && (KeyValid == -2 || entry.depth <= depth))
+            if (!stop && (keyValid == -2 || entry.depth <= depth))
                 AddToTable(played_moves[0], depth, Math.Abs(alpha) >= mateValue ? alpha + Math.Abs(alpha) / alpha * ply : alpha, key, 0, 1);
 
             return alpha;
@@ -926,20 +914,20 @@ class AlphaBeta
 
         //define the variables
         nodecount++;
-        int standingPat = -ILLEGAL_POSITION_VALUE, currentScore = 0, BestMove = 0, moveCount = 0;
+        int standingPat = -ILLEGAL_POSITION_VALUE, currentScore = 0, bestMove = 0, moveCount = 0;
         byte othercolor = (byte)(board.color ^ 1);
         bool failLow = true, givesCheck;
         int[] moves;
         MoveList moveList = new MoveList();
         TTableEntry entry = new TTableEntry(0, 0, 0, false, false, false);
-        int KeyValid = IsvalidEntry(key);
+        int keyValid = IsvalidEntry(key);
         ReverseMove undoMove = new ReverseMove();
 
-        if (KeyValid > -2) 
+        if (keyValid > -2)
         {
             entry = GetInfoFromEntry(key);
 
-            if (KeyValid == 1)
+            if (keyValid == 1)
             {
                 if (Math.Abs(entry.score) >= mateValue)
                     entry.score -= entry.score / Math.Abs(entry.score) * ply;
@@ -1001,7 +989,7 @@ class AlphaBeta
         }
 
         //sort the moves
-        moveList = moveOrder.EvaluateMoves(board, moves, movelistLength, ply, true, entry.BestMove, moveList);
+        moveList = moveOrder.EvaluateMoves(board, moves, movelistLength, ply, true, entry.bestMove, moveList);
 
         while (moveList.Length > 0)
         {
@@ -1027,18 +1015,18 @@ class AlphaBeta
             board = UnmakeMove(board, undoMove, NNUE_avx2);
 
             //if the current score is not 2 the position is not illegal and therefore we have found a legal move
-            if (moveCount == 0) BestMove = currentMove.move;
+            if (moveCount == 0) bestMove = currentMove.move;
 
             if (currentScore > alpha)
             {
                 failLow = false;
                 alpha = currentScore;
-                BestMove = currentMove.move;
+                bestMove = currentMove.move;
 
                 //if the branch is not better then the currently best branch we can prune the other positions
                 if (currentScore >= beta)
                 {
-                    if (!stop && (KeyValid == -2 || entry.depth == 0))
+                    if (!stop && keyValid == -2)
                         AddToTable(currentMove.move, 0, beta, key, 1, 0);
                     return beta;
                 }
@@ -1046,8 +1034,8 @@ class AlphaBeta
         }
 
         //add the best move to the hash table if the current depth is greater than the depth of the entry or thre is no entry in the hash table
-        if (!stop && (KeyValid == -2 || entry.depth == 0))
-            AddToTable(BestMove, 0, alpha, key, 0, (byte)(failLow ? 1 : 0));
+        if (!stop && keyValid == -2)
+            AddToTable(bestMove, 0, alpha, key, 0, (byte)(failLow ? 1 : 0));
 
         //return the best score
         return alpha;
@@ -1097,7 +1085,7 @@ class AlphaBeta
         for (int current_depth = 1; current_depth <= depth; current_depth++)
         {
             depth_acces.WaitOne();
-            root_depth = current_depth;
+            rootDepth = current_depth;
             depth_acces.Release();
             node_values[0] = !in_check ? (IsvalidEntry(key) == 1 ? GetInfoFromEntry(key).score : current_score) : ILLEGAL_POSITION_VALUE;
 
@@ -1121,7 +1109,7 @@ class AlphaBeta
             {
                 search_pv = true;
 
-                move_list = moveOrder.EvaluateMoves(board, stuff.copy_int_array(movelist), movelist_length, 0, false, IsvalidEntry(key) == 1 ? GetInfoFromEntry(key).BestMove : 0, move_list);
+                move_list = moveOrder.EvaluateMoves(board, stuff.copy_int_array(movelist), movelist_length, 0, false, IsvalidEntry(key) == 1 ? GetInfoFromEntry(key).bestMove : 0, move_list);
                 while (move_list.Length > 0)
                 {
                     Movepick current_move = moveOrder.PickNextMove(move_list);
@@ -1256,7 +1244,7 @@ class AlphaBeta
 
         return Output;
     }
-    public Position make_null_move(Position board, ReverseMove undo_move)
+    public Position MakeNullMove(Position board, ReverseMove undo_move)
     {
         //change the color
         board.color ^= 1;
@@ -1276,7 +1264,7 @@ class AlphaBeta
         return board;
     }
     public Position MakeMove(Position board, int move, bool useNNUE, ReverseMove inverseMove)
-    { 
+    {
         //play the move
         board = moveGenerator.make_move(board, move, true, inverseMove);
 
@@ -1295,9 +1283,10 @@ class AlphaBeta
 
         return board;
     }
-    public void AddToTable(int Move, int depth, int value, ulong key, byte beta_cutoff, byte alpha_cutoff)
+    public void AddToTable(int move, int depth, int value, ulong key, byte beta_cutoff, byte alpha_cutoff)
     {
-        int index = (int)(key % (ulong)HashTable.GetLength(0));
+        int index = (int)(key % (ulong)hashTable.GetLength(0));
+
         //standart logging pattern
         /*
          * depth
@@ -1308,44 +1297,55 @@ class AlphaBeta
          * 
          * the the  key
          */
-        byte[] Log = new byte[8];
+        byte[] log = new byte[8];
 
-        //save the depth and the beta cutoff
-        Log[0] = (byte)Math.Min(depth, 127);
+        //save the depth and the beta cutoff (adding one to see if there is an entry)
+        log[0] = (byte)Math.Min(depth + 1, 128); 
 
         //save the evaluation
         for (int i = 0; i < 4; i++)
-            Log[i + 1] = BitConverter.GetBytes(value)[i];
+            log[i + 1] = BitConverter.GetBytes(value)[i];
 
         //save the move
         for (int i = 5; i < 7; i++)
-            Log[i] = BitConverter.GetBytes((short)Move + 1)[i - 5];
+            log[i] = BitConverter.GetBytes((short)move + 1)[i - 5];
 
         //add the flag for the beta cutoff
-        Log[7] += (byte)(beta_cutoff << 0);
+        log[7] += (byte)(beta_cutoff << 0);
 
         //add the flag for the alpha cutoff at the last index of the move
-        Log[7] += (byte)(alpha_cutoff << 1);
+        log[7] += (byte)(alpha_cutoff << 1);
 
         byte[] keyArray = BitConverter.GetBytes(key);
 
         for (int i = 0; i < 16; i++)
-            HashTable[index, i] = 0;
+            hashTable[index, i] = 0;
 
         for (int i = 0; i < 8; i++)
-            HashTable[index, i] = Log[i];
+            hashTable[index, i] = log[i];
 
         for (int i = 8; i < keyArray.Length + 8; i++)
-            HashTable[index, i] = keyArray[i - 8];
+            hashTable[index, i] = keyArray[i - 8];
     }
+
+    public int EntryCount()
+    {
+        int count = 0;
+        for (int i = 0; i < hashTable.GetLength(0); i++)
+            if (hashTable[i, 0] != 0)
+                count++;
+
+        return count;
+    }
+
     public int IsvalidEntry(ulong key)
     {
-        int index = (int)(key % (ulong)HashTable.GetLength(0));
-        if (HashTable[index, 0] != 0)
+        int index = (int)(key % (ulong)hashTable.GetLength(0));
+        if (hashTable[index, 0] != 0)
         {
             byte[] values = new byte[8];
             for (int i = 0; i < 8; i++)
-                values[i] = HashTable[index, 8 + i];
+                values[i] = hashTable[index, 8 + i];
 
             ulong otherkey = BitConverter.ToUInt64(values);
 
@@ -1355,41 +1355,39 @@ class AlphaBeta
                 return -1;
         }
         else
-        {
             return -2;
-        }
     }
     public TTableEntry GetInfoFromEntry(ulong key)
     {
-        int index = (int)(key % (ulong)HashTable.GetLength(0));
-        byte depth = HashTable[index, 0];
+        int index = (int)(key % (ulong)hashTable.GetLength(0));
+        byte depth = (byte)(hashTable[index, 0] - 1);
         byte[] EvalParts = new byte[4];
         byte[] move_parts = new byte[2];
-        EvalParts[0] = HashTable[index, 1];
-        EvalParts[1] = HashTable[index, 2];
-        EvalParts[2] = HashTable[index, 3];
-        EvalParts[3] = HashTable[index, 4];
+        EvalParts[0] = hashTable[index, 1];
+        EvalParts[1] = hashTable[index, 2];
+        EvalParts[2] = hashTable[index, 3];
+        EvalParts[3] = hashTable[index, 4];
         int eval = BitConverter.ToInt32(EvalParts);
-        int Movesize = 5;
+        int movesize = 5;
 
         //get the flag for the beta cutoff
-        bool beta_cutoff = (HashTable[index, 7] & 0b01) != 0;
+        bool betaCutoff = (hashTable[index, 7] & 0b01) != 0;
 
         //get the flag for the alpha cutoff
-        bool alpha_cutoff = (HashTable[index, 7] & 0b10) != 0;
+        bool alpha_cutoff = (hashTable[index, 7] & 0b10) != 0;
 
         //collect the move
-        if (HashTable[index, 9] == 0)
-            Movesize--;
+        if (hashTable[index, 9] == 0)
+            movesize--;
 
         for (int i = 5; i < 7; i++)
-            move_parts[i - 5] = HashTable[index, i];
+            move_parts[i - 5] = hashTable[index, i];
 
-        int Move = BitConverter.ToInt16(move_parts) - 1;
+        int move = BitConverter.ToInt16(move_parts) - 1;
 
-        return new TTableEntry(Move, eval, depth, beta_cutoff, alpha_cutoff, !beta_cutoff && !alpha_cutoff);
+        return new TTableEntry(move, eval, depth, betaCutoff, alpha_cutoff, !betaCutoff && !alpha_cutoff);
     }
-  
+
     public void AddPositionToLookups(ulong key)
     {
         //add to fast lookup
@@ -1479,7 +1477,7 @@ class AlphaBeta
     }
     public void reduction_b()
     {
-        int reduction = 0;
+        int reduction;
 
         for (int depth = 2; depth < 64; depth++)
         {
@@ -1518,8 +1516,7 @@ class AlphaBeta
 
     public int reverse_futility_pruning_margin(int depth)
     {
-        return 1200 * depth;
-        //return 600 * depth;
+        return 800 * depth;
     }
 
     public int extended_futility_pruning_margin(int depth, bool pv_node)
@@ -1532,11 +1529,15 @@ class AlphaBeta
         return -(15 + 20 * lmr_depth * (lmr_depth + (improving ? 1 : 0)));
     }
 
-    public int move_pruning(int depth, bool improving)
+    public int MovePruning(int depth, bool improving)
     {
         int divisor = improving ? 2 : 3;
 
-        return 2 + 6 * depth * depth / divisor;
+        return 6 + 18 * depth * depth / divisor;
+
+
+        /*int divisor = improving ? 1 : 2;
+        return 3 + 2 * depth * depth / divisor;*/
     }
 
     public string variation_to_string(List<int> variation)
@@ -1560,13 +1561,13 @@ class AlphaBeta
 
 class TTableEntry
 {
-    public int BestMove;
+    public int bestMove;
     public int score;
     public byte depth;
     public bool failHigh = false, failLow = false, exact = false;
     public TTableEntry(int Bestmove, int CurrentScore, byte Currentdepth, bool cut_node, bool all_node, bool pv_node)
     {
-        BestMove = Bestmove;
+        bestMove = Bestmove;
         score = CurrentScore;
         depth = Currentdepth;
         failHigh = cut_node;
