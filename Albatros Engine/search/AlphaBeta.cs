@@ -983,7 +983,8 @@ class AlphaBeta
             //if there is no legal move it is checkmate
             if (inCheck) alpha = -(mateValue + maxDepth - ply);
 
-            AddToTable(0, 0, alpha, key, 0, 0);
+            if (!stop && keyValid == -2)
+                AddToTable(0, 0, alpha, key, 0, 0);
 
             return alpha;
         }
