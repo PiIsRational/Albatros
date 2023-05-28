@@ -218,7 +218,7 @@ class Io
                                 {
                                     game.HashSize = Convert.ToInt32(command_syntax[4]);
                                     game.HashSize = Math.Max(Math.Min(game.HashSize, 10000), 1);
-                                    AlphaBetaSearch.HashTable = new byte[game.HashSize * 55556, 18];
+                                    AlphaBetaSearch.hashTable = new byte[game.HashSize * 55556, 18];
                                 }
                                 catch { Console.WriteLine("{0} is not a number \n", command_syntax[4]); }
                                 break;
@@ -362,13 +362,13 @@ class Io
         played_moves = 0;
         AlphaBetaSearch.time_to_use = 0;
         game.Playing = false;
-        AlphaBetaSearch.HashTable = new byte[game.HashSize * 62500, 16];
+        AlphaBetaSearch.hashTable = new byte[game.HashSize * 62500, 16];
         game.board = chess_stuff.LoadPositionFromFen(game.board, Game.StartPosition);
     }
     public void reset_board()
     {
         AlphaBetaSearch.time_to_use = 0;
-        AlphaBetaSearch.HashTable = new byte[game.HashSize * 62500, 16];
+        AlphaBetaSearch.hashTable = new byte[game.HashSize * 62500, 16];
         game.board = chess_stuff.LoadPositionFromFen(game.board, Game.StartPosition);
     }
     public void perft_out(int depth, Position board)
