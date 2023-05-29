@@ -62,10 +62,10 @@ class standart_chess
                     EnPassentCoordinate[1] = i;
             }
 
-            board.en_passent_square = (byte)(EnPassentCoordinate[0] + EnPassentCoordinate[1] * 8);
+            board.enPassentSquare = (byte)(EnPassentCoordinate[0] + EnPassentCoordinate[1] * 8);
         }
         else
-            board.en_passent_square = byte.MaxValue;
+            board.enPassentSquare = byte.MaxValue;
 
         //Look For Castelling
         if (Semantics[2] != "-")
@@ -371,8 +371,8 @@ class standart_chess
         if (((!board.rook_not_moved[3] && !board.rook_not_moved[2]) || !board.king_not_moved[1]) && ((!board.rook_not_moved[1] && !board.rook_not_moved[0]) || !board.king_not_moved[0]))
             fen_output += "-";
 
-        if (board.en_passent_square != byte.MaxValue)
-            fen_output += " " + Convert.ToString(Letters[board.en_passent_square % 8]) + Convert.ToString(Numbers[board.en_passent_square / 8]) + " ";
+        if (board.enPassentSquare != byte.MaxValue)
+            fen_output += " " + Convert.ToString(Letters[board.enPassentSquare % 8]) + Convert.ToString(Numbers[board.enPassentSquare / 8]) + " ";
         else
             fen_output += " - ";
 
@@ -402,7 +402,7 @@ class standart_chess
         if (other == castle_or_en_passent)
         {
             byte to = (byte)((move & 0b0000111111000000) >> 6);
-            if (to == board.en_passent_square)
+            if (to == board.enPassentSquare)
                 return true;
         }
         return false;

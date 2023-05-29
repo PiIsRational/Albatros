@@ -508,12 +508,12 @@ class movegen
             undo_move.king_changes = byte.MaxValue;
             undo_move.moved_piece_idx = 0;
             undo_move.removed_piece_idx = 0;
-            undo_move.fifty_move_rule = (byte)board.fiftyMoveRule;
-            undo_move.en_passent = board.en_passent_square;
+            undo_move.fiftyMoveRule = (byte)board.fiftyMoveRule;
+            undo_move.enPassent = board.enPassentSquare;
         }
 
         //look for en passent
-        if (board.en_passent_square != standart_chess.no_square && other != standart_chess.doublePawnMove)
+        if (board.enPassentSquare != standart_chess.no_square && other != standart_chess.doublePawnMove)
             ep_legal = true;
 
         //reset rook has moved for castling
@@ -551,8 +551,8 @@ class movegen
                 break;
         }
 
-        if (board.en_passent_square != standart_chess.no_square && ep_legal)
-            board.en_passent_square = standart_chess.no_square;
+        if (board.enPassentSquare != standart_chess.no_square && ep_legal)
+            board.enPassentSquare = standart_chess.no_square;
 
         if (reset_fifty_move_counter)
         {
@@ -585,8 +585,8 @@ class movegen
     public Position unmake_move(Position board, ReverseMove move)
     {
         board.color = (byte)(board.color ^ 1);
-        board.en_passent_square = move.en_passent;
-        board.fiftyMoveRule = move.fifty_move_rule;
+        board.enPassentSquare = move.enPassent;
+        board.fiftyMoveRule = move.fiftyMoveRule;
         if (move.king_changes != byte.MaxValue)
             board.king_not_moved[move.king_changes] = true;
         if (move.rook_changes != byte.MaxValue)
@@ -650,10 +650,10 @@ class movegen
             switch (other)
             {
                 case standart_chess.doublePawnMove:
-                    board.en_passent_square = (byte)((from + to) / 2);
+                    board.enPassentSquare = (byte)((from + to) / 2);
                     break;
                 case standart_chess.castle_or_en_passent:
-                    board.en_passent_square = standart_chess.no_square;
+                    board.enPassentSquare = standart_chess.no_square;
                     byte square_of_victim = (byte)((chess_stuff.get_y_from_square(from) << 3) ^ chess_stuff.get_x_from_square(to));
                     board = remove_piece_from_list(board, (byte)(standart_chess.pawn ^ ((board.color ^ 1) << 3)), square_of_victim);
                     board.board[square_of_victim] = standart_chess.no_piece;
@@ -874,11 +874,11 @@ class movegen
             movelist = add_pawn_moves_to_list(movelist, square, (byte)(new_square - 1), promotion);
 
         //en passent
-        if (board.en_passent_square != standart_chess.no_square &&
-            y + y_dir / iny == chess_stuff.get_y_from_square(board.en_passent_square) &&
-            Math.Abs(chess_stuff.get_x_from_square(board.en_passent_square) - x) == 1)
+        if (board.enPassentSquare != standart_chess.no_square &&
+            y + y_dir / iny == chess_stuff.get_y_from_square(board.enPassentSquare) &&
+            Math.Abs(chess_stuff.get_x_from_square(board.enPassentSquare) - x) == 1)
         {
-            movelist[moveIdx] = move_x_to_y(square, board.en_passent_square, standart_chess.castle_or_en_passent);
+            movelist[moveIdx] = move_x_to_y(square, board.enPassentSquare, standart_chess.castle_or_en_passent);
             moveIdx++;
         }
 
@@ -901,11 +901,11 @@ class movegen
             movelist = add_pawn_moves_to_list(movelist, square, (byte)(new_square - 1), promotion);
 
         //en passent
-        if (board.en_passent_square != standart_chess.no_square &&
-            y + y_dir / iny == chess_stuff.get_y_from_square(board.en_passent_square) &&
-            Math.Abs(chess_stuff.get_x_from_square(board.en_passent_square) - x) == 1)
+        if (board.enPassentSquare != standart_chess.no_square &&
+            y + y_dir / iny == chess_stuff.get_y_from_square(board.enPassentSquare) &&
+            Math.Abs(chess_stuff.get_x_from_square(board.enPassentSquare) - x) == 1)
         {
-            movelist[moveIdx] = move_x_to_y(square, board.en_passent_square, standart_chess.castle_or_en_passent);
+            movelist[moveIdx] = move_x_to_y(square, board.enPassentSquare, standart_chess.castle_or_en_passent);
             moveIdx++;
         }
 
@@ -1253,6 +1253,6 @@ class movegen
 }
 class ReverseMove
 {
-    public byte en_passent = byte.MaxValue, fifty_move_rule = 0, king_changes = byte.MaxValue, rook_changes = byte.MaxValue, moved_piece_idx = 0, removed_piece_idx = 0;
+    public byte enPassent = byte.MaxValue, fiftyMoveRule = 0, king_changes = byte.MaxValue, rook_changes = byte.MaxValue, moved_piece_idx = 0, removed_piece_idx = 0;
     public int[,] moved_pieces = new int[2, 2], removed_pieces = new int[2, 2];
 }

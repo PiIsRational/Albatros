@@ -63,8 +63,8 @@ class zobrist_hash
         }
 
         //en passent
-        if (board.en_passent_square != 255)
-            output ^= en_passent[chess_stuff.get_y_from_square(board.en_passent_square)];
+        if (board.enPassentSquare != 255)
+            output ^= en_passent[chess_stuff.get_y_from_square(board.enPassentSquare)];
 
         //finally go trough each piece in the piece list 
         for (int i = 0; i < 2; i++)
@@ -96,12 +96,12 @@ class zobrist_hash
         }
 
         //remove the old en passent square
-        if(unmake_move.en_passent != byte.MaxValue)
-            hash ^= en_passent[chess_stuff.get_y_from_square(unmake_move.en_passent)];
+        if(unmake_move.enPassent != byte.MaxValue)
+            hash ^= en_passent[chess_stuff.get_y_from_square(unmake_move.enPassent)];
 
         //add the new en passent square
-        if (board.en_passent_square != byte.MaxValue)
-            hash ^= en_passent[chess_stuff.get_y_from_square(board.en_passent_square)];
+        if (board.enPassentSquare != byte.MaxValue)
+            hash ^= en_passent[chess_stuff.get_y_from_square(board.enPassentSquare)];
 
         return hash;
     }
@@ -111,8 +111,8 @@ class zobrist_hash
         hash ^= white_to_play;
 
         //remove the old en passent square
-        if (unmake_move.en_passent != byte.MaxValue)
-            hash ^= en_passent[chess_stuff.get_y_from_square(unmake_move.en_passent)];
+        if (unmake_move.enPassent != byte.MaxValue)
+            hash ^= en_passent[chess_stuff.get_y_from_square(unmake_move.enPassent)];
 
         return hash;
     }

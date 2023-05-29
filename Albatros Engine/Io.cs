@@ -102,7 +102,7 @@ class Io
                                 }
                                 else
                                 {
-                                    Move[0] = AlphaBetaSearch.iterative_deepening(game.board, AlphaBeta.maxDepth, game.NNUE, false);
+                                    Move[0] = AlphaBetaSearch.IterativeDeepening(game.board, AlphaBeta.MAX_DEPTH, game.NNUE, false);
                                     ReturnMove(Move[0], int.MaxValue);
                                 }
                                 break;
@@ -115,7 +115,7 @@ class Io
                                 }
                                 else
                                 {
-                                    Move[0] = AlphaBetaSearch.iterative_deepening(game.board, AlphaBeta.maxDepth, game.NNUE, false);
+                                    Move[0] = AlphaBetaSearch.IterativeDeepening(game.board, AlphaBeta.MAX_DEPTH, game.NNUE, false);
                                     ReturnMove(Move[0], int.MaxValue);
                                 }
                                 break;
@@ -145,7 +145,7 @@ class Io
                             case "depth":
                                 try
                                 {
-                                    Move[0] = AlphaBetaSearch.iterative_deepening(game.board, Convert.ToInt32(command_syntax[2]), game.NNUE, false);
+                                    Move[0] = AlphaBetaSearch.IterativeDeepening(game.board, Convert.ToInt32(command_syntax[2]), game.NNUE, false);
                                     ReturnMove(Move[0], int.MaxValue);
                                 }
                                 catch
@@ -167,7 +167,7 @@ class Io
                                 }
                                 else
                                 {
-                                    Move[0] = AlphaBetaSearch.iterative_deepening(game.board,  AlphaBeta.maxDepth, game.NNUE, false);
+                                    Move[0] = AlphaBetaSearch.IterativeDeepening(game.board,  AlphaBeta.MAX_DEPTH, game.NNUE, false);
                                     ReturnMove(Move[0], int.MaxValue);
                                 }
                                 break;
@@ -175,7 +175,7 @@ class Io
                     }
                     else
                     {
-                        Move[0] = AlphaBetaSearch.iterative_deepening(game.board, AlphaBeta.maxDepth, game.NNUE, false);
+                        Move[0] = AlphaBetaSearch.IterativeDeepening(game.board, AlphaBeta.MAX_DEPTH, game.NNUE, false);
                         ReturnMove(Move[0], int.MaxValue);   
                     }
                     break;

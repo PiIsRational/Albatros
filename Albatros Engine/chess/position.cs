@@ -14,7 +14,7 @@ class Position
     public byte color = 0;
 
     //the square on wich the taking piece lands
-    public byte en_passent_square = byte.MaxValue;
+    public byte enPassentSquare = byte.MaxValue;
 
     //squares are on the first 6 bits
     //the array is indexed by the piece
@@ -53,7 +53,7 @@ class Position
         Array.Copy(boards, output.boards, boards.Length);
         Array.Copy(idx_board, output.idx_board, idx_board.Length);
         output.color = color;
-        output.en_passent_square = en_passent_square;
+        output.enPassentSquare = enPassentSquare;
         for (int i = 0; i < piece_square_lists.Length; i++)
         {
             if (piece_square_lists[i] != null)
