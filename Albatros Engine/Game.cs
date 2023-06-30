@@ -8,7 +8,6 @@ class Game
     public Position board = new Position();
     public static bool quit = false;
     public bool Playing = false;
-    public Training training;
     public string CurrentFen;
     static Thread CommandExecute;
     static Io io = new Io();
@@ -85,10 +84,7 @@ class Game
                 quit = true;
             }
             else if (Input.Length != 0 && Input[0] == "Training")
-            {
                 CommandExecute = new Thread(io.ThreadStart);
-                io.TrainingStart();
-            }
             else if (!CommandExecute.IsAlive)
             {
                 CommandExecute = new Thread(io.ThreadStart);

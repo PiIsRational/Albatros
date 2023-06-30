@@ -5,7 +5,7 @@ using System.Text;
 
 class Move_Ordering_Heuristics
 {
-    standart stuff = new standart();
+    Standart stuff = new Standart();
     //indexing goes [piece]
     int[] MVV_array = new int[7];
     //indexing goes [type, ply]
@@ -20,7 +20,7 @@ class Move_Ordering_Heuristics
     int[,] counterMoves = new int[15, 64];
     public int tacticalMoveCounter = 0;
     public int[,] current_move = new int[byte.MaxValue + 1, 2];
-    standart_chess chess_stuff = new standart_chess();
+    StandartChess chess_stuff = new StandartChess();
     public Move_Ordering_Heuristics()
     {
         initMVV();
@@ -114,7 +114,7 @@ class Move_Ordering_Heuristics
         byte to = (byte)((move & 0b0000111111000000) >> 6);
         byte other = (byte)(move >> 12);
 
-        if (other < standart_chess.doublePawnMove)
+        if (other < StandartChess.doublePawnMove)
         {
             currentPieceValue = MVV_array[board.boards[board.color ^ 1, to]];
 
@@ -129,25 +129,25 @@ class Move_Ordering_Heuristics
             switch (other)
             {
                 // en passent
-                case standart_chess.castle_or_en_passent:
+                case StandartChess.castle_or_en_passent:
                     if (chess_stuff.is_en_passent(move, board))
-                        currentPieceValue = MVV_array[standart_chess.pawn];
+                        currentPieceValue = MVV_array[StandartChess.pawn];
                     break;
                 // Knight promotion
-                case standart_chess.knight_promotion:
-                    currentPieceValue = MVV_array[standart_chess.knight];
+                case StandartChess.knight_promotion:
+                    currentPieceValue = MVV_array[StandartChess.knight];
                     break;
                 // Bishop promotion
-                case standart_chess.bishop_promotion:
-                    currentPieceValue = MVV_array[standart_chess.bishop];
+                case StandartChess.bishop_promotion:
+                    currentPieceValue = MVV_array[StandartChess.bishop];
                     break;
                 // Queen promotion
-                case standart_chess.queen_promotion:
-                    currentPieceValue = MVV_array[standart_chess.queen];
+                case StandartChess.queen_promotion:
+                    currentPieceValue = MVV_array[StandartChess.queen];
                     break;
                 // Rook promotion
-                case standart_chess.rook_promotion:
-                    currentPieceValue = MVV_array[standart_chess.rook];
+                case StandartChess.rook_promotion:
+                    currentPieceValue = MVV_array[StandartChess.rook];
                     break;
             }
 
@@ -232,7 +232,7 @@ class Move_Ordering_Heuristics
             }
         }
     }
-    public void update_histories(Position board, int bestmove, int[] played_moves, int current_move_idx, bool[] null_move_pruning, int depth, int ply, bool fail_high)
+    public void UpdateHistories(Position board, int bestmove, int[] played_moves, int current_move_idx, bool[] null_move_pruning, int depth, int ply, bool fail_high)
     {
         float bonus = -Math.Min((float)(depth * depth) / 10, 40);
 
@@ -292,19 +292,19 @@ class Move_Ordering_Heuristics
 
         switch (piece)
         {
-            case standart_chess.pawn:
+            case StandartChess.pawn:
                 piece_value = 3000;
                 break;
-            case standart_chess.knight:
+            case StandartChess.knight:
                 piece_value = 9000;
                 break;
-            case standart_chess.bishop:
+            case StandartChess.bishop:
                 piece_value = 9000;
                 break;
-            case standart_chess.queen:
+            case StandartChess.queen:
                 piece_value = 27000;
                 break;
-            case standart_chess.rook:
+            case StandartChess.rook:
                 piece_value = 15000;
                 break;
             default:

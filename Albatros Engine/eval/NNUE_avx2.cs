@@ -17,7 +17,7 @@ class NNUE_avx2
     public short[] accReluOut = new short[2 * TRANSFORMER_OUT_SIZE];
 
     //Network Output
-    long netOutput = 0;
+    long netOutput;
 
     //feature transformer
     readonly FeatureTransformer transformer = new(768, TRANSFORMER_OUT_SIZE);
@@ -25,10 +25,6 @@ class NNUE_avx2
 
     //All the other Layers
     readonly LinearLayer output = new(2 * TRANSFORMER_OUT_SIZE, 1);
-
-    //other stuff
-    readonly Vector256<int> kOnes256 = new();
-    readonly short[] initKOnes256 = new short[TRANSFORMER_OUT_SIZE];
 
     // weights are between 2 and -2 (2^9 and -2^9)
     const int WEIGHT_SCALING = 1024;
@@ -43,7 +39,6 @@ class NNUE_avx2
 
     //Log2 of weigtscale
     const byte log2WeightScale = 10;
-    readonly standart stuff = new();
 
     const int REGISTER_WIDTH = 8;
     //Size of the Feature Transformer Output size (16) divided by the register width (8)
@@ -56,7 +51,7 @@ class NNUE_avx2
         InitOutput();
 
         //initkOnes256();
-        initPtype();
+        InitPtype();
 
         //initialize the feature vectors
         features[0] = new List<int>();
@@ -119,7 +114,7 @@ class NNUE_avx2
         return Features;
     }
 
-    public void initPtype()
+    public void InitPtype()
     {
         for (byte color = 0; color < 2; color++)
         {
@@ -155,7 +150,7 @@ class NNUE_avx2
         return (int)(netOutput * 1000 / (WEIGHT_SCALING * ACTIVATION_SCALING));
     }
 
-    public void updateAccFromMove(Position board, ReverseMove move, bool invert)
+    public void UpdateAccFromMove(Position board, ReverseMove move, bool invert)
     {
         List<int>[] featuresToAdd = new List<int>[2];
         List<int>[] featuresToRemove = new List<int>[2];
@@ -218,7 +213,7 @@ class NNUE_avx2
         for (int i = 0; i < CHUNK_COUNT; i++)
         {
             //get the address of the accumulator
-            fixed (int* currentAddress = &acc.Acc[color][i * REGISTER_WIDTH])
+            fixed (int* currentAddress = &acc.accu[color][i * REGISTER_WIDTH])
             {
                 //store the register ath this address
                 Avx2.Store(currentAddress, registers[i]);
@@ -233,7 +228,7 @@ class NNUE_avx2
         for (int i = 0; i < NUMBER_OF_CHUNKS; i++)
         {
             //get the address of the accumulator
-            fixed (int* currentAddress = &acc.Acc[color][i * REGISTER_WIDTH])
+            fixed (int* currentAddress = &acc.accu[color][i * REGISTER_WIDTH])
             {
                 //load this part of the register with the data of the address
                 registers[i] = Avx2.LoadVector256(currentAddress);
@@ -241,12 +236,12 @@ class NNUE_avx2
         }
 
         //Remove the old features 
-        foreach (int Place in removedFeatures[color])
+        foreach (int place in removedFeatures[color])
         {
             for (int i = 0; i < NUMBER_OF_CHUNKS; i++)
             {
                 //get the address of the weights
-                fixed (int* currentAddress = &transformer.weight[Place, i * REGISTER_WIDTH])
+                fixed (int* currentAddress = &transformer.weight[place, i * REGISTER_WIDTH])
                 {
                     //add the weights withe the register
                     registers[i] = Avx2.Subtract(registers[i], Avx2.LoadVector256(currentAddress));
@@ -255,12 +250,12 @@ class NNUE_avx2
         }
 
         //Add the new features
-        foreach (int Place in addedFeatures[color])
+        foreach (int place in addedFeatures[color])
         {
             for (int i = 0; i < NUMBER_OF_CHUNKS; i++)
             {
                 //get the address of the weights
-                fixed (int* currentAddress = &transformer.weight[Place, i * REGISTER_WIDTH])
+                fixed (int* currentAddress = &transformer.weight[place, i * REGISTER_WIDTH])
                 {
                     //add the weights withe the register
                     registers[i] = Avx2.Add(registers[i], Avx2.LoadVector256(currentAddress));
@@ -272,7 +267,7 @@ class NNUE_avx2
         for (int i = 0; i < NUMBER_OF_CHUNKS; i++)
         {
             //get the address of the accumulator
-            fixed (int* currentAddress = &acc.Acc[color][i * REGISTER_WIDTH])
+            fixed (int* currentAddress = &acc.accu[color][i * REGISTER_WIDTH])
             {
                 //store the register ath this address
                 Avx2.Store(currentAddress, registers[i]);
@@ -614,18 +609,18 @@ class NNUE_avx2
 class Accumulator
 {
     //Accumulator (Acc[1] White, Acc[0] Black)
-    public int[][] Acc;
+    public int[][] accu;
 
     public Accumulator(int Size)
     {
-        Acc = new int[2][];
-        Acc[0] = new int[Size];
-        Acc[1] = new int[Size];
+        accu = new int[2][];
+        accu[0] = new int[Size];
+        accu[1] = new int[Size];
     }
 
     public int[] ReturnSide(byte color)
     {
-        return Acc[color];
+        return accu[color];
     }
 }
 class LinearLayer

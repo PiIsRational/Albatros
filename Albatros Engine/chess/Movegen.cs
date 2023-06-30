@@ -23,7 +23,7 @@ class movegen
     byte[,][] rook_table = new byte[64, 4][];
 
     //variables
-    standart_chess chess_stuff = new standart_chess();
+    StandartChess chess_stuff = new StandartChess();
     int[,] start_rook_square = new int[2, 2] { { 56, 63 }, { 0, 7 } };
     public bool illegal_position = false;
     public bool nonPawnMaterial = false;
@@ -91,26 +91,26 @@ class movegen
 
                 switch (piece_wo_color)
                 {
-                    case standart_chess.pawn:
+                    case StandartChess.pawn:
                         movelist = pawn_move(movelist, board, i);
                         break;
-                    case standart_chess.knight:
+                    case StandartChess.knight:
                         nonPawnMaterial = true;
                         movelist = knight_move(movelist, board, i);
                         break;
-                    case standart_chess.bishop:
+                    case StandartChess.bishop:
                         nonPawnMaterial = true;
                         movelist = sliding_piece_move(movelist, board, i, bishop_table);
                         break;
-                    case standart_chess.rook:
+                    case StandartChess.rook:
                         nonPawnMaterial = true;
                         movelist = sliding_piece_move(movelist, board, i, rook_table);
                         break;
-                    case standart_chess.queen:
+                    case StandartChess.queen:
                         nonPawnMaterial = true;
                         movelist = sliding_piece_move(sliding_piece_move(movelist, board, i, bishop_table), board, i, rook_table);
                         break;
-                    case standart_chess.king:
+                    case StandartChess.king:
                         nonPawnMaterial = true;
                         movelist = king_move(movelist, board, i);
                         break;
@@ -131,22 +131,22 @@ class movegen
 
                 switch (piece_wo_color)
                 {
-                    case standart_chess.pawn:
+                    case StandartChess.pawn:
                         movelist = pawn_capture(movelist, board, i);
                         break;
-                    case standart_chess.knight:
+                    case StandartChess.knight:
                         movelist = knight_capture(movelist, board, i);
                         break;
-                    case standart_chess.bishop:
+                    case StandartChess.bishop:
                         movelist = sliding_piece_capture(movelist, board, i, bishop_table);
                         break;
-                    case standart_chess.rook:
+                    case StandartChess.rook:
                         movelist = sliding_piece_capture(movelist, board, i, rook_table);
                         break;
-                    case standart_chess.queen:
+                    case StandartChess.queen:
                         movelist = sliding_piece_capture(sliding_piece_capture(movelist, board, i, bishop_table), board, i, rook_table);
                         break;
-                    case standart_chess.king:
+                    case StandartChess.king:
                         movelist = king_capture(movelist, board, i);
                         break;
                 }
@@ -215,16 +215,16 @@ class movegen
         byte from = (byte)(move & 0b0000000000111111);
         byte to = (byte)((move & 0b0000111111000000) >> 6);
 
-        int king_square = board.piece_square_lists[standart_chess.king ^ (board.color << 3)][0];
+        int king_square = board.piece_square_lists[StandartChess.king ^ (board.color << 3)][0];
         int othercolor = board.color ^ 1;
         int displaced_other_color = othercolor << 3;
         int king_x = chess_stuff.get_x_from_square((byte)king_square);
-        int king_y = chess_stuff.get_y_from_square((byte)king_square);
+        int king_y = chess_stuff.GetY((byte)king_square);
 
         //only special cases
-        if (other == standart_chess.castle_or_en_passent)
+        if (other == StandartChess.castle_or_en_passent)
         {
-            if(board.boards[othercolor, to] == standart_chess.king )
+            if(board.boards[othercolor, to] == StandartChess.king )
             { 
                 //find the square on wich the rook landed
                 byte rook_square = (byte)(from + ((from < to) ? 1 : -1));
@@ -232,9 +232,9 @@ class movegen
                 int rook_x = chess_stuff.get_x_from_square((byte)rook_square);
                 //calculate the first delta
                 if (king_x == rook_x)
-                    check_vector_for_check(board, (byte)king_square, rook_table, king_square - rook_square < 0 ? 2 : 3, (byte)othercolor, standart_chess.rook);
+                    check_vector_for_check(board, (byte)king_square, rook_table, king_square - rook_square < 0 ? 2 : 3, (byte)othercolor, StandartChess.rook);
                 else if (king_square - rook_square == king_x - rook_x)
-                    check_vector_for_check(board, (byte)king_square, rook_table, king_x - rook_x < 0 ? 0 : 1, (byte)othercolor, standart_chess.rook);
+                    check_vector_for_check(board, (byte)king_square, rook_table, king_x - rook_x < 0 ? 0 : 1, (byte)othercolor, StandartChess.rook);
 
                 if (illegal_position)
                 {
@@ -265,31 +265,31 @@ class movegen
         //cases at the end square
         switch (board.boards[othercolor, to])
         {
-            case standart_chess.queen:
+            case StandartChess.queen:
                 //calculate the first delta
                 if (king_x == to_x)
-                    check_vector_for_check(board, (byte)king_square, rook_table, king_square - to < 0 ? 2 : 3, (byte)othercolor, standart_chess.queen);
+                    check_vector_for_check(board, (byte)king_square, rook_table, king_square - to < 0 ? 2 : 3, (byte)othercolor, StandartChess.queen);
                 else
                 {
                     int delta_a = king_square - to;
                     int delta_b = king_x - to_x;
 
                     if (delta_a == delta_b)
-                        check_vector_for_check(board, (byte)king_square, rook_table, king_x - to_x < 0 ? 0 : 1, (byte)othercolor, standart_chess.queen);
+                        check_vector_for_check(board, (byte)king_square, rook_table, king_x - to_x < 0 ? 0 : 1, (byte)othercolor, StandartChess.queen);
                     else if (delta_a == 9 * delta_b)
-                        check_vector_for_check(board, (byte)king_square, bishop_table, king_x - to_x < 0 ? 0 : 1, (byte)othercolor, standart_chess.queen);
+                        check_vector_for_check(board, (byte)king_square, bishop_table, king_x - to_x < 0 ? 0 : 1, (byte)othercolor, StandartChess.queen);
                     else if (delta_a == -7 * delta_b)
-                        check_vector_for_check(board, (byte)king_square, bishop_table, king_x - to_x < 0 ? 3 : 2, (byte)othercolor, standart_chess.queen);
+                        check_vector_for_check(board, (byte)king_square, bishop_table, king_x - to_x < 0 ? 3 : 2, (byte)othercolor, StandartChess.queen);
                 }
                 break;
-            case standart_chess.rook:
+            case StandartChess.rook:
                 //calculate the first delta
                 if (king_x == to_x)
-                    check_vector_for_check(board, (byte)king_square, rook_table, king_square - to < 0 ? 2 : 3, (byte)othercolor, standart_chess.rook);
+                    check_vector_for_check(board, (byte)king_square, rook_table, king_square - to < 0 ? 2 : 3, (byte)othercolor, StandartChess.rook);
                 else if (king_square - to == king_x - to_x)
-                    check_vector_for_check(board, (byte)king_square, rook_table, king_x - to_x < 0 ? 0 : 1, (byte)othercolor, standart_chess.rook);
+                    check_vector_for_check(board, (byte)king_square, rook_table, king_x - to_x < 0 ? 0 : 1, (byte)othercolor, StandartChess.rook);
                 break;
-            case standart_chess.bishop:
+            case StandartChess.bishop:
                 //calculate the first delta
                 if (king_x != to_x)
                 {
@@ -297,29 +297,29 @@ class movegen
                     int delta_b = king_x - to_x;
 
                     if (delta_a == 9 * delta_b)
-                        check_vector_for_check(board, (byte)king_square, bishop_table, king_x - to_x < 0 ? 0 : 1, (byte)othercolor, standart_chess.bishop);
+                        check_vector_for_check(board, (byte)king_square, bishop_table, king_x - to_x < 0 ? 0 : 1, (byte)othercolor, StandartChess.bishop);
                     if (delta_a == -7 * delta_b)
-                        check_vector_for_check(board, (byte)king_square, bishop_table, king_x - to_x < 0 ? 3 : 2, (byte)othercolor, standart_chess.bishop);
+                        check_vector_for_check(board, (byte)king_square, bishop_table, king_x - to_x < 0 ? 3 : 2, (byte)othercolor, StandartChess.bishop);
                 }
                 break;
-            case standart_chess.knight:
+            case StandartChess.knight:
                 int delta_x = Math.Abs((int)king_x - to_x);
                 if (delta_x == 1 || delta_x == 2)
                 {
-                    int to_y = chess_stuff.get_y_from_square(to);
+                    int to_y = chess_stuff.GetY(to);
                     int delta_y = Math.Abs((int)king_y - to_y);
                     if (delta_y == 3 - delta_x)
                         return true;
                 }
                 break;
-            case standart_chess.pawn:
+            case StandartChess.pawn:
                 int y_dir = (1 - 2 * othercolor) * iny;
                 if (king_square + y_dir < 64 && king_square + y_dir >= 0)
                 {
-                    if (king_x - 1 >= 0 && board.boards[othercolor, king_square - 1 + y_dir] == standart_chess.pawn)
+                    if (king_x - 1 >= 0 && board.boards[othercolor, king_square - 1 + y_dir] == StandartChess.pawn)
                         return true;
 
-                    if (king_x + 1 < 8 && board.boards[othercolor, king_square + 1 + y_dir] == standart_chess.pawn)
+                    if (king_x + 1 < 8 && board.boards[othercolor, king_square + 1 + y_dir] == StandartChess.pawn)
                         return true;
                 }
                 break;
@@ -337,8 +337,8 @@ class movegen
     {
         if (king_x == from_x)
         {
-            check_vector_for_check(board, (byte)king_square, rook_table, king_square - from < 0 ? 2 : 3, (byte)othercolor, standart_chess.queen);
-            check_vector_for_check(board, (byte)king_square, rook_table, king_square - from < 0 ? 2 : 3, (byte)othercolor, standart_chess.rook);
+            check_vector_for_check(board, (byte)king_square, rook_table, king_square - from < 0 ? 2 : 3, (byte)othercolor, StandartChess.queen);
+            check_vector_for_check(board, (byte)king_square, rook_table, king_square - from < 0 ? 2 : 3, (byte)othercolor, StandartChess.rook);
         }
         else
         {
@@ -347,29 +347,29 @@ class movegen
 
             if (delta_a == delta_b)
             {
-                check_vector_for_check(board, (byte)king_square, rook_table, king_x - from_x < 0 ? 0 : 1, (byte)othercolor, standart_chess.rook);
-                check_vector_for_check(board, (byte)king_square, rook_table, king_x - from_x < 0 ? 0 : 1, (byte)othercolor, standart_chess.queen);
+                check_vector_for_check(board, (byte)king_square, rook_table, king_x - from_x < 0 ? 0 : 1, (byte)othercolor, StandartChess.rook);
+                check_vector_for_check(board, (byte)king_square, rook_table, king_x - from_x < 0 ? 0 : 1, (byte)othercolor, StandartChess.queen);
             }
             else if (delta_a == 9 * delta_b)
             {
-                check_vector_for_check(board, (byte)king_square, bishop_table, king_x - from_x < 0 ? 0 : 1, (byte)othercolor, standart_chess.bishop);
-                check_vector_for_check(board, (byte)king_square, bishop_table, king_x - from_x < 0 ? 0 : 1, (byte)othercolor, standart_chess.queen);
+                check_vector_for_check(board, (byte)king_square, bishop_table, king_x - from_x < 0 ? 0 : 1, (byte)othercolor, StandartChess.bishop);
+                check_vector_for_check(board, (byte)king_square, bishop_table, king_x - from_x < 0 ? 0 : 1, (byte)othercolor, StandartChess.queen);
             }
             else if (delta_a == -7 * delta_b)
             {
-                check_vector_for_check(board, (byte)king_square, bishop_table, king_x - from_x < 0 ? 3 : 2, (byte)othercolor, standart_chess.bishop);
-                check_vector_for_check(board, (byte)king_square, bishop_table, king_x - from_x < 0 ? 3 : 2, (byte)othercolor, standart_chess.queen);
+                check_vector_for_check(board, (byte)king_square, bishop_table, king_x - from_x < 0 ? 3 : 2, (byte)othercolor, StandartChess.bishop);
+                check_vector_for_check(board, (byte)king_square, bishop_table, king_x - from_x < 0 ? 3 : 2, (byte)othercolor, StandartChess.queen);
             }
         }
     }
     public bool illegality_check_neccessaray(int move, bool in_check, Position board)
     {
         int from = move & 0b0000000000111111;
-        if (in_check || board.boards[board.color, from] == standart_chess.king)
+        if (in_check || board.boards[board.color, from] == StandartChess.king)
             return true;
 
         int from_x = chess_stuff.get_x_from_square((byte)from);
-        int king_square = board.piece_square_lists[standart_chess.king ^ (board.color << 3)][0];
+        int king_square = board.piece_square_lists[StandartChess.king ^ (board.color << 3)][0];
         int king_x = chess_stuff.get_x_from_square((byte)king_square);
 
         if (from_x == king_x)
@@ -389,51 +389,51 @@ class movegen
         //find king 
         byte othercolor = illegality_check ? board.color : (byte)(board.color ^ 1);
         int displaced_other_color = othercolor << 3;
-        int king_square = board.piece_square_lists[standart_chess.king ^ ((othercolor ^ 1) << 3)][0];
+        int king_square = board.piece_square_lists[StandartChess.king ^ ((othercolor ^ 1) << 3)][0];
         int king_x = chess_stuff.get_x_from_square((byte)king_square);
-        int king_y = chess_stuff.get_y_from_square((byte)king_square);
+        int king_y = chess_stuff.GetY((byte)king_square);
 
         //the goal is to ckeck if the king is on the same diagonal as the piece
         //if this is the case just check the diagonal
 
         //queen
-        for (int i = 0; i < board.piececount[standart_chess.queen ^ displaced_other_color]; i++)
+        for (int i = 0; i < board.piececount[StandartChess.queen ^ displaced_other_color]; i++)
         {
-            byte queen_square = board.piece_square_lists[standart_chess.queen ^ displaced_other_color][i];
+            byte queen_square = board.piece_square_lists[StandartChess.queen ^ displaced_other_color][i];
             int queen_x = chess_stuff.get_x_from_square((byte)queen_square);
             //calculate the first delta
             if (king_x == queen_x)
-                check_vector_for_check(board, (byte)king_square, rook_table, king_square - queen_square < 0 ? 2 : 3, othercolor, standart_chess.queen);
+                check_vector_for_check(board, (byte)king_square, rook_table, king_square - queen_square < 0 ? 2 : 3, othercolor, StandartChess.queen);
             else
             {
                 int delta_a = king_square - queen_square;
                 int delta_b = king_x - queen_x;
 
                 if (delta_a == delta_b)
-                    check_vector_for_check(board, (byte)king_square, rook_table, king_x - queen_x < 0 ? 0 : 1, othercolor, standart_chess.queen);
+                    check_vector_for_check(board, (byte)king_square, rook_table, king_x - queen_x < 0 ? 0 : 1, othercolor, StandartChess.queen);
                 else if (delta_a == 9 * delta_b)
-                    check_vector_for_check(board, (byte)king_square, bishop_table, king_x - queen_x < 0 ? 0 : 1, othercolor, standart_chess.queen);
+                    check_vector_for_check(board, (byte)king_square, bishop_table, king_x - queen_x < 0 ? 0 : 1, othercolor, StandartChess.queen);
                 else if (delta_a == -7 * delta_b)
-                    check_vector_for_check(board, (byte)king_square, bishop_table, king_x - queen_x < 0 ? 3 : 2, othercolor, standart_chess.queen);
+                    check_vector_for_check(board, (byte)king_square, bishop_table, king_x - queen_x < 0 ? 3 : 2, othercolor, StandartChess.queen);
             }
         }
 
         //rook
-        for (int i = 0; i < board.piececount[standart_chess.rook ^ displaced_other_color]; i++)
+        for (int i = 0; i < board.piececount[StandartChess.rook ^ displaced_other_color]; i++)
         {
-            byte rook_square = board.piece_square_lists[standart_chess.rook ^ displaced_other_color][i];
+            byte rook_square = board.piece_square_lists[StandartChess.rook ^ displaced_other_color][i];
             int rook_x = chess_stuff.get_x_from_square((byte)rook_square);
             //calculate the first delta
             if (king_x == rook_x)
-                check_vector_for_check(board, (byte)king_square, rook_table, king_square - rook_square < 0 ? 2 : 3, othercolor, standart_chess.rook);
+                check_vector_for_check(board, (byte)king_square, rook_table, king_square - rook_square < 0 ? 2 : 3, othercolor, StandartChess.rook);
             else if (king_square - rook_square == king_x - rook_x)
-                check_vector_for_check(board, (byte)king_square, rook_table, king_x - rook_x < 0 ? 0 : 1, othercolor, standart_chess.rook);
+                check_vector_for_check(board, (byte)king_square, rook_table, king_x - rook_x < 0 ? 0 : 1, othercolor, StandartChess.rook);
         }
 
         //bishop
-        for (int i = 0; i < board.piececount[standart_chess.bishop ^ displaced_other_color]; i++)
+        for (int i = 0; i < board.piececount[StandartChess.bishop ^ displaced_other_color]; i++)
         {
-            byte bishop_square = board.piece_square_lists[standart_chess.bishop ^ displaced_other_color][i];
+            byte bishop_square = board.piece_square_lists[StandartChess.bishop ^ displaced_other_color][i];
             int bishop_x = chess_stuff.get_x_from_square((byte)bishop_square);
             //calculate the first delta
             if (king_x != bishop_x)
@@ -442,9 +442,9 @@ class movegen
                 int delta_b = king_x - bishop_x;
 
                 if (delta_a == 9 * delta_b)
-                    check_vector_for_check(board, (byte)king_square, bishop_table, king_x - bishop_x < 0 ? 0 : 1, othercolor, standart_chess.bishop);
+                    check_vector_for_check(board, (byte)king_square, bishop_table, king_x - bishop_x < 0 ? 0 : 1, othercolor, StandartChess.bishop);
                 if (delta_a == -7 * delta_b)
-                    check_vector_for_check(board, (byte)king_square, bishop_table, king_x - bishop_x < 0 ? 3 : 2, othercolor, standart_chess.bishop);
+                    check_vector_for_check(board, (byte)king_square, bishop_table, king_x - bishop_x < 0 ? 3 : 2, othercolor, StandartChess.bishop);
             }
         }
 
@@ -455,14 +455,14 @@ class movegen
         }
 
         //knight
-        for (int i = 0; i < board.piececount[standart_chess.knight ^ displaced_other_color]; i++)
+        for (int i = 0; i < board.piececount[StandartChess.knight ^ displaced_other_color]; i++)
         {
-            byte knight_square = board.piece_square_lists[standart_chess.knight ^ displaced_other_color][i];
+            byte knight_square = board.piece_square_lists[StandartChess.knight ^ displaced_other_color][i];
             int knight_x = chess_stuff.get_x_from_square(knight_square);
             int delta_x = Math.Abs((int)king_x - knight_x);
             if (delta_x == 1 || delta_x == 2)
             {
-                int knight_y = chess_stuff.get_y_from_square(knight_square);
+                int knight_y = chess_stuff.GetY(knight_square);
                 int delta_y = Math.Abs((int)king_y - knight_y);
                 if (delta_y == 3 - delta_x)
                     return true;
@@ -473,21 +473,21 @@ class movegen
         int y_dir = (1 - 2 * othercolor) * iny;
         if (king_square + y_dir < 64 && king_square + y_dir >= 0)
         {
-            if (king_x - 1 >= 0 && board.boards[othercolor, king_square - 1 + y_dir] == standart_chess.pawn)
+            if (king_x - 1 >= 0 && board.boards[othercolor, king_square - 1 + y_dir] == StandartChess.pawn)
                 return true;
 
-            if (king_x + 1 < 8 && board.boards[othercolor, king_square + 1 + y_dir] == standart_chess.pawn)
+            if (king_x + 1 < 8 && board.boards[othercolor, king_square + 1 + y_dir] == StandartChess.pawn)
                 return true;
         }
 
         //king
         if (illegality_check)
         {
-            int other_king_square = board.piece_square_lists[standart_chess.king ^ displaced_other_color][0];
+            int other_king_square = board.piece_square_lists[StandartChess.king ^ displaced_other_color][0];
             int other_k_x = chess_stuff.get_x_from_square((byte)other_king_square);
             if (other_k_x == king_x + 1 || other_k_x == king_x || other_k_x == king_x - 1)
             {
-                int other_k_y = chess_stuff.get_y_from_square((byte)other_king_square);
+                int other_k_y = chess_stuff.GetY((byte)other_king_square);
                 if (other_k_y == king_y + 1 || other_k_y == king_y || other_k_y == king_y - 1)
                     return true;
             }
@@ -513,21 +513,21 @@ class movegen
         }
 
         //look for en passent
-        if (board.enPassentSquare != standart_chess.no_square && other != standart_chess.doublePawnMove)
+        if (board.enPassentSquare != StandartChess.no_square && other != StandartChess.doublePawnMove)
             ep_legal = true;
 
         //reset rook has moved for castling
-        if (piece == standart_chess.rook || board.boards[board.color ^ 1, to] == standart_chess.rook)
+        if (piece == StandartChess.rook || board.boards[board.color ^ 1, to] == StandartChess.rook)
         {
             byte rook_color, rook_square;
-            if (piece == standart_chess.rook)
+            if (piece == StandartChess.rook)
             {
                 rook_color = board.color;
                 rook_square = from;
                 board = set_rook_moved(board, rook_square, rook_color, generate_reverse_move, undo_move);
             }
 
-            if (board.boards[board.color ^ 1, to] == standart_chess.rook)
+            if (board.boards[board.color ^ 1, to] == StandartChess.rook)
             {
                 rook_color = (byte)(board.color ^ 1);
                 rook_square = to;
@@ -537,11 +537,11 @@ class movegen
 
         switch (piece)
         {
-            case standart_chess.pawn:
+            case StandartChess.pawn:
                 board.fiftyMoveRule = 0;
                 board = pawn_execute_move(board, from, to, other, generate_reverse_move, undo_move);
                 break;
-            case standart_chess.king:
+            case StandartChess.king:
                 board.fiftyMoveRule++;
                 board = king_execute_move(board, from, to, other, generate_reverse_move, undo_move);
                 break;
@@ -551,8 +551,8 @@ class movegen
                 break;
         }
 
-        if (board.enPassentSquare != standart_chess.no_square && ep_legal)
-            board.enPassentSquare = standart_chess.no_square;
+        if (board.enPassentSquare != StandartChess.no_square && ep_legal)
+            board.enPassentSquare = StandartChess.no_square;
 
         if (reset_fifty_move_counter)
         {
@@ -608,15 +608,15 @@ class movegen
 
             //idx board
             board.idx_board[to] = board.idx_board[from];
-            board.idx_board[from] = standart_chess.no_square;
+            board.idx_board[from] = StandartChess.no_square;
 
             //color boards
             board.boards[board.color, to] = board.boards[board.color, from];
-            board.boards[board.color, from] = standart_chess.no_piece;
+            board.boards[board.color, from] = StandartChess.no_piece;
 
             //real board
             board.board[to] = board.board[from];
-            board.board[from] = standart_chess.no_piece;
+            board.board[from] = StandartChess.no_piece;
         }
 
         //sort captures
@@ -632,7 +632,7 @@ class movegen
         //continuity on the index board
         for (int i = 0; i < position.idx_board.Length; i++)
         {
-            if (position.board[i] != standart_chess.no_piece)
+            if (position.board[i] != StandartChess.no_piece)
             {
                 if (position.idx_board[i] >= position.piececount[position.board[i]])
                     return false;
@@ -645,59 +645,59 @@ class movegen
     }
     public Position pawn_execute_move(Position board, byte from, byte to, byte other, bool use_reverse_move, ReverseMove undo_move)
     {
-        if (other != standart_chess.no_promotion)
+        if (other != StandartChess.no_promotion)
         {
             switch (other)
             {
-                case standart_chess.doublePawnMove:
+                case StandartChess.doublePawnMove:
                     board.enPassentSquare = (byte)((from + to) / 2);
                     break;
-                case standart_chess.castle_or_en_passent:
-                    board.enPassentSquare = standart_chess.no_square;
-                    byte square_of_victim = (byte)((chess_stuff.get_y_from_square(from) << 3) ^ chess_stuff.get_x_from_square(to));
-                    board = remove_piece_from_list(board, (byte)(standart_chess.pawn ^ ((board.color ^ 1) << 3)), square_of_victim);
-                    board.board[square_of_victim] = standart_chess.no_piece;
-                    board.boards[board.color ^ 1, square_of_victim] = standart_chess.no_piece;
+                case StandartChess.castle_or_en_passent:
+                    board.enPassentSquare = StandartChess.no_square;
+                    byte square_of_victim = (byte)((chess_stuff.GetY(from) << 3) ^ chess_stuff.get_x_from_square(to));
+                    board = remove_piece_from_list(board, (byte)(StandartChess.pawn ^ ((board.color ^ 1) << 3)), square_of_victim);
+                    board.board[square_of_victim] = StandartChess.no_piece;
+                    board.boards[board.color ^ 1, square_of_victim] = StandartChess.no_piece;
                     if (use_reverse_move)
                     {
                         undo_move.removed_pieces[undo_move.removed_piece_idx, 0] = square_of_victim;
-                        undo_move.removed_pieces[undo_move.removed_piece_idx, 1] = standart_chess.pawn ^ ((board.color ^ 1) << 3);
+                        undo_move.removed_pieces[undo_move.removed_piece_idx, 1] = StandartChess.pawn ^ ((board.color ^ 1) << 3);
                         undo_move.removed_piece_idx++;
                     }
                     break;
-                case standart_chess.knight_promotion:
-                    board = exchange_pieces(board, from, (byte)(standart_chess.knight ^ (board.color << 3)));
+                case StandartChess.knight_promotion:
+                    board = exchange_pieces(board, from, (byte)(StandartChess.knight ^ (board.color << 3)));
                     if (use_reverse_move)
                     {
                         undo_move.removed_pieces[undo_move.removed_piece_idx, 0] = from;
-                        undo_move.removed_pieces[undo_move.removed_piece_idx, 1] = standart_chess.pawn ^ (board.color << 3);
+                        undo_move.removed_pieces[undo_move.removed_piece_idx, 1] = StandartChess.pawn ^ (board.color << 3);
                         undo_move.removed_piece_idx++;
                     }
                     break;
-                case standart_chess.bishop_promotion:
-                    board = exchange_pieces(board, from, (byte)(standart_chess.bishop ^ (board.color << 3)));
+                case StandartChess.bishop_promotion:
+                    board = exchange_pieces(board, from, (byte)(StandartChess.bishop ^ (board.color << 3)));
                     if (use_reverse_move)
                     {
                         undo_move.removed_pieces[undo_move.removed_piece_idx, 0] = from;
-                        undo_move.removed_pieces[undo_move.removed_piece_idx, 1] = standart_chess.pawn ^ (board.color << 3);
+                        undo_move.removed_pieces[undo_move.removed_piece_idx, 1] = StandartChess.pawn ^ (board.color << 3);
                         undo_move.removed_piece_idx++;
                     }
                     break;
-                case standart_chess.rook_promotion:
-                    board = exchange_pieces(board, from, (byte)(standart_chess.rook ^ (board.color << 3)));
+                case StandartChess.rook_promotion:
+                    board = exchange_pieces(board, from, (byte)(StandartChess.rook ^ (board.color << 3)));
                     if (use_reverse_move)
                     {
                         undo_move.removed_pieces[undo_move.removed_piece_idx, 0] = from;
-                        undo_move.removed_pieces[undo_move.removed_piece_idx, 1] = standart_chess.pawn ^ (board.color << 3);
+                        undo_move.removed_pieces[undo_move.removed_piece_idx, 1] = StandartChess.pawn ^ (board.color << 3);
                         undo_move.removed_piece_idx++;
                     }
                     break;
-                case standart_chess.queen_promotion:
-                    board = exchange_pieces(board, from, (byte)(standart_chess.queen ^ (board.color << 3)));
+                case StandartChess.queen_promotion:
+                    board = exchange_pieces(board, from, (byte)(StandartChess.queen ^ (board.color << 3)));
                     if (use_reverse_move)
                     {
                         undo_move.removed_pieces[undo_move.removed_piece_idx, 0] = from;
-                        undo_move.removed_pieces[undo_move.removed_piece_idx, 1] = standart_chess.pawn ^ (board.color << 3);
+                        undo_move.removed_pieces[undo_move.removed_piece_idx, 1] = StandartChess.pawn ^ (board.color << 3);
                         undo_move.removed_piece_idx++;
                     }
                     break;
@@ -707,7 +707,7 @@ class movegen
     }
     public Position exchange_pieces(Position board, byte square, byte new_piece)
     {
-        if (board.board[square] != standart_chess.no_piece) board = remove_piece_from_list(board, board.board[square], square);
+        if (board.board[square] != StandartChess.no_piece) board = remove_piece_from_list(board, board.board[square], square);
         board = add_piece_to_list(board, new_piece, square);
         board.board[square] = new_piece;
         board.boards[chess_stuff.get_piece_color(new_piece), square] = (byte)(new_piece & 0b00000111);
@@ -722,7 +722,7 @@ class movegen
             if (reverse_move_update) undo_move.king_changes = board.color;
         }
         //castling
-        if (other == standart_chess.castle_or_en_passent)
+        if (other == StandartChess.castle_or_en_passent)
         {
             //look for illegalities
             if (!check(board, false))
@@ -758,10 +758,10 @@ class movegen
     {
         byte othercolor = (byte)(board.color ^ 1);
 
-        if (board.boards[othercolor, start_rook_square[othercolor, 0]] != standart_chess.rook && board.rook_not_moved[(othercolor << 1) ^ 0] && board.king_not_moved[othercolor])
+        if (board.boards[othercolor, start_rook_square[othercolor, 0]] != StandartChess.rook && board.rook_not_moved[(othercolor << 1) ^ 0] && board.king_not_moved[othercolor])
             return false;
 
-        if (board.boards[othercolor, start_rook_square[othercolor, 1]] != standart_chess.rook && board.rook_not_moved[(othercolor << 1) ^ 1] && board.king_not_moved[othercolor])
+        if (board.boards[othercolor, start_rook_square[othercolor, 1]] != StandartChess.rook && board.rook_not_moved[(othercolor << 1) ^ 1] && board.king_not_moved[othercolor])
             return false;
 
         return true;
@@ -779,7 +779,7 @@ class movegen
         board.piece_square_lists[board.board[from]][board.idx_board[from]] = (byte)to;
 
         //if capture update the enemy piece list
-        if (board.board[to] != standart_chess.no_piece)
+        if (board.board[to] != StandartChess.no_piece)
         {
             if (reverse_move_update)
             {
@@ -793,16 +793,16 @@ class movegen
 
         //idx board
         board.idx_board[to] = board.idx_board[from];
-        board.idx_board[from] = standart_chess.no_square;
+        board.idx_board[from] = StandartChess.no_square;
 
         //color boards
         board.boards[board.color, to] = board.boards[board.color, from];
-        board.boards[board.color, from] = standart_chess.no_piece;
-        board.boards[board.color ^ 1, to] = standart_chess.no_piece;
+        board.boards[board.color, from] = StandartChess.no_piece;
+        board.boards[board.color ^ 1, to] = StandartChess.no_piece;
 
         //real board
         board.board[to] = board.board[from];
-        board.board[from] = standart_chess.no_piece;
+        board.board[from] = StandartChess.no_piece;
 
         return board;
     }
@@ -811,7 +811,7 @@ class movegen
         board.piececount[piecetype]--;
         board.piece_square_lists[piecetype][board.idx_board[square]] = board.piece_square_lists[piecetype][board.piececount[piecetype]];
         board.idx_board[board.piece_square_lists[piecetype][board.idx_board[square]]] = board.idx_board[square];
-        board.idx_board[square] = standart_chess.no_square;
+        board.idx_board[square] = StandartChess.no_square;
         return board;
     }
     public Position add_piece_to_list(Position board, byte piecetype, byte square)
@@ -830,7 +830,7 @@ class movegen
     {
         if (promotion)
         {
-            for (byte i = standart_chess.knight_promotion; i < standart_chess.queen_promotion + 1; i++)
+            for (byte i = StandartChess.knight_promotion; i < StandartChess.queen_promotion + 1; i++)
             {
                 movelist[moveIdx] = move_x_to_y(from, to, i);
                 moveIdx++;
@@ -848,20 +848,20 @@ class movegen
     {
         int y_dir = (2 * board.color - 1) * iny;
         byte x = chess_stuff.get_x_from_square(square);
-        byte y = chess_stuff.get_y_from_square(square);
+        byte y = chess_stuff.GetY(square);
         byte other_color = (byte)(1 - board.color);
         bool promotion = board.color == 1 && y == 6 || board.color == 0 && y == 1;
         byte new_square = (byte)(square + y_dir);
 
         //normal move up
-        if (board.board[new_square] == standart_chess.no_piece)
+        if (board.board[new_square] == StandartChess.no_piece)
         {
             movelist = add_pawn_moves_to_list(movelist, square, new_square, promotion);
 
             //double move
-            if (y + 5 * board.color == 6 && board.board[new_square + y_dir] == standart_chess.no_piece)
+            if (y + 5 * board.color == 6 && board.board[new_square + y_dir] == StandartChess.no_piece)
             {
-                movelist[moveIdx] = move_x_to_y(square, (byte)(new_square + y_dir), standart_chess.doublePawnMove);
+                movelist[moveIdx] = move_x_to_y(square, (byte)(new_square + y_dir), StandartChess.doublePawnMove);
                 moveIdx++;
             }
         }
@@ -874,11 +874,11 @@ class movegen
             movelist = add_pawn_moves_to_list(movelist, square, (byte)(new_square - 1), promotion);
 
         //en passent
-        if (board.enPassentSquare != standart_chess.no_square &&
-            y + y_dir / iny == chess_stuff.get_y_from_square(board.enPassentSquare) &&
+        if (board.enPassentSquare != StandartChess.no_square &&
+            y + y_dir / iny == chess_stuff.GetY(board.enPassentSquare) &&
             Math.Abs(chess_stuff.get_x_from_square(board.enPassentSquare) - x) == 1)
         {
-            movelist[moveIdx] = move_x_to_y(square, board.enPassentSquare, standart_chess.castle_or_en_passent);
+            movelist[moveIdx] = move_x_to_y(square, board.enPassentSquare, StandartChess.castle_or_en_passent);
             moveIdx++;
         }
 
@@ -888,7 +888,7 @@ class movegen
     {
         int y_dir = (2 * board.color - 1) * iny;
         byte x = chess_stuff.get_x_from_square(square);
-        byte y = chess_stuff.get_y_from_square(square);
+        byte y = chess_stuff.GetY(square);
         byte other_color = (byte)(1 - board.color);
         bool promotion = board.color == 1 && y == 6 || board.color == 0 && y == 1;
         byte new_square = (byte)(square + y_dir);
@@ -901,11 +901,11 @@ class movegen
             movelist = add_pawn_moves_to_list(movelist, square, (byte)(new_square - 1), promotion);
 
         //en passent
-        if (board.enPassentSquare != standart_chess.no_square &&
-            y + y_dir / iny == chess_stuff.get_y_from_square(board.enPassentSquare) &&
+        if (board.enPassentSquare != StandartChess.no_square &&
+            y + y_dir / iny == chess_stuff.GetY(board.enPassentSquare) &&
             Math.Abs(chess_stuff.get_x_from_square(board.enPassentSquare) - x) == 1)
         {
-            movelist[moveIdx] = move_x_to_y(square, board.enPassentSquare, standart_chess.castle_or_en_passent);
+            movelist[moveIdx] = move_x_to_y(square, board.enPassentSquare, StandartChess.castle_or_en_passent);
             moveIdx++;
         }
 
@@ -977,9 +977,9 @@ class movegen
         {
             byte new_square = possible_squares[i];
 
-            if (board.boards[board.color, new_square] == standart_chess.no_piece)
+            if (board.boards[board.color, new_square] == StandartChess.no_piece)
             {
-                movelist[moveIdx] = move_x_to_y(square, new_square, standart_chess.no_promotion);
+                movelist[moveIdx] = move_x_to_y(square, new_square, StandartChess.no_promotion);
                 moveIdx++;
             }
         }
@@ -992,9 +992,9 @@ class movegen
         {
             byte new_square = possible_squares[i];
 
-            if (board.boards[board.color ^ 1, new_square] != standart_chess.no_piece)
+            if (board.boards[board.color ^ 1, new_square] != StandartChess.no_piece)
             {
-                movelist[moveIdx] = move_x_to_y(square, new_square, standart_chess.no_promotion);
+                movelist[moveIdx] = move_x_to_y(square, new_square, StandartChess.no_promotion);
                 moveIdx++;
             }
         }
@@ -1007,9 +1007,9 @@ class movegen
         for (int i = 0; i < possible_squares.Length; i++)
         {
             byte new_square = possible_squares[i];
-            if (board.boards[board.color, new_square] == standart_chess.no_piece)
+            if (board.boards[board.color, new_square] == StandartChess.no_piece)
             {
-                movelist[moveIdx] = move_x_to_y(square, new_square, standart_chess.no_promotion);
+                movelist[moveIdx] = move_x_to_y(square, new_square, StandartChess.no_promotion);
                 moveIdx++;
             }
         }
@@ -1019,15 +1019,15 @@ class movegen
         {
             Debug.Assert(square == 60 || square == 4);
             //queenside castling
-            if (board.rook_not_moved[(board.color << 1) ^ 0] && board.board[square - 1] == standart_chess.no_piece && board.board[square - 2] == standart_chess.no_piece && board.board[square - 3] == standart_chess.no_piece)
+            if (board.rook_not_moved[(board.color << 1) ^ 0] && board.board[square - 1] == StandartChess.no_piece && board.board[square - 2] == StandartChess.no_piece && board.board[square - 3] == StandartChess.no_piece)
             {
-                movelist[moveIdx] = move_x_to_y(square, (byte)(square - 2), standart_chess.castle_or_en_passent);
+                movelist[moveIdx] = move_x_to_y(square, (byte)(square - 2), StandartChess.castle_or_en_passent);
                 moveIdx++;
             }
             //kingside castling
-            if (board.rook_not_moved[(board.color << 1) ^ 1] && board.board[square + 1] == standart_chess.no_piece && board.board[square + 2] == standart_chess.no_piece)
+            if (board.rook_not_moved[(board.color << 1) ^ 1] && board.board[square + 1] == StandartChess.no_piece && board.board[square + 2] == StandartChess.no_piece)
             {
-                movelist[moveIdx] = move_x_to_y(square, (byte)(square + 2), standart_chess.castle_or_en_passent);
+                movelist[moveIdx] = move_x_to_y(square, (byte)(square + 2), StandartChess.castle_or_en_passent);
                 moveIdx++;
             }
         }
@@ -1041,9 +1041,9 @@ class movegen
         for (int i = 0; i < possible_squares.Length; i++)
         {
             byte new_square = possible_squares[i];
-            if (board.boards[board.color ^ 1, new_square] != standart_chess.no_piece)
+            if (board.boards[board.color ^ 1, new_square] != StandartChess.no_piece)
             {
-                movelist[moveIdx] = move_x_to_y(square, new_square, standart_chess.no_promotion);
+                movelist[moveIdx] = move_x_to_y(square, new_square, StandartChess.no_promotion);
                 moveIdx++;
             }
         }
@@ -1060,16 +1060,16 @@ class movegen
             {
                 byte new_square = possible_squares[j];
 
-                if (board.board[new_square] == standart_chess.no_piece)
+                if (board.board[new_square] == StandartChess.no_piece)
                 {
-                    movelist[moveIdx] = move_x_to_y(square, new_square, standart_chess.no_promotion);
+                    movelist[moveIdx] = move_x_to_y(square, new_square, StandartChess.no_promotion);
                     moveIdx++;
                 }
                 else
                 {
-                    if (board.boards[board.color, new_square] == standart_chess.no_piece)
+                    if (board.boards[board.color, new_square] == StandartChess.no_piece)
                     {
-                        movelist[moveIdx] = move_x_to_y(square, new_square, standart_chess.no_promotion);
+                        movelist[moveIdx] = move_x_to_y(square, new_square, StandartChess.no_promotion);
                         moveIdx++;
                     }
 
@@ -1090,11 +1090,11 @@ class movegen
             {
                 byte new_square = possible_squares[j];
 
-                if(board.board[new_square] != standart_chess.no_piece)
+                if(board.board[new_square] != StandartChess.no_piece)
                 { 
-                if (board.boards[board.color ^ 1, new_square] != standart_chess.no_piece)
+                if (board.boards[board.color ^ 1, new_square] != StandartChess.no_piece)
                 {
-                    movelist[moveIdx] = move_x_to_y(square, new_square, standart_chess.no_promotion);
+                    movelist[moveIdx] = move_x_to_y(square, new_square, StandartChess.no_promotion);
                     moveIdx++;
                 }
                     break;
@@ -1112,7 +1112,7 @@ class movegen
         {
             byte new_square = possible_squares[j];
 
-            if (board.board[new_square] != standart_chess.no_piece)
+            if (board.board[new_square] != StandartChess.no_piece)
             {
                 illegal_position = board.boards[piece_color, new_square] == piece || illegal_position;
 

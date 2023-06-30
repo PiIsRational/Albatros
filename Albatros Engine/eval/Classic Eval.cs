@@ -36,22 +36,22 @@ class Classic_Eval
             {
                 switch (k)
                 {
-                    case standart_chess.pawn:
+                    case StandartChess.pawn:
                         update_table(square, k, 0, 940, 820, psqt.mg_pawn_table, psqt.eg_pawn_table);
                         break;
-                    case standart_chess.knight:
+                    case StandartChess.knight:
                         update_table(square, k, 1, 3370, 2810, psqt.mg_knight_table, psqt.eg_knight_table);
                         break;
-                    case standart_chess.bishop:
+                    case StandartChess.bishop:
                         update_table(square, k, 1, 3650, 2970, psqt.mg_bishop_table, psqt.eg_bishop_table);
                         break;
-                    case standart_chess.queen:
+                    case StandartChess.queen:
                         update_table(square, k, 4, 10250, 9360, psqt.mg_queen_table, psqt.eg_queen_table);
                         break;
-                    case standart_chess.rook:
+                    case StandartChess.rook:
                         update_table(square, k, 2, 4770, 5120, psqt.mg_rook_table, psqt.eg_rook_table);
                         break;
-                    case standart_chess.king:
+                    case StandartChess.king:
                         update_table(square, k, 0, 0, 0, psqt.mg_king_table, psqt.eg_king_table);
                         break;
                     case 0:
@@ -93,36 +93,31 @@ class Classic_Eval
         MiddelGamePhase = Math.Min(GamePhase, 24);
         EndGamePhase = 24 - MiddelGamePhase;
 
-        return clip_score((2 * board.color - 1) * (MiddelGamePhase * MiddleGameValue + EndGamePhase * EndGameValue) / 24);
+        return ClipScore((2 * board.color - 1) * (MiddelGamePhase * MiddleGameValue + EndGamePhase * EndGameValue) / 24);
     }
-    public int pesto_eval(byte[] board, byte color)
-    {
-        int MiddleGameValue = 0;
-        int EndGameValue = 0;
-        int GamePhase = 0;
-        int MiddelGamePhase = 0;
-        int EndGamePhase = 0;
 
-        for (int square = 0; square < 64; square++)
+    public static int IsDrawn(Position board, int score)
+    {
+        if (board.HasPawns())
+            return score;
+
+        int[] scores = new int[] { 0, 0, 2, 3, 5, 9 };
+        int wScore = 0;
+        int bScore = 0;
+
+        for (int i = 2; i < scores.Length; i++)
         {
-            MiddleGameValue += eval_table[board[square], 1][square];
-            EndGameValue += eval_table[board[square], 0][square];
-            GamePhase += game_phase[board[square]];
+            wScore += scores[i] * board.piececount[i];
+            bScore += scores[i] * board.piececount[i | 1 << 3];
         }
 
-        MiddelGamePhase = Math.Min(GamePhase, 24);
-        EndGamePhase = 24 - MiddelGamePhase;
+        if (score > 0 && wScore < 6 || score < 0 && bScore < 6)
+            return score / 20;
 
-        return clip_score((2 * color - 1) * (MiddelGamePhase * MiddleGameValue + EndGamePhase * EndGameValue) / 24);
+        return score;
     }
-    public int ExchangeY(int Y, int Color)
-    {
-        if (Color == 0)
-            return Y;
-        else
-            return 9 - Y;
-    }
-    public int clip_score(int score)
+
+    public int ClipScore(int score)
     {
         return Math.Min(Math.Max(score, -59999), 59999);
     }
@@ -139,7 +134,7 @@ public class PSQT
     -26,  -4,  -4, -10,   3,   3, 33, -12,
     -35,  -1, -20, -23, -15,  24, 38, -22,
       0,   0,   0,   0,   0,   0,  0,   0,
-};
+    };
 
     public int[] eg_pawn_table = new int[64]  {
       0,   0,   0,   0,   0,   0,   0,   0,

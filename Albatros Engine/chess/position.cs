@@ -38,6 +38,12 @@ class Position
                 piece_square_lists[(i << 3) ^ j] = new byte[list_init[j]];
         }
     }
+
+    public bool HasPawns()
+    {
+        return piececount[1] != 0 || piececount[1 << 3 | 1] != 0;
+    }
+
     public void reset()
     {
         board = new byte[64];
