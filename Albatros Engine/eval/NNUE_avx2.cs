@@ -152,23 +152,23 @@ class NNUE_avx2
 
     public void UpdateAccFromMove(Position board, ReverseMove move, bool invert)
     {
-        List<int>[] featuresToAdd = new List<int>[2];
-        List<int>[] featuresToRemove = new List<int>[2];
+        List<int> featuresToAdd = new List<int>();
+        List<int> featuresToRemove = new List<int>();
 
-        byte removed_piece_color = (byte)(move.removed_piece_idx != 0 ? (move.removed_pieces[0, 1] >> 3) : board.color);
+        byte removed_piece_color = (byte)(move.removedPieceIdx != 0 ? (move.removedPieces[0, 1] >> 3) : board.color);
 
         for (int color = 0; color < 2; color++)
         {
-            featuresToAdd[color] = new List<int>();
-            featuresToRemove[color] = new List<int>();
+            featuresToAdd.Clear();
+            featuresToRemove.Clear();
 
-            for (int i = 0; i < move.removed_piece_idx; i++)
-                featuresToRemove[color].Add((pieceEncoding[color][move.removed_pieces[i, 1]] + move.removed_pieces[i, 0]) ^ (color == 1 ? 0 : 56));
+            for (int i = 0; i < move.removedPieceIdx; i++)
+                featuresToRemove.Add(pieceEncoding[color][move.removedPieces[i, 1]] + move.removedPieces[i, 0] ^ (color == 1 ? 0 : 56));
 
-            for (int i = 0; i < move.moved_piece_idx; i++)
+            for (int i = 0; i < move.movedPieceIdx; i++)
             {
-                featuresToAdd[color].Add((pieceEncoding[color][board.board[move.moved_pieces[i, 1]]] + move.moved_pieces[i, 1]) ^ (color == 1 ? 0 : 56));
-                if (removed_piece_color == board.color) featuresToRemove[color].Add((pieceEncoding[color][board.board[move.moved_pieces[i, 1]]] + move.moved_pieces[i, 0]) ^ (color == 1 ? 0 : 56));
+                featuresToAdd.Add(pieceEncoding[color][board.board[move.movedPieces[i, 1]]] + move.movedPieces[i, 1] ^ (color == 1 ? 0 : 56));
+                if (removed_piece_color == board.color) featuresToRemove.Add(pieceEncoding[color][board.board[move.movedPieces[i, 1]]] + move.movedPieces[i, 0] ^ (color == 1 ? 0 : 56));
             }
 
             acc = invert
@@ -176,7 +176,7 @@ class NNUE_avx2
                 : UpdateAcc(transformer, acc, featuresToAdd, featuresToRemove, (byte)color);
         }
     }
-    //calculate accumulator values from start
+
     unsafe public Accumulator RefreshAcc(FeatureTransformer transformer, Accumulator acc, List<int>[] features, byte color)
     {
         //Size of the Feature Transformer Output size divided by the register width
@@ -222,167 +222,39 @@ class NNUE_avx2
         return acc;
     }
     //just update the accumulator values
-    unsafe public Accumulator UpdateAcc(FeatureTransformer transformer, Accumulator acc, List<int>[] addedFeatures, List<int>[] removedFeatures, byte color)
+    unsafe public Accumulator UpdateAcc(FeatureTransformer transformer, Accumulator acc, List<int> addedFeatures, List<int> removedFeatures, byte color)
     {
-        //Load the old accumulator into the registers
-        for (int i = 0; i < NUMBER_OF_CHUNKS; i++)
-        {
-            //get the address of the accumulator
-            fixed (int* currentAddress = &acc.accu[color][i * REGISTER_WIDTH])
-            {
-                //load this part of the register with the data of the address
-                registers[i] = Avx2.LoadVector256(currentAddress);
-            }
-        }
-
-        //Remove the old features 
-        foreach (int place in removedFeatures[color])
+        fixed (int* currentAddress = &acc.accu[color][0])
+        fixed (Vector256<int>* regAdd = &registers[0])
         {
             for (int i = 0; i < NUMBER_OF_CHUNKS; i++)
+               *(regAdd + i) = Avx2.LoadVector256(currentAddress + i * REGISTER_WIDTH);
+
+            foreach (int place in removedFeatures)
             {
-                //get the address of the weights
-                fixed (int* currentAddress = &transformer.weight[place, i * REGISTER_WIDTH])
+                fixed (int* tadd = &transformer.weight[place, 0])
                 {
-                    //add the weights withe the register
-                    registers[i] = Avx2.Subtract(registers[i], Avx2.LoadVector256(currentAddress));
+                    for (int i = 0; i < NUMBER_OF_CHUNKS; i++)
+                        *(regAdd + i) = Avx2.Subtract(*(regAdd + i), Avx2.LoadVector256(tadd + i * REGISTER_WIDTH));
                 }
             }
-        }
 
-        //Add the new features
-        foreach (int place in addedFeatures[color])
-        {
-            for (int i = 0; i < NUMBER_OF_CHUNKS; i++)
+            foreach (int place in addedFeatures)
             {
-                //get the address of the weights
-                fixed (int* currentAddress = &transformer.weight[place, i * REGISTER_WIDTH])
+                fixed (int* tadd = &transformer.weight[place, 0])
                 {
-                    //add the weights withe the register
-                    registers[i] = Avx2.Add(registers[i], Avx2.LoadVector256(currentAddress));
+                    for (int i = 0; i < NUMBER_OF_CHUNKS; i++)
+                        *(regAdd + i) = Avx2.Add(*(regAdd + i), Avx2.LoadVector256(tadd + i * REGISTER_WIDTH));
                 }
             }
-        }
 
-        //store the registers into the accumulator
-        for (int i = 0; i < NUMBER_OF_CHUNKS; i++)
-        {
-            //get the address of the accumulator
-            fixed (int* currentAddress = &acc.accu[color][i * REGISTER_WIDTH])
-            {
-                //store the register ath this address
-                Avx2.Store(currentAddress, registers[i]);
-            }
+            for (int i = 0; i < NUMBER_OF_CHUNKS; i ++)
+                Avx2.Store(currentAddress + i * REGISTER_WIDTH, *(regAdd + i));     
         }
-
+        
         return acc;
     }
 
-    //do the Matrix multplication for the linear layers
-    /*
-    unsafe int[] LinearLayer(LinearLayer layer, short[] Input, int[] Output)
-    {
-        //One register size is 256 bits it isfilled up with signed int16 s so the size is 256 / 16 = 16  
-        const int register_width = 16;
-        int num_in_chunks = layer.Input_size / register_width;
-        int num_out_chunks = layer.Output_size / 4;
-
-
-        for (int i = 0; i < num_out_chunks; i++)
-        {
-            //initialize the weight offsets each offset corresponds to one row of weights
-            int offset0 = (i * 4 + 0) * layer.Input_size;
-            int offset1 = (i * 4 + 1) * layer.Input_size;
-            int offset2 = (i * 4 + 2) * layer.Input_size;
-            int offset3 = (i * 4 + 3) * layer.Input_size;
-
-            //initialize the sum vectors each vector will hold one row of the weights matrix
-            Vector256<int> sum0 = new Vector256<int>();
-            Vector256<int> sum1 = new Vector256<int>();
-            Vector256<int> sum2 = new Vector256<int>();
-            Vector256<int> sum3 = new Vector256<int>();
-
-            //at each pass the loop processes a 32*4 chunk of weights
-            for (int j = 0; j < num_in_chunks; j++)
-            {
-                Vector256<byte> In;
-                fixed (byte* currentAddress = &Input[j * register_width]) 
-                {
-                    In = Avx2.LoadVector256(currentAddress);
-                }
-
-                fixed (short* currentAdress = &layer.weight[offset0 + j * register_width])
-                {
-                    sum0 = m256_add_dpbusd_epi32(sum0, In, Avx2.LoadVector256(currentAdress));
-                }
-                fixed (short* currentAdress = &layer.weight[offset1 + j * register_width])
-                {
-                    sum1 = m256_add_dpbusd_epi32(sum1, In, Avx2.LoadVector256(currentAdress));
-                }
-                fixed (short* currentAdress = &layer.weight[offset2 + j * register_width])
-                {
-                    sum2 = m256_add_dpbusd_epi32(sum2, In, Avx2.LoadVector256(currentAdress));
-                }
-                fixed (short* currentAdress = &layer.weight[offset3 + j * register_width])
-                {
-                    sum3 = m256_add_dpbusd_epi32(sum3, In, Avx2.LoadVector256(currentAdress));
-                }
-            }
-
-            Vector128<int> Bias;
-            fixed(int* currentAdress = &layer.bias[i * 4])
-            {
-                Bias = Avx2.LoadVector128(currentAdress);
-            }
-
-            Vector128<int> outval = m256_haddx4(sum0, sum1, sum2, sum3, Bias);
-
-            outval = Avx2.ShiftRightArithmetic(outval, Log2WeightScale);
-
-            fixed (int* currentAddress = &Output[i * 4])
-            {
-                Avx2.Store(currentAddress, outval);
-            }
-        }
-        return Output;
-
-    }
-
-    public Vector128<int> m256_haddx4(Vector256<int> sum0 , Vector256<int>sum1 , Vector256<int>sum2 , Vector256<int> sum3, Vector128<int> Bias)
-    {
-        sum0 = Avx2.HorizontalAdd(sum0, sum1);
-        sum2 = Avx2.HorizontalAdd(sum2, sum3);
-
-        sum0 = Avx2.HorizontalAdd(sum0, sum2);
-
-        Vector128<int> sum128lo = Avx2.ExtractVector128(sum0, 0);
-        Vector128<int> sum128hi = Avx2.ExtractVector128(sum0, 1);
-
-        return Avx2.Add(Avx2.Add(sum128lo, sum128hi), Bias);
-    }
-
-    unsafe public void initkOnes256()
-    {
-        for (int i = 0; i < 16; i++)
-            initKOnes256[i] = 1;
-
-        fixed (short* currentadress = &initKOnes256[0])
-        {
-            kOnes256 = Avx2.LoadVector256(currentadress);
-        }
-    }
-    public Vector256<int> m256_add_dpbusd_epi32(Vector256<int> source , Vector256<short> a , Vector256<short> b)
-    {
-
-        // Multiply a * b and accumulate neighbouring outputs into int16 values
-        Vector256<int> product = Avx2.MultiplyAddAdjacent(a, b);
-
-        // Multiply product0 by 1 (idempotent) and accumulate neighbouring outputs into int32 values
-        Vector256<int> product0 = Avx2.MultiplyAddAdjacent(product, kOnes256);
-
-        // Add to the main int32 accumulator.
-        return Avx2.Add(source, product0);
-    }
-    */
     unsafe long CalculateOutputValue(LinearLayer layer, short[] input)
     {
         const int register_width = 16;
@@ -402,7 +274,6 @@ class NNUE_avx2
             fixed (short* currentAddress = &layer.weight[register_width * i])
                 layer_matrix = Avx2.LoadVector256(currentAddress);
 
-
             accumulator = Avx2.Add(accumulator, Avx2.MultiplyAddAdjacent(In, layer_matrix));
         }
 
@@ -413,48 +284,6 @@ class NNUE_avx2
             netOutput += value;
 
         return netOutput + layer.bias[0];
-    }
-
-    //clipped relu for the accumulator output
-    unsafe public byte[] crelu16(int size, byte[] Output, short[] InputA, short[] InputB)
-    {
-        const int in_register_width = 256 / 16;
-        const int out_register_width = 256 / 8;
-        int num_out_chunks = size / (2 * out_register_width);
-
-        Vector256<sbyte> zero = new();
-        byte control = 0b11011000;
-        //control = 0b00100111;
-        for (int i = 0; i < num_out_chunks; i++)
-        {
-            //calucalte for InputA
-            Vector256<short> in0, in1;
-            fixed (short* currentPointer0 = &InputA[in_register_width * ((i * 2) + 0)], currentPointer1 = &InputA[in_register_width * ((i * 2) + 1)])
-            {
-                in0 = Avx2.ShiftRightArithmetic(Avx2.LoadVector256(currentPointer0), log2WeightScale);
-                in1 = Avx2.ShiftRightArithmetic(Avx2.LoadVector256(currentPointer1), log2WeightScale);
-            }
-
-            Vector256<byte> resultA = Avx2.Permute4x64(Avx2.Max(Avx2.PackSignedSaturate(in0, in1), zero).AsInt64(), control).AsByte();
-
-            //calculate for InputB
-            Vector256<short> in2, in3;
-            fixed (short* currentPointer2 = &InputB[in_register_width * ((i * 2) + 0)], currentPointer3 = &InputB[in_register_width * ((i * 2) + 1)])
-            {
-                in2 = Avx2.ShiftRightArithmetic(Avx2.LoadVector256(currentPointer2), log2WeightScale);
-                in3 = Avx2.ShiftRightArithmetic(Avx2.LoadVector256(currentPointer3), log2WeightScale);
-            }
-
-            Vector256<byte> resultB = Avx2.Permute4x64(Avx2.Max(Avx2.PackSignedSaturate(in2, in3), zero).AsInt64(), control).AsByte();
-
-            fixed (byte* currentPointerA = &Output[i * out_register_width], currentPointerB = &Output[(i * out_register_width) + (size / 2)])
-            {
-                Avx2.Store(currentPointerA, resultA);
-                Avx2.Store(currentPointerB, resultB);
-            }
-        }
-
-        return Output;
     }
 
     /// <summary>
