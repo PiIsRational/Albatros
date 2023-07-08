@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 
 
@@ -73,17 +74,17 @@ class Game
         {
             Command = Console.ReadLine();
             
-            string[] Input = io.SyntaxWithoutHoles(Command.Split(' '));
-            if (Input.Length != 0 && Input[0] == "stop")
+            List<string> input = io.SyntaxWithoutHoles(Command.Split(' '));
+            if (input.Count != 0 && input[0] == "stop")
             {
                 io.Stop();
             }
-            else if (Input.Length != 0 && Input[0] == "quit")
+            else if (input.Count != 0 && input[0] == "quit")
             {
                 io.Stop();
                 quit = true;
             }
-            else if (Input.Length != 0 && Input[0] == "Training")
+            else if (input.Count != 0 && input[0] == "Training")
                 CommandExecute = new Thread(io.ThreadStart);
             else if (!CommandExecute.IsAlive)
             {

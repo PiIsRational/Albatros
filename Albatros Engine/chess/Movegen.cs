@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Diagnostics;
 
-class movegen
+class Movegen
 {
     /*
      * a move can use up to 15-bits and is stored in an integer
@@ -29,7 +29,7 @@ class movegen
     public bool nonPawnMaterial = false;
     bool reset_fifty_move_counter = false;
     public int moveIdx = 0;
-    public movegen()
+    public Movegen()
     {
         init_knight_move();
         init_bishop_move();
@@ -47,7 +47,7 @@ class movegen
             if (illegality_check_neccessaray(movelist[i], in_check, board))
             {
                 //make move on the board
-                board = make_move(board, movelist[i], true, undo_move);
+                board = MakeMove(board, movelist[i], true, undo_move);
 
                 //look if the position is illegal
                 if (check(board, true))
@@ -154,6 +154,27 @@ class movegen
         }
         return movelist;
     }
+
+    public static Position MakeNullMove(Position board, ReverseMove undoMove)
+    {
+        //change the color
+        board.color ^= 1;
+
+        //en passent
+        undoMove.enPassent = board.enPassentSquare;
+        board.enPassentSquare = byte.MaxValue;
+
+        //fifty move rule
+        undoMove.fiftyMoveRule = board.fiftyMoveRule;
+
+        undoMove.movedPieceIdx = 0;
+        undoMove.removedPieceIdx = 0;
+        undoMove.king_changes = byte.MaxValue;
+        undoMove.rook_changes = byte.MaxValue;
+
+        return board;
+    }
+
     public int[] LegalMoveGenerator(Position board, bool in_check, ReverseMove undo_move, int[] movelist)
     {
         //generate pseudolegal_movelist
@@ -165,7 +186,7 @@ class movegen
             if (illegality_check_neccessaray(first_movelist[i], in_check, board))
             {
                 //make move on the board
-                board = make_move(board, first_movelist[i], true, undo_move);
+                board = MakeMove(board, first_movelist[i], true, undo_move);
 
                 //look if the position is illegal
                 if (check(board, true))
@@ -192,7 +213,7 @@ class movegen
             if (illegality_check_neccessaray(first_movelist[i], in_check, board))
             {
                 //make move on the board
-                board = make_move(board, first_movelist[i], true, undo_move);
+                board = MakeMove(board, first_movelist[i], true, undo_move);
 
                 //look if the position is illegal
                 if (check(board, true))
@@ -209,7 +230,7 @@ class movegen
 
         return first_movelist;
     }
-    public bool fast_check(Position board, int move)
+    public bool FastCheck(Position board, int move)
     {
         byte other = (byte)(move >> 12);
         byte from = (byte)(move & 0b0000000000111111);
@@ -494,7 +515,7 @@ class movegen
         }
         return false;
     }
-    public Position make_move(Position board, int move, bool generate_reverse_move, ReverseMove undo_move)
+    public Position MakeMove(Position board, int move, bool generate_reverse_move, ReverseMove undo_move)
     {
         byte other = (byte)(move >> 12);
         byte from = (byte)(move & 0b0000000000111111);
@@ -506,8 +527,8 @@ class movegen
         {
             undo_move.rook_changes = byte.MaxValue;
             undo_move.king_changes = byte.MaxValue;
-            undo_move.moved_piece_idx = 0;
-            undo_move.removed_piece_idx = 0;
+            undo_move.movedPieceIdx = 0;
+            undo_move.removedPieceIdx = 0;
             undo_move.fiftyMoveRule = (byte)board.fiftyMoveRule;
             undo_move.enPassent = board.enPassentSquare;
         }
@@ -599,10 +620,10 @@ class movegen
         }
 
         //put pieces back were they where
-        for (int i = 0; i < move.moved_piece_idx; i++)
+        for (int i = 0; i < move.movedPieceIdx; i++)
         {
-            int from = move.moved_pieces[i, 1];
-            int to = move.moved_pieces[i, 0];
+            int from = move.movedPieces[i, 1];
+            int to = move.movedPieces[i, 0];
 
             board.piece_square_lists[board.board[from]][board.idx_board[from]] = (byte)to;
 
@@ -620,9 +641,9 @@ class movegen
         }
 
         //sort captures
-        for (int i = move.removed_piece_idx - 1; i >= 0; i--)
+        for (int i = move.removedPieceIdx - 1; i >= 0; i--)
         {
-            board = exchange_pieces(board, (byte)move.removed_pieces[i, 0], (byte)move.removed_pieces[i, 1]);
+            board = exchange_pieces(board, (byte)move.removedPieces[i, 0], (byte)move.removedPieces[i, 1]);
         }
 
         return board;
@@ -660,45 +681,45 @@ class movegen
                     board.boards[board.color ^ 1, square_of_victim] = StandartChess.no_piece;
                     if (use_reverse_move)
                     {
-                        undo_move.removed_pieces[undo_move.removed_piece_idx, 0] = square_of_victim;
-                        undo_move.removed_pieces[undo_move.removed_piece_idx, 1] = StandartChess.pawn ^ ((board.color ^ 1) << 3);
-                        undo_move.removed_piece_idx++;
+                        undo_move.removedPieces[undo_move.removedPieceIdx, 0] = square_of_victim;
+                        undo_move.removedPieces[undo_move.removedPieceIdx, 1] = StandartChess.pawn ^ ((board.color ^ 1) << 3);
+                        undo_move.removedPieceIdx++;
                     }
                     break;
                 case StandartChess.knight_promotion:
                     board = exchange_pieces(board, from, (byte)(StandartChess.knight ^ (board.color << 3)));
                     if (use_reverse_move)
                     {
-                        undo_move.removed_pieces[undo_move.removed_piece_idx, 0] = from;
-                        undo_move.removed_pieces[undo_move.removed_piece_idx, 1] = StandartChess.pawn ^ (board.color << 3);
-                        undo_move.removed_piece_idx++;
+                        undo_move.removedPieces[undo_move.removedPieceIdx, 0] = from;
+                        undo_move.removedPieces[undo_move.removedPieceIdx, 1] = StandartChess.pawn ^ (board.color << 3);
+                        undo_move.removedPieceIdx++;
                     }
                     break;
                 case StandartChess.bishop_promotion:
                     board = exchange_pieces(board, from, (byte)(StandartChess.bishop ^ (board.color << 3)));
                     if (use_reverse_move)
                     {
-                        undo_move.removed_pieces[undo_move.removed_piece_idx, 0] = from;
-                        undo_move.removed_pieces[undo_move.removed_piece_idx, 1] = StandartChess.pawn ^ (board.color << 3);
-                        undo_move.removed_piece_idx++;
+                        undo_move.removedPieces[undo_move.removedPieceIdx, 0] = from;
+                        undo_move.removedPieces[undo_move.removedPieceIdx, 1] = StandartChess.pawn ^ (board.color << 3);
+                        undo_move.removedPieceIdx++;
                     }
                     break;
                 case StandartChess.rook_promotion:
                     board = exchange_pieces(board, from, (byte)(StandartChess.rook ^ (board.color << 3)));
                     if (use_reverse_move)
                     {
-                        undo_move.removed_pieces[undo_move.removed_piece_idx, 0] = from;
-                        undo_move.removed_pieces[undo_move.removed_piece_idx, 1] = StandartChess.pawn ^ (board.color << 3);
-                        undo_move.removed_piece_idx++;
+                        undo_move.removedPieces[undo_move.removedPieceIdx, 0] = from;
+                        undo_move.removedPieces[undo_move.removedPieceIdx, 1] = StandartChess.pawn ^ (board.color << 3);
+                        undo_move.removedPieceIdx++;
                     }
                     break;
                 case StandartChess.queen_promotion:
                     board = exchange_pieces(board, from, (byte)(StandartChess.queen ^ (board.color << 3)));
                     if (use_reverse_move)
                     {
-                        undo_move.removed_pieces[undo_move.removed_piece_idx, 0] = from;
-                        undo_move.removed_pieces[undo_move.removed_piece_idx, 1] = StandartChess.pawn ^ (board.color << 3);
-                        undo_move.removed_piece_idx++;
+                        undo_move.removedPieces[undo_move.removedPieceIdx, 0] = from;
+                        undo_move.removedPieces[undo_move.removedPieceIdx, 1] = StandartChess.pawn ^ (board.color << 3);
+                        undo_move.removedPieceIdx++;
                     }
                     break;
             }
@@ -770,9 +791,9 @@ class movegen
     {
         if (reverse_move_update)
         {
-            undo_move.moved_pieces[undo_move.moved_piece_idx, 0] = from;
-            undo_move.moved_pieces[undo_move.moved_piece_idx, 1] = to;
-            undo_move.moved_piece_idx++;
+            undo_move.movedPieces[undo_move.movedPieceIdx, 0] = from;
+            undo_move.movedPieces[undo_move.movedPieceIdx, 1] = to;
+            undo_move.movedPieceIdx++;
         }
 
         //update the friendly piece list
@@ -783,9 +804,9 @@ class movegen
         {
             if (reverse_move_update)
             {
-                undo_move.removed_pieces[undo_move.removed_piece_idx, 0] = to;
-                undo_move.removed_pieces[undo_move.removed_piece_idx, 1] = board.board[to];
-                undo_move.removed_piece_idx++;
+                undo_move.removedPieces[undo_move.removedPieceIdx, 0] = to;
+                undo_move.removedPieces[undo_move.removedPieceIdx, 1] = board.board[to];
+                undo_move.removedPieceIdx++;
             }
             reset_fifty_move_counter = true;
             board = remove_piece_from_list(board, board.board[to], to);
@@ -1253,6 +1274,6 @@ class movegen
 }
 class ReverseMove
 {
-    public byte enPassent = byte.MaxValue, fiftyMoveRule = 0, king_changes = byte.MaxValue, rook_changes = byte.MaxValue, moved_piece_idx = 0, removed_piece_idx = 0;
-    public int[,] moved_pieces = new int[2, 2], removed_pieces = new int[2, 2];
+    public byte enPassent = byte.MaxValue, fiftyMoveRule = 0, king_changes = byte.MaxValue, rook_changes = byte.MaxValue, movedPieceIdx = 0, removedPieceIdx = 0;
+    public int[,] movedPieces = new int[2, 2], removedPieces = new int[2, 2];
 }

@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.Text;
 
 
-class Classic_Eval
+class ClassicEval
 {
     PSQT psqt = new PSQT();
     int[,][] eval_table = new int[17, 2][];
     int[] game_phase = new int[17];
-    public Classic_Eval()
+    public ClassicEval()
     {
         init_pesto_eval();
     }
@@ -17,9 +17,11 @@ class Classic_Eval
         //black
         eval_table[piece, 0][square] = -eg_eval - (int)(psqt_eg[square] * 10);
         eval_table[piece, 1][square] = -mg_eval - (int)(psqt_mg[square] * 10);
+
         //white
         eval_table[piece + 8, 0][square] = eg_eval + (int)(psqt_eg[square ^ 56] * 10);
         eval_table[piece + 8, 1][square] = mg_eval + (int)(psqt_mg[square ^ 56] * 10);
+
         //gamephase
         game_phase[piece] = phase_val;
         game_phase[piece + 8] = phase_val;
@@ -71,11 +73,11 @@ class Classic_Eval
     }
     public int PestoEval(Position board)
     {
-        int MiddleGameValue = 0;
-        int EndGameValue = 0;
-        int GamePhase = 0;
-        int MiddelGamePhase = 0;
-        int EndGamePhase = 0;
+        int middleGameValue = 0;
+        int endGameValue = 0;
+        int gamePhase = 0;
+        int middleGamePhase = 0;
+        int endGamePhase = 0;
 
         for (int i = 0; i < 2; i++)
         {
@@ -83,20 +85,20 @@ class Classic_Eval
             {
                 for (int k = 0; k < board.piececount[(i << 3) ^ j]; k++)
                 {
-                    MiddleGameValue += eval_table[(i << 3) ^ j, 1][board.piece_square_lists[(i << 3) ^ j][k]];
-                    EndGameValue += eval_table[(i << 3) ^ j, 0][board.piece_square_lists[(i << 3) ^ j][k]];
-                    GamePhase += game_phase[(i << 3) ^ j];
+                    middleGameValue += eval_table[(i << 3) ^ j, 1][board.piece_square_lists[(i << 3) ^ j][k]];
+                    endGameValue += eval_table[(i << 3) ^ j, 0][board.piece_square_lists[(i << 3) ^ j][k]];
+                    gamePhase += game_phase[(i << 3) ^ j];
                 }
             }
         }
 
-        MiddelGamePhase = Math.Min(GamePhase, 24);
-        EndGamePhase = 24 - MiddelGamePhase;
+        middleGamePhase = Math.Min(gamePhase, 24);
+        endGamePhase = 24 - middleGamePhase;
 
-        return ClipScore((2 * board.color - 1) * (MiddelGamePhase * MiddleGameValue + EndGamePhase * EndGameValue) / 24);
+        return ClipScore((2 * board.color - 1) * (middleGamePhase * middleGameValue + endGamePhase * endGameValue) / 24);
     }
 
-    public static int IsDrawn(Position board, int score)
+    public int DrawScore(Position board, int score)
     {
         if (board.HasPawns())
             return score;
@@ -111,8 +113,12 @@ class Classic_Eval
             bScore += scores[i] * board.piececount[i | 1 << 3];
         }
 
-        if (score > 0 && wScore < 6 || score < 0 && bScore < 6)
-            return score / 20;
+        if (score > 0 && (wScore < 5 || wScore == 5 && bScore > 0)
+            || score < 0 && (bScore < 5 || wScore == 5 && bScore > 0))
+        {
+            return eval_table[board.color << 3 | 6, 0][board.piece_square_lists[6][0]]
+                - eval_table[(board.color ^ 1) << 3 | 6, 0][board.piece_square_lists[6][0]];
+        }
 
         return score;
     }

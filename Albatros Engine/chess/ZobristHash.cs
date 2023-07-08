@@ -1,13 +1,13 @@
 ﻿using System;
 
-class ZorbristHash
+class ZobristHash
 {
     StandartChess chess_stuff = new StandartChess();
     Random random = new Random(137305668);
     ulong[][] hash_tables = new ulong[15][];
     ulong white_to_play;
     ulong[] en_passent = new ulong[8], castling = new ulong[4];
-    public ZorbristHash()
+    public ZobristHash()
     {
         for (int i = 0; i < 2; i++)
         {
@@ -37,7 +37,7 @@ class ZorbristHash
         random.NextBytes(bytes);
         return BitConverter.ToUInt64(bytes);
     }
-    public ulong hash_position(Position board)
+    public ulong HashPosition(Position board)
     {
         ulong output;
 
@@ -77,22 +77,22 @@ class ZorbristHash
     public ulong UpdateHashAfterMove(Position board, ReverseMove unmake_move, ulong hash)
     {
         if (unmake_move.king_changes != byte.MaxValue || unmake_move.rook_changes != byte.MaxValue)
-            return hash_position(board);
+            return HashPosition(board);
 
         //change the color
         hash ^= white_to_play;
 
         //remove pieces that are no longer on the board
-        for (int i = 0; i < unmake_move.removed_piece_idx; i++)
-            hash ^= hash_tables[unmake_move.removed_pieces[i, 1]][unmake_move.removed_pieces[i, 0]];
+        for (int i = 0; i < unmake_move.removedPieceIdx; i++)
+            hash ^= hash_tables[unmake_move.removedPieces[i, 1]][unmake_move.removedPieces[i, 0]];
 
-        for (int i = 0; i < unmake_move.moved_piece_idx; i++)
+        for (int i = 0; i < unmake_move.movedPieceIdx; i++)
         {
             //remove pieces that have moved
-            hash ^= hash_tables[board.board[unmake_move.moved_pieces[i, 1]]][unmake_move.moved_pieces[i, 0]];
+            hash ^= hash_tables[board.board[unmake_move.movedPieces[i, 1]]][unmake_move.movedPieces[i, 0]];
 
             //add pieces that have moved
-            hash ^= hash_tables[board.board[unmake_move.moved_pieces[i, 1]]][unmake_move.moved_pieces[i, 1]];
+            hash ^= hash_tables[board.board[unmake_move.movedPieces[i, 1]]][unmake_move.movedPieces[i, 1]];
         }
 
         //remove the old en passent square
