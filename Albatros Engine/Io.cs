@@ -326,7 +326,7 @@ class Io
         timeToUse += (long)(timeMe / Math.Max(movestogo - 1, 1));
         movestogo--;
 
-        return new int[] { alphaBetaSearch.TimedAlphaBeta(timeToUse - 50, board, useNNUE, change_time), 0 };
+        return new int[] { alphaBetaSearch.TimedAlphaBeta(timeToUse - 50, board, useNNUE, change_time), int.MaxValue };
     }
 
     public void LoadPositionBoard()
