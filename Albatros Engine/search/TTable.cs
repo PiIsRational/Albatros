@@ -1,154 +1,90 @@
 ﻿using System;
-using System.Collections;
-using System.Drawing;
+using System.Diagnostics;
 
 namespace AlbatrosEngine.search;
 
-internal unsafe class TTable
+internal class TTable
 {
-    private byte* baseIndex;
-    private byte[,] table;
-    private const int ENTRY_SIZE = 16;
-    private const int LOG_ENTRY_SIZE = 4;
+    private TranspositionTableEntry[] _table;
 
-    public int Size => table.GetLength(0);
+    public int Size => _table.Length;
 
     public TTable(int mB)
     {
-        table = new byte[mB * 65536, ENTRY_SIZE];
-
-        fixed (byte* idx = &table[0, 0])
-            baseIndex = idx;
+        _table = new TranspositionTableEntry[mB * 65536];
     }
 
     public void Clear()
     {
-        Array.Clear(table);
+        Array.Clear(_table);
     }
 
     public void Resize(int mB)
     {
-        table = new byte[mB * 65536, ENTRY_SIZE];
-
-        fixed (byte* idx = &table[0, 0])
-            baseIndex = idx;
+        _table = new TranspositionTableEntry[mB * 65536];
     }
 
     public int EntryCount()
     {
-        int count = 0;
-        for (int i = 0; i < table.GetLength(0); i++)
-            if (table[i, 0] != 0)
+        var count = 0;
+        for (var i = 0; i < Size; i++)
+            if (_table[i].BestMove != 0)
                 count++;
 
         return count;
     }
 
-    public void Add(int move, int depth, int value, ulong key, byte beta_cutoff, byte alpha_cutoff)
+    public void Add(int move, byte depth, int value, ulong key, bool betaCutoff, bool alphaCutoff)
     {
-        int index = (int)(key % (ulong)table.GetLength(0));
+        var index = key % (ulong)Size;
 
-        //standart logging pattern
-        /*
-         * depth
-         * 
-         * then value
-         * 
-         * then Move
-         * 
-         * the the  key
-         */
-        byte[] log = new byte[8];
-
-        //save the depth and the beta cutoff (adding one to see if there is an entry)
-        log[0] = (byte)Math.Min(depth + 1, 128);
-
-        //save the evaluation
-        for (int i = 0; i < 4; i++)
-            log[i + 1] = BitConverter.GetBytes(value)[i];
-
-        //save the move
-        for (int i = 5; i < 7; i++)
-            log[i] = BitConverter.GetBytes((short)move + 1)[i - 5];
-
-        //add the flag for the beta cutoff
-        log[7] += (byte)(beta_cutoff << 0);
-
-        //add the flag for the alpha cutoff at the last index of the move
-        log[7] += (byte)(alpha_cutoff << 1);
-
-        byte[] keyArray = BitConverter.GetBytes(key);
-
-        for (int i = 0; i < 16; i++)
-            table[index, i] = 0;
-
-        for (int i = 0; i < 8; i++)
-            table[index, i] = log[i];
-
-        for (int i = 8; i < keyArray.Length + 8; i++)
-            table[index, i] = keyArray[i - 8];
+        _table[index] = new(move, value, depth, alphaCutoff, betaCutoff, !alphaCutoff && !betaCutoff , key);
     }
 
-    public unsafe int IsValid(ulong key)
+    public int IsValid(ulong key)
     {
-        int index = (int)(key % (ulong)table.GetLength(0));
+        var index = key % (ulong)Size;
 
-        if (*(baseIndex + (index << LOG_ENTRY_SIZE)) == 0)
+        if (_table[index].BestMove == 0)
             return -2;
 
-        byte[] values = new byte[8];
-        for (int i = 0; i < 8; i++)
-            values[i] = table[index, 8 + i];
+        var otherKey = _table[index].Key;
 
-        ulong otherkey = BitConverter.ToUInt64(values);
-
-        if (otherkey == key)
+        if (otherKey == key)
             return 1;
-        else
-            return -1;
+        
+        return -1;
     }
 
-    public TTableEntry GetInfo(ulong key)
+    public TranspositionTableEntry GetInfo(ulong key)
     {
-        int index = (int)(key % (ulong)table.GetLength(0));
-        byte depth = (byte)(table[index, 0] - 1);
-        byte[] EvalParts = new byte[4];
-        byte[] move_parts = new byte[2];
-        EvalParts[0] = table[index, 1];
-        EvalParts[1] = table[index, 2];
-        EvalParts[2] = table[index, 3];
-        EvalParts[3] = table[index, 4];
-        int eval = BitConverter.ToInt32(EvalParts);
-
-        //get the flag for the beta cutoff
-        bool betaCutoff = (table[index, 7] & 0b01) != 0;
-
-        //get the flag for the alpha cutoff
-        bool alpha_cutoff = (table[index, 7] & 0b10) != 0;
-
-        for (int i = 5; i < 7; i++)
-            move_parts[i - 5] = table[index, i];
-
-        int move = BitConverter.ToInt16(move_parts) - 1;
-
-        return new TTableEntry(move, eval, depth, betaCutoff, alpha_cutoff, !betaCutoff && !alpha_cutoff);
+        var index = (int)(key % (ulong)Size);
+        return _table[index];
     }
 }
 
-struct TTableEntry
+internal struct TranspositionTableEntry
 {
-    public int bestMove;
-    public int score;
-    public byte depth;
-    public bool failHigh, failLow, exact;
-    public TTableEntry(int Bestmove, int CurrentScore, byte Currentdepth, bool cut_node, bool all_node, bool pv_node)
+    public readonly ulong Key;
+    public readonly short BestMove;
+    public int Score;
+    public readonly byte Depth;
+    private readonly byte _flags = 0;
+    public readonly bool FailLow => (_flags & 1) != 0;
+    public readonly bool FailHigh => (_flags & 2) != 0;
+    public readonly bool ExactScore => (_flags & 4) != 0;
+
+    public TranspositionTableEntry(int bestMove, int currentScore, byte currentDepth, bool failLow, bool failHigh, bool exactScore, ulong key)
     {
-        bestMove = Bestmove;
-        score = CurrentScore;
-        depth = Currentdepth;
-        failHigh = cut_node;
-        failLow = all_node;
-        exact = pv_node;
+        BestMove = (short)bestMove;
+        Score = currentScore;
+        Depth = currentDepth;
+        _flags |= Convert.ToByte(failLow);
+        _flags |= (byte)(Convert.ToByte(failHigh) << 1);
+        _flags |= (byte)(Convert.ToByte(exactScore) << 2);
+        Key = key;
+        Debug.Assert(failHigh == FailHigh);
+        Debug.Assert(exactScore == ExactScore);
+        Debug.Assert(failLow == FailLow);
     }
 }
-

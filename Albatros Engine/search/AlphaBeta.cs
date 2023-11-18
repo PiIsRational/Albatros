@@ -119,7 +119,7 @@ class AlphaBeta
             depth_acces.WaitOne();
             rootDepth = current_depth;
             depth_acces.Release();
-            node_values[0] = !inCheck ? (tTable.IsValid(key) == 1 ? tTable.GetInfo(key).score : currentScore) : ILLEGAL_POSITION_VALUE;
+            node_values[0] = !inCheck ? (tTable.IsValid(key) == 1 ? tTable.GetInfo(key).Score : currentScore) : ILLEGAL_POSITION_VALUE;
 
             if (current_depth >= 4 && Math.Abs(last_last_best) < mateValue)
             {
@@ -141,7 +141,7 @@ class AlphaBeta
             {
                 search_pv = true;
 
-                move_list = moveOrder.EvaluateMoves(board, Standart.CLone(movelist), movelist_length, 0, false, tTable.IsValid(key) == 1 ? tTable.GetInfo(key).bestMove : 0, move_list);
+                move_list = moveOrder.EvaluateMoves(board, Standart.CLone(movelist), movelist_length, 0, false, tTable.IsValid(key) == 1 ? tTable.GetInfo(key).BestMove : 0, move_list);
                 while (move_list.Length > 0)
                 {
 
@@ -250,8 +250,8 @@ class AlphaBeta
                 if (current_depth > 2 && changeTime)
                 {
                     //if the timing is already maximal do not change it
-                    //else if th bestmove is different to the last best move make the time usage larger
-                    if (theoretical_time_usage * 14 > timeToUse * 10 && Output != tTable.GetInfo(key).bestMove && theoretical_time_usage < 500)
+                    //else if the best move is different to the last best move make the time usage larger
+                    if (theoretical_time_usage * 14 > timeToUse * 10 && Output != tTable.GetInfo(key).BestMove && theoretical_time_usage < 500)
                         timeToUse += theoretical_time_usage / 10;
                     //else if it is really low do not change it
                     //else make the time usage smaller
@@ -261,9 +261,9 @@ class AlphaBeta
                 time_acces.Release();
 
                 //add the best move to the hash table
-                tTable.Add(Output, current_depth, alpha, key, 0, 0);
+                tTable.Add(Output, (byte)current_depth, alpha, key, false, false);
             }
-            //after a finished search return the main informations 
+            //after a finished search return the main information 
             if (!stop)
             {
                 if (Math.Abs(alpha) < mateValue)
@@ -303,7 +303,7 @@ class AlphaBeta
         int staticScore = -ILLEGAL_POSITION_VALUE, score = -ILLEGAL_POSITION_VALUE, decrease = 0, improvement = 0;
         PvOut Output = new PvOut(), current_variation;
         Output.value = alpha;
-        TTableEntry entry = new TTableEntry(0, 0, 0, false, false, false);
+        TranspositionTableEntry entry = new TranspositionTableEntry(0, 0, 0, false, false, false, key);
         MoveList move_list = new MoveList();
         int[] played_moves = new int[214];
         int played_move_idx = 0;
@@ -334,18 +334,18 @@ class AlphaBeta
 
             if (keyValid == 1)
             {
-                if (Math.Abs(entry.score) >= mateValue)
-                    entry.score -= entry.score / Math.Abs(entry.score) * ply;
+                if (Math.Abs(entry.Score) >= mateValue)
+                    entry.Score -= entry.Score / Math.Abs(entry.Score) * ply;
 
                 //if the position has the right depth return the value of the position
-                if (entry.depth >= depth)
+                if (entry.Depth >= depth)
                 {
-                    if (entry.score >= beta && !entry.failLow)
+                    if (entry.Score >= beta && !entry.FailLow)
                     {
                         Output.value = beta;
                         return Output;
                     }
-                    if (entry.score <= alpha && !entry.failHigh)
+                    if (entry.Score <= alpha && !entry.FailHigh)
                     {
                         Output.value = alpha;
                         return Output;
@@ -370,8 +370,8 @@ class AlphaBeta
             staticScore = eval.DrawScore(board, staticScore);
         }
 
-        if (keyValid == 1 && entry.exact)
-            score = entry.score;
+        if (keyValid == 1 && entry.ExactScore)
+            score = entry.Score;
         else
             score = staticScore;
 
@@ -390,7 +390,7 @@ class AlphaBeta
          */
 
         //sort the moves
-        move_list = moveOrder.EvaluateMoves(board, moves, movelist_length, ply, false, keyValid == 1 ? entry.bestMove : BestMove, move_list);
+        move_list = moveOrder.EvaluateMoves(board, moves, movelist_length, ply, false, keyValid == 1 ? entry.BestMove : BestMove, move_list);
         interestingMoveCount = moveOrder.tacticalMoveCounter;
 
         pruningSafe = !inCheck && rootDepth > 3 &&
@@ -414,7 +414,7 @@ class AlphaBeta
                 //if lmr is allowed
                 if (depth > 2 && movecount > interestingMoveCount)
                 {
-                    //calculate tthe depth of the late move reduction
+                    //calculate the depth of the late move reduction
                     int lmrDepth = depth - (1 + Reduction(depth, movecount - interestingMoveCount, true));
 
                     //futility pruning
@@ -442,9 +442,9 @@ class AlphaBeta
             //set the new depth
             newDepth = depth - 1;
 
-            /*calculate depth extentions*/
+            /*calculate depth extensions*/
 
-            //check extention
+            //check extension
             if (inCheck)
                 newDepth++;
 
@@ -525,9 +525,9 @@ class AlphaBeta
                     //store the killer move history moves and counter moves
                     moveOrder.UpdateHistories(board, currentMove.move, played_moves, played_move_idx, nullMovePruning, depth, ply, true);
 
-                    //add the best move to the hash table if the current depth is greater than the depth of the entry or thre is no entry in the hash table
-                    if (!stop && (keyValid == -2 || entry.depth <= depth))
-                        tTable.Add(currentMove.move, depth, beta, key, 1, 0);
+                    //add the best move to the hash table if the current depth is greater than the depth of the entry or there is no entry in the hash table
+                    if (!stop && (keyValid == -2 || entry.Depth <= depth))
+                        tTable.Add(currentMove.move, (byte)depth, beta, key, true, false);
 
                     RemovePositionFromLookups(key, twoFoldRepetition);
 
@@ -544,42 +544,37 @@ class AlphaBeta
 
         RemovePositionFromLookups(key, twoFoldRepetition);
 
-        //if no move was legal return the score for mate
+        //if no move was legal return the Score for mate
         if (movelist_length == 0)
         {
             //mate
             if (inCheck)
             {
                 Output.value = -(mateValue + MAX_DEPTH - ply);
-                tTable.Add(0, MAX_DEPTH, Output.value, key, 0, 0);
+                tTable.Add(0, MAX_DEPTH, Output.value, key, false, false);
                 Output.principalVariation = new List<int>();
                 return Output;
             }
             //stalemate
-            else
-            {
-                Output.value = 0;
-                tTable.Add(0, MAX_DEPTH, Output.value, key, 0, 0);
-                Output.principalVariation = new List<int>();
-                return Output;
-            }
-        }
-        else
-        {
-            //if we have not managed to exeed alpha we have not found the best move so we use the first move we searched
-            if (BestMove == -1)
-            {
-                fail_low = true;
-                BestMove = played_moves[0];
-            }
-
-            //add the best move to the hash table if the current depth is greater than the depth of the entry or thre is no entry in the hash table
-            if (!stop && (keyValid == -2 || entry.depth <= depth || !fail_low))
-                tTable.Add(BestMove, depth, Math.Abs(alpha) > mateValue ? alpha + Math.Abs(alpha) / alpha * ply : alpha, key, 0, (byte)(fail_low ? 1 : 0));
-
-            //return the best score
+            Output.value = 0;
+            tTable.Add(0, MAX_DEPTH, Output.value, key, false, false);
+            Output.principalVariation = new List<int>();
             return Output;
         }
+
+        //if we have not managed to exceed alpha we have not found the best move so we use the first move we searched
+        if (BestMove == -1)
+        {
+            fail_low = true;
+            BestMove = played_moves[0];
+        }
+
+        //add the best move to the hash table if the current depth is greater than the depth of the entry or thre is no entry in the hash table
+        if (!stop && (keyValid == -2 || entry.Depth <= depth || !fail_low))
+            tTable.Add(BestMove, (byte)depth, Math.Abs(alpha) > mateValue ? alpha + Math.Abs(alpha) / alpha * ply : alpha, key, false, fail_low);
+
+        //return the best Score
+        return Output;
     }
     public int ZeroWindowSearch(Position board, int depth, int ply, int alpha, int beta, bool inCheck, bool NNUE_avx2, ulong key)
     {
@@ -589,7 +584,7 @@ class AlphaBeta
         bool givesCheck = false, twoFoldRepetition = false, full_depth_search = false;
         int movecount = 0, interestingMoveCount, new_depth = 0;
         bool improving = false, pruningIsSafe = false;
-        TTableEntry entry = new TTableEntry(0, 0, 0, false, false, false);
+        TranspositionTableEntry entry = new TranspositionTableEntry(0, 0, 0, false, false, false, key);
         MoveList moveList = new MoveList();
         int[] playedMoves = new int[214];
         int playedMoveIdx = 0;
@@ -602,7 +597,7 @@ class AlphaBeta
         {
             if (repetition_count(key) == 2)
                 return 0;
-            else if (repetition_count(key) == 1)
+            if (repetition_count(key) == 1)
                 twoFoldRepetition = true;
         }
 
@@ -614,19 +609,19 @@ class AlphaBeta
 
             if (keyValid == 1)
             {
-                if (Math.Abs(entry.score) >= mateValue)
-                    entry.score -= entry.score / Math.Abs(entry.score) * ply;
+                if (Math.Abs(entry.Score) >= mateValue)
+                    entry.Score -= entry.Score / Math.Abs(entry.Score) * ply;
                 //if the position has the right depth we can use the value of the position
-                if (entry.depth >= depth)
+                if (entry.Depth >= depth)
                 {
-                    //if the score is larger or equal to beta we can return beta
-                    if (entry.score >= beta && !entry.failLow)
+                    //if the Score is larger or equal to beta we can return beta
+                    if (entry.Score >= beta && !entry.FailLow)
                         return beta;
-                    //else if the score is certain and it is smaller then alpha we have an alpha cutoff
-                    if (entry.score <= alpha && !entry.failHigh)
+                    //else if the Score is certain and it is smaller then alpha we have an alpha cutoff
+                    if (entry.Score <= alpha && !entry.FailHigh)
                         return alpha;
-                    if (entry.exact)
-                        return entry.score;
+                    if (entry.ExactScore)
+                        return entry.Score;
                 }
             }
         }
@@ -644,8 +639,8 @@ class AlphaBeta
             staticScore = eval.DrawScore(board, staticScore);
         }
 
-        if (keyValid == 1 && entry.exact)
-            score = entry.score;
+        if (keyValid == 1 && entry.ExactScore)
+            score = entry.Score;
         else
             score = staticScore;
 
@@ -670,13 +665,13 @@ class AlphaBeta
         {
             /*Razoring
              * 
-             * if the current score is really bad,
-             * we try a quiescence search to look if a tactical sequence can make up for the bad score
+             * if the current Score is really bad,
+             * we try a quiescence search to look if a tactical sequence can make up for the bad Score
              * if this is not the case we just prune 
              */
             if (depth < 4 &&
                 score + RazoringMargin(depth, improving) < alpha &&
-                (keyValid == 1 && !entry.failHigh))
+                (keyValid == 1 && !entry.FailHigh))
             {
                 int test_value = QuiescenceSearch(board, alpha - 1, alpha, NNUE_avx2, 0, ply + 1, key, inCheck);
 
@@ -687,7 +682,7 @@ class AlphaBeta
             //Reverse Futility Pruning
             if (depth < 7 &&
                 score - RFPMargin(depth) >= beta &&
-                (keyValid != 1 || !entry.failLow))
+                (keyValid != 1 || !entry.FailLow))
                 return beta;
 
             /* Null Move Pruning
@@ -706,7 +701,7 @@ class AlphaBeta
                 score >= beta &&
                 staticScore >= beta &&
                 !nullMovePruning[ply - 1] &&
-                (keyValid != 1 || !entry.failLow))
+                (keyValid != 1 || !entry.FailLow))
             {
                 int nmpScore;
 
@@ -736,7 +731,7 @@ class AlphaBeta
 
                 board = moveGenerator.unmake_move(board, reverseMoves[ply]);
 
-                /*if the new score is better
+                /*if the new Score is better
                  *and the next position is not illegal
                  *and the next value is not mate
                  *return beta
@@ -747,7 +742,7 @@ class AlphaBeta
         }
 
         //sort the moves
-        moveList = moveOrder.EvaluateMoves(board, moves, movelist_length, ply, false, keyValid == 1 ? entry.bestMove : 0, moveList);
+        moveList = moveOrder.EvaluateMoves(board, moves, movelist_length, ply, false, keyValid == 1 ? entry.BestMove : 0, moveList);
         interestingMoveCount = moveOrder.tacticalMoveCounter;
 
         AddPositionToLookups(key);
@@ -859,8 +854,8 @@ class AlphaBeta
                 moveOrder.UpdateHistories(board, currentMove.move, playedMoves, playedMoveIdx, nullMovePruning, depth, ply, true);
 
                 //add the best move to the hash table if the current depth is greater than the depth of the entry or thre is no entry in the hash table
-                if (!stop && (keyValid == -2 || entry.depth <= depth))
-                    tTable.Add(currentMove.move, depth, beta, key, 1, 0);
+                if (!stop && (keyValid == -2 || entry.Depth <= depth))
+                    tTable.Add(currentMove.move, (byte)depth, beta, key, true, false);
 
                 RemovePositionFromLookups(key, twoFoldRepetition);
 
@@ -870,32 +865,28 @@ class AlphaBeta
 
         RemovePositionFromLookups(key, twoFoldRepetition);
 
-        //if no move was legal return the score for a terminal node
+        //if no move was legal return the Score for a terminal node
         if (movelist_length == 0)
         {
             //mate
             if (inCheck)
             {
-                tTable.Add(0, MAX_DEPTH, -(mateValue + MAX_DEPTH - ply), key, 0, 0);
+                tTable.Add(0, MAX_DEPTH, -(mateValue + MAX_DEPTH - ply), key, false, false);
                 return -(mateValue + MAX_DEPTH - ply);
             }
+
             //stalemate
-            else
-            {
-                tTable.Add(0, MAX_DEPTH, 0, key, 0, 0);
-                return 0;
-            }
-        }
-        else
-        {
-            //add the best move to the hash table if there is no entry in the hash table
-            if (!stop && (keyValid == -2 || entry.depth <= depth))
-                tTable.Add(playedMoves[0], depth, Math.Abs(alpha) >= mateValue ? alpha + Math.Abs(alpha) / alpha * ply : alpha, key, 0, 1);
-
-            return alpha;
+            tTable.Add(0, MAX_DEPTH, 0, key, false, false);
+            return 0;
         }
 
+        //add the best move to the hash table if there is no entry in the hash table
+        if (!stop && (keyValid == -2 || entry.Depth <= depth)) 
+            tTable.Add(playedMoves[0], (byte)depth, Math.Abs(alpha) >= mateValue ? alpha + Math.Abs(alpha) / alpha * ply : alpha, key, false, true);
+
+        return alpha;
     }
+
     public int QuiescenceSearch(Position board, int alpha, int beta, bool NNUE_avx2, int depth, int ply, ulong key, bool inCheck)
     {
         if (stop)
@@ -916,7 +907,7 @@ class AlphaBeta
         bool failLow = true, givesCheck;
         int[] moves;
         MoveList moveList = new MoveList();
-        TTableEntry entry = new TTableEntry(0, 0, 0, false, false, false);
+        TranspositionTableEntry entry = new TranspositionTableEntry(0, 0, 0, false, false, false, key);
         int keyValid = tTable.IsValid(key);
 
         if (keyValid > -2)
@@ -925,19 +916,19 @@ class AlphaBeta
 
             if (keyValid == 1)
             {
-                if (Math.Abs(entry.score) >= mateValue)
-                    entry.score -= entry.score / Math.Abs(entry.score) * ply;
+                if (Math.Abs(entry.Score) >= mateValue)
+                    entry.Score -= entry.Score / Math.Abs(entry.Score) * ply;
 
-                //if the score is larger or equal to beta we can return beta
-                if (entry.score >= beta && entry.failHigh)
+                //if the Score is larger or equal to beta we can return beta
+                if (entry.Score >= beta && entry.FailHigh)
                     return beta;
 
-                //else if the score is certain and it is smaller then alpha we have an alpha cutoff
-                if (entry.score <= alpha && entry.failLow)
+                //else if the Score is certain and it is smaller then alpha we have an alpha cutoff
+                if (entry.Score <= alpha && entry.FailLow)
                     return alpha;
 
-                if (entry.exact)
-                    return entry.score;
+                if (entry.ExactScore)
+                    return entry.Score;
             }
         }
 
@@ -982,17 +973,17 @@ class AlphaBeta
             if (inCheck)
             {
                 alpha = -(mateValue + MAX_DEPTH - ply);
-                tTable.Add(0, MAX_DEPTH, alpha, key, 0, 0);
+                tTable.Add(0, MAX_DEPTH, alpha, key, false, false);
             }
             else if (!stop && keyValid == -2)
                 // the real evalutaion
-                tTable.Add(0, 0, standingPat, key, 0, 0);
+                tTable.Add(0, 0, standingPat, key, false, false);
 
             return alpha;
         }
 
         //sort the moves
-        moveList = moveOrder.EvaluateMoves(board, moves, movelistLength, ply, true, keyValid == 1 ? entry.bestMove : 0, moveList);
+        moveList = moveOrder.EvaluateMoves(board, moves, movelistLength, ply, true, keyValid == 1 ? entry.BestMove : 0, moveList);
 
         while (moveList.Length > 0)
         {
@@ -1029,7 +1020,7 @@ class AlphaBeta
                 if (currentScore >= beta)
                 {
                     if (!stop && keyValid == -2)
-                        tTable.Add(bestMove, 0, beta, key, 1, 0);
+                        tTable.Add(bestMove, 0, beta, key, true, false);
                     return beta;
                 }
             }
@@ -1037,9 +1028,9 @@ class AlphaBeta
 
         //add the best move to the hash table if the current depth is greater than the depth of the entry or thre is no entry in the hash table
         if (!stop && keyValid == -2)
-            tTable.Add(bestMove, 0, Math.Abs(alpha) >= mateValue ? alpha + Math.Abs(alpha) / alpha * ply : alpha, key, 0, (byte)(failLow ? 1 : 0));
+            tTable.Add(bestMove, 0, Math.Abs(alpha) >= mateValue ? alpha + Math.Abs(alpha) / alpha * ply : alpha, key, false, failLow);
 
-        //return the best score
+        //return the best Score
         return alpha;
     }
    
